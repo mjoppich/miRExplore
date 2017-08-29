@@ -65,7 +65,13 @@ if addGO:
             if child.synonym != None:
                 for syn in child.synonym:
                     if syn != None:
-                        globalKeywordExcludes.add(syn.syn)
+
+                        synWord = syn.syn
+
+                        globalKeywordExcludes.add(synWord)
+
+                        if ' ' in synWord:
+                            globalKeywordExcludes.add(synWord.split(' ')[0])
 
     globalKeywordExcludes = sorted(globalKeywordExcludes)
     printToFile(globalKeywordExcludes, dataDir + "miRExplore/textmine/excludes/exclude_words.cell_co.syn")
