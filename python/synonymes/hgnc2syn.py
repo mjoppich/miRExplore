@@ -1,10 +1,10 @@
 import shlex
 from collections import Counter
 
-from porestat.utils import DataFrame
+from porestat.utils.DataFrame import DataFrame
 
 from synonymes.Synonym import Synonym
-from utils.idutils import printToFile, dataDir
+from utils.idutils import printToFile, dataDir, loadExludeWords
 
 hgncData = DataFrame.parseFromFile(dataDir + "/miRExplore/hgnc.tsv")
 hgncIDIdx = hgncData.getColumnIndex("HGNC ID")
@@ -33,11 +33,14 @@ for result in hgncData:
 
     synIDCounter[mirexploreGeneID] += 1
 
+    #if mirexploreGeneID == 'RN7SL6P':
+    #    print(result)
+
     #syn = Synonyme(hgncID)
     syn = Synonym( mirexploreGeneID )
-    syn.addTextSyns(result[hgncSymIdx])
-    syn.addTextSyns(result[hgncSymIdx])
-    syn.addTextSyns(result[hgncNameIdx])
+    syn.addTextSyns(result[hgncIDIdx])
+    syn.addTextSyns('"'+result[hgncSymIdx]+'"')
+    syn.addTextSyns('"'+result[hgncNameIdx]+'"')
     syn.addTextSyns(result[hgncPrevSymIdx])
     syn.addTextSyns(result[hgncPrevNameIdx])
     syn.addTextSyns(result[hgncSynsIdx])
@@ -75,12 +78,20 @@ for synWordCount in synCounter.most_common(66):
     print(synWordCount[0] + " " + str(synWordCount[1]))
 
 vPrintSyns = []
-
+globalKeywordExcludes = loadExludeWords()
+done = 0
 for synonym in vAllSyns:
 
     synonym.removeCommonSynonymes(setCommonWords)
+    synonym.removeNumbers()
+    synonym.removeSynUpper(globalKeywordExcludes)
+
+    done += 1
+
+    if done % 100 == 0:
+        print(str(done) + "/" + str(len(vAllSyns)))
 
     if len(synonym) > 0:
         vPrintSyns.append(synonym)
 
-printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonymes/hgnc.syn")
+printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/hgnc.syn")

@@ -3,13 +3,16 @@ from collections import Counter, defaultdict
 from porestat.utils.DataFrame import DataFrame
 
 from database.MIRFamily import MIRFamilyDB
+from database.ORGMIRs import ORGMIRDB
 from synonymes.Synonym import Synonym
-from synonymes.mirnaID import miRNA, miRNASynonymeTYPE
-from utils.idutils import printToFile, dataDir
+from synonymes.mirnaID import miRNA, miRNASynonymeTYPE, miRNAPART
+from utils.idutils import printToFile, dataDir, globalKeywordExcludes
 
 mirbase = DataFrame.parseFromFile(dataDir + "/miRExplore/mirnas_mirbase.csv", bConvertTextToNumber=False)
 filename = dataDir + "/miRExplore/miFam.dat"
 familyDB = MIRFamilyDB(filename)
+
+orgmirs = ORGMIRDB(dataDir + "/miRExplore/orgmir.tsv")
 
 MIMAT2MIRNA = {}
 MI2MIMAT = defaultdict(set)
@@ -69,22 +72,34 @@ def makeFamilySynonymes():
 
 def makeOrgSynonymes():
 
-    vOrgSyns = []
+    dOrgSyns = {}
+    addedMirnaIDs = list()
 
-    for mi in MI2MIMAT:
+    for mimat in MIMAT2MIRNA:
 
-        mimats = MI2MIMAT[mi]
-        mirnas = [MIMAT2MIRNA[x] for x in mimats]
+        mirna = MIMAT2MIRNA[mimat]
 
-        orgSyn = Synonym('ORG'+mi)
+        orgmir = orgmirs.mimat2orgmir.get(mimat, None)
 
-        for mirna in mirnas:
-            allIDs = set(mirna.make_strings( miRNA.compositions()[miRNASynonymeTYPE.MIORG] ))
+        if orgmir == None:
+            continue
 
-            for syn in allIDs:
-                orgSyn.addSyn(syn)
+        synid = orgmir
 
-        vOrgSyns.append(orgSyn)
+        if synid in dOrgSyns:
+            orgSyn = dOrgSyns[synid]
+        else:
+            orgSyn = Synonym( synid )
+
+        allsyns = set(mirna.make_strings( miRNA.compositions()[miRNASynonymeTYPE.MIORG] ))
+
+        for syn in allsyns:
+            orgSyn.addSyn(syn)
+
+        dOrgSyns[synid] = orgSyn
+
+
+    vOrgSyns = [dOrgSyns[x] for x in dOrgSyns]
 
     return vOrgSyns
 
@@ -129,11 +144,10 @@ def makeMIMATSynonymes():
 
 
 synFiles = {}
-#synFiles['mirna_families.syn'] = makeFamilySynonymes()
-#synFiles['mirna_org.syn'] = makeOrgSynonymes()
-#synFiles['mirna_mi.syn'] = makeMISynonymes()
+synFiles['mirna_families.syn'] = makeFamilySynonymes()
+synFiles['mirna_org.syn'] = makeOrgSynonymes()
+synFiles['mirna_mi.syn'] = makeMISynonymes()
 synFiles['mirna_mimat.syn'] = makeMIMATSynonymes()
-
 
 for synFilename in synFiles:
 
@@ -151,7 +165,7 @@ for synFilename in synFiles:
 
     for synWordCount in synCounter.most_common(66):
 
-        if synCounter[synWordCount[0]] <= 2:
+        if synCounter[synWordCount[0]] <= 10:
             continue
 
         setCommonWords.add(synWordCount[0])
@@ -162,6 +176,8 @@ for synFilename in synFiles:
     for synonym in vAllSyns:
 
         synonym.removeCommonSynonymes(setCommonWords)
+        synonym.removeNumbers()
+        synonym.removeSynUpper(globalKeywordExcludes)
 
         if len(synonym) > 0:
             vPrintSyns.append(synonym)

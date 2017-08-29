@@ -1,8 +1,12 @@
+import codecs
 import re
 import os
-
+from collections import defaultdict
 
 dataDir = "/mnt/c/ownCloud/data/"
+
+class ParseObject(object):
+    pass
 
 def isNumber(sText):
     """
@@ -37,6 +41,36 @@ ltype2label = {
     "RNA, micro": 'GENE_MIRNA'
 }
 
+aminoAcids = ['Phe', 'Leu', 'Ser', 'Tyr', 'Cys', 'Trp', 'Leu', 'Pro', 'His', 'Gln','Arg', 'Ile', 'Met', 'Thr', 'Asn', 'Lsy', 'Ser', 'Arg', 'Val', 'Ala', 'Asp', 'Glu', 'Gly']
+
+def loadExludeWords():
+
+    exclWords = defaultdict(set)
+
+    with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.generic.syn") as infile:
+        for line in infile:
+            line = line.strip()
+
+            exclWords['names'].add(line)
+            exclWords['names'].add(line.upper())
+
+    with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.names.syn") as infile:
+        for line in infile:
+            line = line.strip()
+
+            exclWords['names'].add(line)
+            exclWords['names'].add(line.upper())
+
+    with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.cell_co.syn") as infile:
+        for line in infile:
+            line = line.strip()
+
+            exclWords['cell_co'].add(line)
+            exclWords['cell_co'].add(line.upper())
+
+    return exclWords
+
+
 def makeDBGeneID( symbol ):
 
     sym = symbol.upper()
@@ -69,13 +103,11 @@ def mirtarbase_exp_type(expType):
     label = mirtarbase_function_label(expType)
     return label
 
-def printToFile(content, filename):
+def printToFile(content, filename, codec='latin1'):
 
-    with open(filename, 'w') as outfile:
-
+    with codecs.open(filename, 'wb', codec) as outfile:
         for elem in content:
-
-            outfile.write(str(elem) + os.linesep)
+            outfile.write((str(elem)+os.linesep).encode('latin1', 'ignore').decode('latin1', 'ignore'))
 
 
 def containsDigitAndChars( someStr ):

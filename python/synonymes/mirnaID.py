@@ -59,6 +59,13 @@ class miRNA:
 
         return allRets
 
+    def getPart(self, part):
+
+        if part in self.parts:
+            return self.parts[part]
+
+        return None
+
 
     def make_string(self, partsList):
 
@@ -107,7 +114,7 @@ class miRNA:
         matureSeqStr = self.parts[miRNAPART.MATURE_SEQS] if miRNAPART.MATURE_SEQS in partsList and miRNAPART.MATURE_SEQS in self.parts else ''
         armStr = self.parts[miRNAPART.ARM] if miRNAPART.ARM in partsList and miRNAPART.ARM in self.parts else ''
 
-        matureValues = ['mir', 'miR']
+        matureValues = ['mir', 'miR', 'MiR', 'Mir']
 
         createdVersions = []
 
@@ -295,6 +302,7 @@ if __name__ == '__main__':
         print()
 
 
+    testMIRNA('sv40-miR-S1-5p')
     testMIRNA('kshv-miR-K12-10a-5p')
     testMIRNA('ose-bantam-5p')
     testMIRNA('ebv-mir-BHRF1-2-5p')
