@@ -4,6 +4,7 @@ import os
 from collections import defaultdict
 
 dataDir = "/mnt/c/ownCloud/data/"
+dataDir = "/home/users/joppich/ownCloud/data/"
 
 class ParseObject(object):
     pass
@@ -51,8 +52,15 @@ def loadExludeWords():
         for line in infile:
             line = line.strip()
 
-            exclWords['names'].add(line)
-            exclWords['names'].add(line.upper())
+            exclWords['generic'].add(line)
+            exclWords['generic'].add(line.upper())
+
+    with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.disease.syn") as infile:
+        for line in infile:
+            line = line.strip()
+
+            exclWords['disease'].add(line)
+            exclWords['disease'].add(line.upper())
 
     with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.names.syn") as infile:
         for line in infile:
@@ -107,7 +115,7 @@ def printToFile(content, filename, codec='latin1'):
 
     with codecs.open(filename, 'wb', codec) as outfile:
         for elem in content:
-            outfile.write((str(elem)+os.linesep).encode('latin1', 'ignore').decode('latin1', 'ignore'))
+            outfile.write((str(elem)+os.linesep).encode(codec, 'ignore').decode(codec, 'ignore'))
 
 
 def containsDigitAndChars( someStr ):

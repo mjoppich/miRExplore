@@ -10,7 +10,10 @@ class SynonymID:
         self.synmatch = None
 
     def __str__(self):
-        return "{synfile}:{synid}:{synmatch}".format(synfile=self.synfile, synid=self.synid, synmatch=self.synmatch)
+        if self.synmatch != None:
+            return "{synfile}:{synid}:{synmatch}".format(synfile=self.synfile, synid=self.synid, synmatch=self.synmatch)
+        else:
+            return "{synfile}:{synid}".format(synfile=self.synfile, synid=self.synid)
 
     def __repr__(self):
         return self.__str__()
@@ -24,7 +27,9 @@ class SynonymID:
 
         retObj.synfile = int(astring[0])
         retObj.synid = int(astring[1])
-        retObj.synmatch = int(astring[2])
+
+        if len(astring) > 2:
+            retObj.synmatch = int(astring[2])
 
         return retObj
 

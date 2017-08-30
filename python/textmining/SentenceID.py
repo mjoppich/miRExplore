@@ -6,13 +6,15 @@ class SentenceID:
         self.parID = None
         self.senID = None
 
-
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
 
-        return "{docID}.{parID}.{senID}".format(docID=self.docID, parID=self.parID, senID=self.senID)
+        if self.senID != None:
+            return "{docID}.{parID}.{senID}".format(docID=self.docID, parID=self.parID, senID=self.senID)
+        else:
+            return "{docID}.{parID}".format(docID=self.docID, parID=self.parID)
 
     @classmethod
     def fromStr(cls, line):

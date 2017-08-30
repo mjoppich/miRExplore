@@ -5,8 +5,9 @@ from porestat.utils.DataFrame import DataFrame
 from database.MIRFamily import MIRFamilyDB
 from database.ORGMIRs import ORGMIRDB
 from synonymes.Synonym import Synonym
+from synonymes.SynonymUtils import handleCommonExcludeWords
 from synonymes.mirnaID import miRNA, miRNASynonymeTYPE, miRNAPART
-from utils.idutils import printToFile, dataDir, globalKeywordExcludes
+from utils.idutils import printToFile, dataDir, loadExludeWords
 
 mirbase = DataFrame.parseFromFile(dataDir + "/miRExplore/mirnas_mirbase.csv", bConvertTextToNumber=False)
 filename = dataDir + "/miRExplore/miFam.dat"
@@ -149,37 +150,14 @@ synFiles['mirna_org.syn'] = makeOrgSynonymes()
 synFiles['mirna_mi.syn'] = makeMISynonymes()
 synFiles['mirna_mimat.syn'] = makeMIMATSynonymes()
 
-for synFilename in synFiles:
 
+
+
+globalKeywordExcludes = loadExludeWords()
+
+for synFilename in synFiles:
     print(synFilename)
 
     vAllSyns = synFiles[synFilename]
-
-    synCounter = Counter()
-    for synonym in vAllSyns:
-
-        for syn in synonym:
-            synCounter[syn] += 1
-
-    setCommonWords = set()
-
-    for synWordCount in synCounter.most_common(66):
-
-        if synCounter[synWordCount[0]] <= 10:
-            continue
-
-        setCommonWords.add(synWordCount[0])
-        print(synWordCount[0] + " " + str(synWordCount[1]))
-
-    vPrintSyns = []
-
-    for synonym in vAllSyns:
-
-        synonym.removeCommonSynonymes(setCommonWords)
-        synonym.removeNumbers()
-        synonym.removeSynUpper(globalKeywordExcludes)
-
-        if len(synonym) > 0:
-            vPrintSyns.append(synonym)
-
+    vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=21)
     printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/" + synFilename)

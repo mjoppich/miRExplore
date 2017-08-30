@@ -99,6 +99,14 @@ class Synonym:
         if newSyn.upper() in ['SYMBOL WITHDRAWN', 'WITHDRAWN', 'PSEUDOGENE', 'RNA', 'ENTRY WITHDRAWN']:
             return
 
+        newSyn = re.sub('\s\s+',' ',newSyn)
+
+        if len(re.sub('[0-9\W]*', '', newSyn)) == 0:
+            return
+
+        if newSyn == '1,3':
+            print(newSyn)
+
         if not newSyn in self.syns:
             self.syns.append(newSyn)
 
@@ -135,11 +143,38 @@ class Synonym:
 
             syns2remove = set()
             for syn in self.syns:
-                if syn in listToExclude:
+                if syn in listToExclude or syn.upper() in listToExclude:
                     syns2remove.add(syn)
 
             for syn in syns2remove:
                 self.removeSyn(syn)
+
+    def addAlphaBetaVariants(self):
+        self.__searchReplaceVariant('A', 'alpha', [u"\u03B1", '-'+u"\u03B1"])
+        self.__searchReplaceVariant('B', 'beta', [u"\u03B2", '-' + u"\u03B2"])
+
+
+    def __searchReplaceVariant(self, endChar, endWord, replaceWith):
+
+        endsWithChar = self.id.endswith(endChar)
+        endsWithWord = False
+
+        for x in self.syns:
+            if x.endswith(endWord) or x.upper().endswith(endWord.upper()):
+                endsWithWord = True
+                break
+
+        if endsWithChar and endsWithWord:
+
+            for x in replaceWith:
+                aid = self.id.rsplit(endChar, 1)
+                aid.append(x)
+
+                newsyn = "".join(aid)
+
+                print(self.id + " ADD SYN " + newsyn)
+                self.syns.append(newsyn)
+
 
     def removeNumbers(self):
 

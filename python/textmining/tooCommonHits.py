@@ -42,6 +42,6 @@ for splitFileID in range(892, 0, -1):
 
     filesDone += 1
 
-for (syn, cnt) in hgncFoundSyns.most_common(1000):
-    if syn in excludedSyns:
-        print(str(syn) + " -> " + str(cnt))
+for (syn, cnt) in hgncFoundSyns.most_common(100):
+    #if syn in excludedSyns:
+    print(str(syn) + " -> " + str(cnt))

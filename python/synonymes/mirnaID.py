@@ -59,12 +59,12 @@ class miRNA:
 
         return allRets
 
-    def getPart(self, part):
+    def getPart(self, part, default=None):
 
         if part in self.parts:
             return self.parts[part]
 
-        return None
+        return default
 
 
     def make_string(self, partsList):

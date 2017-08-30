@@ -4,6 +4,7 @@ from collections import Counter
 from porestat.utils.DataFrame import DataFrame
 
 from synonymes.Synonym import Synonym
+from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import printToFile, dataDir, loadExludeWords
 
 hgncData = DataFrame.parseFromFile(dataDir + "/miRExplore/hgnc.tsv")
@@ -64,34 +65,6 @@ for x in synIDCounter:
     if synIDCounter[x] > 1:
         print("Attention: double syn id! " + str(x) + " -> " + str(synIDCounter[x]))
 
-synCounter = Counter()
-for synonym in vAllSyns:
-
-    for syn in synonym:
-        synCounter[syn] += 1
-
-setCommonWords = set()
-
-for synWordCount in synCounter.most_common(66):
-
-    setCommonWords.add(synWordCount[0])
-    print(synWordCount[0] + " " + str(synWordCount[1]))
-
-vPrintSyns = []
 globalKeywordExcludes = loadExludeWords()
-done = 0
-for synonym in vAllSyns:
-
-    synonym.removeCommonSynonymes(setCommonWords)
-    synonym.removeNumbers()
-    synonym.removeSynUpper(globalKeywordExcludes)
-
-    done += 1
-
-    if done % 100 == 0:
-        print(str(done) + "/" + str(len(vAllSyns)))
-
-    if len(synonym) > 0:
-        vPrintSyns.append(synonym)
-
-printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/hgnc.syn")
+vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=0, addAlphaBeta=True, removeSyn=lambda synonym: synonym.id.startswith('MIR') and not synonym.id.endswith('HG'))
+printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/hgnc.syn", codec='utf8')

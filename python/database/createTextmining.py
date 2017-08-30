@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 from porestat.utils.DataFrame import DataFrame
 
 from synonymes.SynfileMap import SynfileMap
@@ -31,6 +31,9 @@ class Cooccurrence:
 
     def __repr__(self):
         return self.__str__()
+
+    def getIdTuple(self):
+        return (self.gene, self.mirna, self.idtype)
 
 def findCooccurrences( pubmed, hgncHits, mirnaHits ):
 
@@ -69,8 +72,10 @@ def findCooccurrences( pubmed, hgncHits, mirnaHits ):
 
             foundCoocs.append(foundCooc)
 
-
     return foundCoocs
+
+coocCounter = Counter()
+idTuple2Pubmed = defaultdict(set)
 
 for splitFileID in range(892, 0, -1):
 
@@ -93,10 +98,23 @@ for splitFileID in range(892, 0, -1):
             mirnaSynHits = mirnaHits.getHitsForDocument(docID)
             hgncSynHits = hgncHits.getHitsForDocument(docID)
 
+            #if docID == 'a27229723':
+            #    [print(x.synonyme) for x in hgncSynHits]
+            #    [print(x.synonyme) for x in mirnaSynHits]
+
             foundCoocs = findCooccurrences(str(docID), hgncSynHits, mirnaSynHits)
 
             for x in foundCoocs:
-                print(x)
+                coocCounter[ x.getIdTuple() ] += 1
+                idTuple2Pubmed[ x.getIdTuple() ].add(x.pubmed)
+
+
+for idTuple in coocCounter:
+
+    cnt = coocCounter[idTuple]
+    print(idTuple[0], idTuple[1], str(idTuple[2]), str(cnt), ",".join(idTuple2Pubmed[idTuple]))
+
+    #print(str(idTuple) + " --> " + str(cnt) + " in " + str(idTuple2Pubmed[idTuple]))
 
 
 

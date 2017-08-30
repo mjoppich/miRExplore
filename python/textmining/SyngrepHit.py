@@ -32,7 +32,10 @@ class SyngrepHit:
         retObj.synonymID = SynonymID.fromStr(aline[1])
 
         if synfileMap != None:
-            retObj.synonyme = synfileMap.getSynonyme(retObj.synonymID)
+            retObj.synonym = synfileMap.getSynonyme(retObj.synonymID)
+
+            if retObj.synonym == None:
+                retObj.synonym = synfileMap.getSynonyme(retObj.synonymID)
 
         retObj.foundSyn = aline[2]
         retObj.hitSyn = aline[5]
