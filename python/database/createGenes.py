@@ -4,11 +4,16 @@ from porestat.utils.DataFrame import DataFrame
 from utils.idutils import ltype2label, makeDBGeneID, dataDir
 from database.Neo4JInterface import neo4jInterface
 
-hgncGenes = DataFrame.parseFromFile(dataDir + "/data/miRExplore/hgnc_ensembl_entrez.tsv", bConvertTextToNumber=False)
+hgncGenes = DataFrame.parseFromFile(dataDir + "/miRExplore/hgnc_ensembl_entrez.tsv", bConvertTextToNumber=False)
 
 allStatus = Counter()
 
-db = neo4jInterface(simulate=True)
+db = neo4jInterface(simulate=False)
+db.createUniquenessConstraint('GENE', 'id')
+
+db.deleteRelationship('n', None, None, 'm', None, None, ['HAS_GENE'], None, 'r')
+db.deleteNode(["GENE"], None)
+
 
 for gene in hgncGenes:
 
@@ -41,6 +46,6 @@ for gene in hgncGenes:
 
     #print(hgncID + " " + hgncSym + " " + hgncEnsembl)
     if len(orgProps) > 0:
-        db.createRelationship("tax",['TAX'], {'id': 9606}, "gene", ['GENE'], {'id': dbID}, ['HAS_GENE'], orgProps)
+        db.createRelationshipIfNotExists("tax",['TAX'], {'id': 9606}, "gene", ['GENE'], {'id': dbID}, ['HAS_GENE'], orgProps)
 
 db.close()

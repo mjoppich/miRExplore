@@ -2,6 +2,7 @@ import codecs
 import re
 import os
 from collections import defaultdict
+import sys
 
 dataDir = "/mnt/c/ownCloud/data/"
 dataDir = "/home/users/joppich/ownCloud/data/"
@@ -90,6 +91,11 @@ speciesName2TaxID = {
     'Homo sapiens': 9606,
     'Mus musculus': 10116,
 }
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 
 def mirtarbase_function_label(function):
 

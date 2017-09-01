@@ -1,8 +1,12 @@
+import neo4j.exceptions as neo4je
 from neo4j.v1 import GraphDatabase, basic_auth
+
+from utils.idutils import eprint
+
 
 class neo4jInterface:
 
-    def __init__(self, simulate=True, printQueries=True):
+    def __init__(self, simulate=True, printQueries=False):
         self.dbQueries = 0
         self.simulateDB = simulate
         self.printQueries = printQueries
@@ -19,9 +23,40 @@ class neo4jInterface:
         if self.session:
             self.session.close()
 
+
+    def createIndex(self, label, property):
+        createIdx = 'CREATE INDEX ON :{label}({property})'.format(label=label, property=property)
+        self.runInDatabase(createIdx)
+
+    def createUniquenessConstraint(self, label, property):
+        createConstraint = 'CREATE CONSTRAINT ON (a:{label}) ASSERT a.{property} IS UNIQUE'.format(label=label, property=property)
+        self.runInDatabase(createConstraint)
+
+    def dropIndex(self, label, property):
+        dropIdx = 'DROP INDEX ON :{label}({property})'.format(label=label, property=property)
+        self.runInDatabase(dropIdx)
+
+    def dropUniquenessConstraint(self, label, property):
+        dropContraint = 'DROP CONSTRAINT ON (a:{label}) ASSERT a.{property} IS UNIQUE'.format(label=label, property=property)
+        self.runInDatabase(dropContraint)
+
+    def deleteNode(self, labels, props, nodename='n'):
+        slabels = self.makeLabels(labels)
+        propclause = self.makeWherePropsMatch(nodename, props)
+
+        delString = "match ({nodename}{labels}) {propclause} DELETE {nodename}".format(nodename=nodename, labels=slabels, propclause=propclause)
+        self.runInDatabase(delString)
+
+    def deleteRelationship(self, selectorLeft, selLeftLabels, propsLeft, selectorRight, selRightLabels, propsRight, labels, props, relname='r'):
+
+        matchRel = self.__createMatchRelationShip(selectorLeft, selLeftLabels, propsLeft, selectorRight, selRightLabels, propsRight, labels, props, relname)
+        matchRel += ' DELETE {relname}'.format(relname=relname)
+
+        self.runInDatabase(matchRel)
+
     def createNode(self, labels, props, nodename='n'):
 
-        slabels = self.makeLabels(labels)
+        slabels = self.makeLabels(labels, sep=':')
         propclause = self.makePropsCreate(props)
 
         insertString = "create ({nodename}{labels} {propclause}) return {nodename}".format(nodename=nodename,
@@ -29,16 +64,28 @@ class neo4jInterface:
                                                                                            propclause=propclause)
         self.runInDatabase(insertString)
 
-    def nodeExists(self, labels, props, nodename='n'):
-
+    def matchNodes(self, labels, props, nodename='n'):
         slabels = self.makeLabels(labels)
         propclause = self.makeWherePropsMatch(nodename, props)
 
-        testString = "match ({nodename}{labels}) {propclause} return n".format(nodename=nodename, labels=slabels, propclause=propclause)
+        delString = "match ({nodename}{labels}) {propclause} return {nodename}".format(nodename=nodename, labels=slabels, propclause=propclause)
+        return self.runInDatabase(delString)
+
+    def nodeExists(self, labels, props, nodename='n'):
+
+        slabels = self.makeLabels(labels, sep=':')
+        propclause = self.makeWherePropsMatch(nodename, props)
+
+        testString = "match ({nodename}{labels}) {propclause} return {nodename}".format(nodename=nodename, labels=slabels, propclause=propclause)
 
         res = self.runInDatabase(testString)
 
-        if res == None or res._keys == None or len(res._keys) == 0:
+        if res == None:
+            return False
+
+        allVals = [x for x in res]
+
+        if len(allVals) == 0:
             return False
 
         return True
@@ -61,22 +108,35 @@ class neo4jInterface:
         if self.dbQueries % 10000 == 0:
             print(self.dbQueries)
 
-        if self.simulateDB:
-            if self.printQueries:
-                print(query)
-        else:
-            returnVal = self.session.run( query )
-            return returnVal
+        if self.printQueries:
+            print(query)
 
-    def makeLabels(self, labels):
+        if self.simulateDB:
+            pass
+        else:
+
+            try:
+
+                returnVal = self.session.run( query )
+                return returnVal
+
+            except neo4je.ClientError as e:
+                eprint(e)
+                exit(-1)
+
+    def makeLabels(self, labels, sep='|'):
 
         labelStr = ""
+
+        if labels == None:
+            return labelStr
+
         if len(labels) > 0:
-            labelStr = ":" + ":".join(labels)
+            labelStr = ":" + sep.join(labels)
 
         return labelStr
 
-    def makeWherePropsMatch(self, selector, props):
+    def makeWherePropsMatch(self, selector, props, returnPrefix='WHERE '):
 
         whereProps = []
 
@@ -97,7 +157,7 @@ class neo4jInterface:
         if len(whereProps) == 0:
             return ""
 
-        return " AND ".join(whereProps)
+        return returnPrefix + " AND ".join(whereProps)
 
     def makePropsCreate(self, props):
 
@@ -123,20 +183,21 @@ class neo4jInterface:
         propStr = "{" + ", ".join(propElems) + "}"
         return propStr
 
-    def relationshipExists(self, selectorLeft, selLeftLabels, propsLeft, selectorRight, selRightLabels, propsRight, labels, props, relname='r'):
+    def __createMatchRelationShip(self, selectorLeft, selLeftLabels, propsLeft, selectorRight, selRightLabels, propsRight, labels, props, relname):
 
         leftLabelStr = self.makeLabels(selLeftLabels)
         rightLabelStr = self.makeLabels(selRightLabels)
 
-        matchPropsLeft = self.makeWherePropsMatch(selectorLeft, propsLeft)
-        matchPropsRight = self.makeWherePropsMatch(selectorRight, propsRight)
+        matchPropsLeft = self.makeWherePropsMatch(selectorLeft, propsLeft, returnPrefix='')
+        matchPropsRight = self.makeWherePropsMatch(selectorRight, propsRight, returnPrefix='')
 
         relLabelStr = self.makeLabels(labels)
-        mathPropsRel = self.makeWherePropsMatch(props)
+        mathPropsRel = self.makeWherePropsMatch(relname, props, returnPrefix='')
 
-        # MATCH (n:MIRNA)-[r:MATURE_OF]-(m:MIRNA_PRE) return n,r,m LIMIT 25
-
-        relCreate = "MATCH ({selLeft}{selLeftLabels})-[{relname}{rellabels}]-({selRight}{selRightLabels}) ".format(selLeft=selectorLeft, selRight=selectorRight, selLeftLabels=leftLabelStr, selRightLabels=rightLabelStr, relname=relname, rellabels = relLabelStr)
+        # MATCH (n:MIRNA)-[r:MATURE_OF]-(m:MIRNA_PRE)
+        relMatch = "MATCH ({selLeft}{selLeftLabels})-[{relname}{rellabels}]-({selRight}{selRightLabels}) ".format(
+            selLeft=selectorLeft, selRight=selectorRight, selLeftLabels=leftLabelStr, selRightLabels=rightLabelStr,
+            relname=relname, rellabels=relLabelStr)
 
         if len(matchPropsLeft) > 0 or len(mathPropsRel) > 0 or len(matchPropsRight) > 0:
 
@@ -148,8 +209,16 @@ class neo4jInterface:
             if len(matchPropsRight) > 0 and len(mathPropsRel) > 0:
                 middleRel = " AND "
 
-            whereClause = " WHERE {leftCond}{middleNode}{rightCond}{middleRel}{relCond} ".format(leftCond=matchPropsLeft, middleNode=middleNode, middleRel=middleRel, rightCond=matchPropsRight, relCond=mathPropsRel)
-            relCreate += whereClause
+            whereClause = " WHERE {leftCond}{middleNode}{rightCond}{middleRel}{relCond} ".format(
+                leftCond=matchPropsLeft, middleNode=middleNode, middleRel=middleRel, rightCond=matchPropsRight,
+                relCond=mathPropsRel)
+            relMatch += whereClause
+
+        return relMatch
+
+    def relationshipExists(self, selectorLeft, selLeftLabels, propsLeft, selectorRight, selRightLabels, propsRight, labels, props, relname='r'):
+
+        relCreate = self.__createMatchRelationShip(selectorLeft, selLeftLabels, propsLeft, selectorRight, selRightLabels, propsRight, labels, props, relname)
 
         relCreate += " return {selLeft},{relname},{selRight}".format(selLeft = selectorLeft, selRight = selectorRight, relname=relname)
 
@@ -174,8 +243,8 @@ class neo4jInterface:
 
         relCreate = "MATCH ({selLeft}{selLeftLabels}), ({selRight}{selRightLabels}) ".format(selLeft=selectorLeft, selRight=selectorRight, selLeftLabels=leftLabelStr, selRightLabels=rightLabelStr)
 
-        matchPropsLeft = self.makeWherePropsMatch(selectorLeft, propsLeft)
-        matchPropsRight = self.makeWherePropsMatch(selectorRight, propsRight)
+        matchPropsLeft = self.makeWherePropsMatch(selectorLeft, propsLeft, returnPrefix='')
+        matchPropsRight = self.makeWherePropsMatch(selectorRight, propsRight, returnPrefix='')
 
         if len(matchPropsLeft) > 0 or len(matchPropsRight) > 0:
 
@@ -189,6 +258,8 @@ class neo4jInterface:
         relLabelStr = self.makeLabels(labels)
         relPropStr = self.makePropsCreate(props)
 
-        relCreate += " CREATE ({selLeft})-[{relname}{rellabels} {relProps}]->({selRight}) return r".format(selLeft = selectorLeft, selRight = selectorRight, relname=relname, rellabels=relLabelStr, relProps=relPropStr)
+        relCreate += " CREATE ({selLeft})-[{relname}{rellabels} {relProps}]->({selRight}) return {relname}".format(selLeft = selectorLeft, selRight = selectorRight, relname=relname, rellabels=relLabelStr, relProps=relPropStr)
 
-        self.runInDatabase(relCreate)
+        retVal = self.runInDatabase(relCreate)
+
+        return retVal

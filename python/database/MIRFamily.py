@@ -11,9 +11,9 @@ class MIRFamily:
     def addMIMAT(self, mimat):
         self.childMIMATs.add(mimat)
 
-
     def __str__(self):
         return self.familyID + "\t" + self.familyName + "\t" + str(len(self.childMIMATs))
+
 
 class MIRFamilyDB:
 

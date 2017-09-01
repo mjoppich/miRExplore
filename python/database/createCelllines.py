@@ -4,7 +4,7 @@ from nertoolkit.geneontology.GeneOntology import GeneOntology
 from database.Neo4JInterface import neo4jInterface
 from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
-from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID
+from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID, eprint
 
 celloObo = GeneOntology(dataDir + "miRExplore/cellosaurus/cellosaurus.obo")
 tax2cells = defaultdict(set)
@@ -37,7 +37,9 @@ for cellID in celloObo.dTerms:
                     taxID.add(newTaxID)
 
     id2node[oboID] = {'id': oboID, 'name': oboName}
-    id2species[oboID].union(taxID)
+
+    for tax in taxID:
+        id2species[oboID].add(tax)
 
     if oboRels != None:
         for rel in oboRels:
@@ -45,7 +47,12 @@ for cellID in celloObo.dTerms:
 
             id2derived_from[oboID].add(term.id)
 
-db = neo4jInterface(simulate=True)
+db = neo4jInterface(simulate=True, printQueries=False)
+db.deleteRelationship('n', ['CELLLINE'], None, 'm', ['CELLLINE'], None, ['CELLINE_DERIVED_FROM'], None)
+db.deleteRelationship('n', ['TAX'], None, 'm', ['CELLLINE'], None, ['IS_ORGANISM'], None)
+db.deleteNode(['DISEASE'], None)
+db.createUniquenessConstraint('DISEASE', 'id')
+
 
 for id in id2node:
     node = id2node[id]
@@ -55,7 +62,14 @@ for id in id2node:
     cellLineUnique = len(allSpecies) == 1
 
     for species in allSpecies:
-        db.createRelationship('tax', ['TAXID'], {'id': species}, 'cell', ['CELLLINE'], node, ['IS_ORGANISM'], {'unique': cellLineUnique})
+        try:
+            taxID = int(species)
+            db.createRelationship('tax', ['TAX'], {'id': taxID}, 'cell', ['CELLLINE'], node, ['IS_ORGANISM'],
+                                  {'unique': cellLineUnique})
+        except:
+            eprint(str(species) + "is not a valid tax id in database")
+            continue
+
 
 for id in id2derived_from:
 

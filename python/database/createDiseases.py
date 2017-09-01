@@ -26,11 +26,13 @@ for cellID in diseaseObo.dTerms:
     if oboRels != None:
         for rel in oboRels:
             term = rel.term
-
             id2derived_from[oboID].add(term.id)
 
-            print(oboID + " " + term.id)
-db = neo4jInterface(simulate=True)
+db = neo4jInterface(simulate=False)
+db.deleteRelationship('n', ['DISEASE'], None, 'm', ['DISEASE'], None, ['DISEASE_DERIVED_FROM', None])
+db.deleteNode(['DISEASE'], None)
+db.createUniquenessConstraint('DISEASE', 'id')
+
 
 for id in id2node:
     node = id2node[id]
