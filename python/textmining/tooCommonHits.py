@@ -5,43 +5,32 @@ from textmining.SyngrepHitFile import SyngrepHitFile
 from utils.idutils import dataDir, loadExludeWords
 
 resultBase = dataDir + "/miRExplore/textmine/results/"
-mirnaSyns = SynfileMap(resultBase + "/mirna/synfile.map")
-mirnaSyns.loadSynFiles( ('/home/users/joppich/ownCloud/data/', dataDir) )
-
-hgncSyns = SynfileMap(resultBase + "/hgnc/synfile.map")
-hgncSyns.loadSynFiles( ('/home/users/joppich/ownCloud/data/', dataDir) )
-
-hgncFoundSyns = Counter()
-mirnaFoundSyns = Counter()
-filesDone = 0
-
+indexFoundSyns = Counter()
 excludedSyns = loadExludeWords()
 
-for splitFileID in range(892, 0, -1):
+checkResultsFor = 'disease'
+analyseFiles = 100
+maxFiles = 892
 
-    if filesDone > 100:
-        break
+checkSynsMap = SynfileMap(resultBase + "/"+checkResultsFor+"/synfile.map")
+checkSynsMap.loadSynFiles( ('/home/users/joppich/ownCloud/data/', dataDir) )
+
+for splitFileID in range(maxFiles, maxFiles-analyseFiles-1, -1):
 
     fileID = "{:>4}".format(splitFileID).replace(" ", "0")
 
     print(fileID)
 
-    hgncFile = resultBase + "/hgnc/medline17n"+fileID+".index"
-    hgncHits = SyngrepHitFile(hgncFile, hgncSyns)
+    indexFile = resultBase + "/"+checkResultsFor+"/medline17n"+fileID+".index"
+    foundHits = SyngrepHitFile(indexFile, checkSynsMap)
 
-    #mirnaFile = resultBase + "/mirna/medline17n"+fileID+".index"
-    #mirnaHits = SyngrepHitFile(mirnaFile, mirnaSyns)
+    for doc in foundHits:
 
-    for doc in hgncHits:
-
-        docHits = hgncHits.getHitsForDocument(doc)
+        docHits = foundHits.getHitsForDocument(doc)
 
         for hit in docHits:
-            hgncFoundSyns[ hit.hitSyn ] += 1
+            indexFoundSyns[ hit.hitSyn ] += 1
 
-
-    filesDone += 1
-
-for (syn, cnt) in hgncFoundSyns.most_common(100):
+for (syn, cnt) in indexFoundSyns.most_common(100):
     #if syn in excludedSyns:
     print(str(syn) + " -> " + str(cnt))

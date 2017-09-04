@@ -124,6 +124,9 @@ class miRNA:
             createdVersions += newVersions
         else:
 
+            if organismStr == '':
+                matureValues += ['microRNA', 'MicroRNA', 'micro-RNA', 'Micro-RNA']
+
             for selMatureStr in matureValues:
                 newVersions = makeArmVersions(organismStr, selMatureStr, idStr, precursorStr, matureSeqStr, armStr)
                 createdVersions += newVersions

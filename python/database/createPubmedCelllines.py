@@ -9,7 +9,6 @@ resultBase = dataDir + "/miRExplore/textmine/results/"
 celllinesMap = SynfileMap(resultBase + "/cellline/synfile.map")
 celllinesMap.loadSynFiles( ('/home/users/joppich/ownCloud/data/', dataDir) )
 
-db = neo4jInterface(simulate=True)
 
 knownTaxIDs = set()
 knownTaxIDs.add('all')
@@ -35,6 +34,10 @@ print(synfileID2tax)
 
 celllinesObo = GeneOntology(dataDir + "miRExplore/cellosaurus/cellosaurus.obo")
 
+db = neo4jInterface(simulate=False, printQueries=False)
+db.deleteRelationship('n', ['CELLLINE'], None, 'm', ['PUBMED'], None, ['CELLLINE_MENTION'], None)
+
+
 allSet = {'all'}
 for splitFileID in range(892, 0, -1):
 
@@ -46,6 +49,8 @@ for splitFileID in range(892, 0, -1):
 
     if len(hitsFile) == 0:
         continue
+
+    print("Document: " + str(fileID))
 
     for docID in hitsFile:
         synHits = hitsFile.getHitsForDocument(docID)
@@ -68,19 +73,19 @@ for splitFileID in range(892, 0, -1):
             continue
 
         for celllineID in foundUniqueHits:
-            continue
             db.createNodeIfNotExists(['EVIDENCE', 'PUBMED'], {'id': docID})
             db.createRelationship('cellline', ['CELLLINE'], {'id': celllineID}, 'pubmed', ['PUBMED'], {'id': docID}, ['CELLLINE_MENTION'], None)
 
         foundOrgs = foundOrgs.difference(allSet)
 
         if len(foundOrgs) == 1:
+            pass
             # create relation
-            print('Associate: ' + str(foundOrgs))
+            # print('Associate: ' + str(foundOrgs))
         elif len(foundOrgs) == 0:
             pass
         elif len(foundOrgs) > 1:
-            print('Ambiguous pubmed: ' + docID)
+            # print('Ambiguous pubmed: ' + docID)
             pass
 
 

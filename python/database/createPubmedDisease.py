@@ -10,7 +10,8 @@ diseaseMap = SynfileMap(resultBase + "/disease/synfile.map")
 diseaseMap.loadSynFiles( ('/home/users/joppich/ownCloud/data/', dataDir) )
 diseaseObo = GeneOntology(dataDir + "miRExplore/doid.obo")
 
-db = neo4jInterface(simulate=True)
+db = neo4jInterface(simulate=False)
+db.deleteRelationship('n', ['DISEASE'], None, 'm', ['PUBMED'], None, ['DISEASE_MENTION'], None)
 
 for splitFileID in range(892, 0, -1):
 
@@ -23,6 +24,8 @@ for splitFileID in range(892, 0, -1):
     if len(hitsFile) == 0:
         continue
 
+    print("Document: " + str(fileID))
+
     for docID in hitsFile:
         synHits = hitsFile.getHitsForDocument(docID)
 
@@ -34,7 +37,7 @@ for splitFileID in range(892, 0, -1):
                     continue
 
             hitSyn = hit.synonym
-            foundUniqueHits.add(hitSyn.id)
+            foundUniqueHits.add(hitSyn.id.replace('_', ':'))
 
         for synonymID in foundUniqueHits:
             db.createNodeIfNotExists(['EVIDENCE', 'PUBMED'], {'id': docID})

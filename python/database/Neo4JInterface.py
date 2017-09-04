@@ -71,6 +71,37 @@ class neo4jInterface:
         delString = "match ({nodename}{labels}) {propclause} return {nodename}".format(nodename=nodename, labels=slabels, propclause=propclause)
         return self.runInDatabase(delString)
 
+    def makePropsMerge(self, props):
+
+        outStr = ""
+
+        if props == None or len(props) == 0:
+            return outStr
+
+        parts = []
+        for key in props:
+
+            value = props[key]
+            if type(value) == int:
+                valueStr = str(value)
+            else:
+                valueStr = "\'" + str(value) + "\'"
+
+            partStr = "{key}: {value}".format(key=str(key), value=valueStr)
+
+        return "{" + ", ".join(parts) + "}"
+
+    def mergeNode(self, labels, props, addprops):
+
+        nodename = 'n'
+
+        slabels = self.makeLabels(labels)
+        propclause = self.makePropsCreate(props)
+        newpropsclause = self.makeWherePropsMatch(nodename, addprops, returnPrefix='', junctor=', ')
+
+        delString = "MERGE ({nodename}{labels} {propclause}) ON MATCH SET {newpropsclause} return {nodename}".format(nodename=nodename, labels=slabels, propclause=propclause, newpropsclause=newpropsclause)
+        return self.runInDatabase(delString)
+
     def nodeExists(self, labels, props, nodename='n'):
 
         slabels = self.makeLabels(labels, sep=':')
@@ -92,14 +123,19 @@ class neo4jInterface:
 
     def createNodeIfNotExists(self, labels, props, nodename='n', labelsCheck = None, propsCheck = None):
 
-        if labelsCheck == None:
-            labelsCheck = labels
+        # TODO this can be done much nicer -> merge n:labelscheck {propsCheck} set props return n
 
-        if propsCheck == None:
-            propsCheck = props
+        if labelsCheck!= None or propsCheck != None:
+            if not self.nodeExists(labelsCheck, propsCheck, nodename):
+                self.createNode(labels, props, nodename)
+        else:
+            slabels = self.makeLabels(labels, sep=':')
+            propclause = self.makePropsCreate(props)
 
-        if not self.nodeExists(labelsCheck, propsCheck, nodename):
-            self.createNode(labels, props, nodename)
+            insertString = "MERGE ({nodename}{labels} {propclause}) return {nodename}".format(nodename=nodename,
+                                                                                               labels=slabels,
+                                                                                               propclause=propclause)
+            self.runInDatabase(insertString)
 
 
     def runInDatabase(self, query):
@@ -136,7 +172,7 @@ class neo4jInterface:
 
         return labelStr
 
-    def makeWherePropsMatch(self, selector, props, returnPrefix='WHERE '):
+    def makeWherePropsMatch(self, selector, props, returnPrefix='WHERE ', junctor=' AND '):
 
         whereProps = []
 
@@ -150,16 +186,25 @@ class neo4jInterface:
                 if type(value) == int:
                     valueStr = str(value)
                 else:
-                    valueStr = "\"" + str(value) + "\""
+                    valueStr = str(value)
+
+                    if "\"" in valueStr:
+                        valueStr = valueStr.replace("\"", "\'")
+
+                    valueStr = "\"" + valueStr + "\""
 
                 whereProps.append(  selector + "." + key + "="+valueStr )
 
         if len(whereProps) == 0:
             return ""
 
-        return returnPrefix + " AND ".join(whereProps)
+        return returnPrefix + junctor.join(whereProps)
 
-    def makePropsCreate(self, props):
+    def makePropsCreate(self, props, nodename=''):
+
+        if len(nodename) > 0:
+            if nodename[len(nodename)-1] != '.':
+                nodename += "."
 
         propElems = []
 
@@ -172,10 +217,14 @@ class neo4jInterface:
 
                 if type(value) == int:
                     valueStr = str(value)
+                elif type(value) == list:
+                    valueStr = str(value)
+                elif type(value) == set:
+                    valueStr = str(list(value))
                 else:
                     valueStr = "\"" + str(value) + "\""
 
-                propElems.append( str(key) + ": " + valueStr )
+                propElems.append( nodename + str(key) + ": " + valueStr )
 
         if len(propElems) == 0:
             return ""
@@ -263,3 +312,15 @@ class neo4jInterface:
         retVal = self.runInDatabase(relCreate)
 
         return retVal
+
+    def createNodeKeyConstraint(self, label, properties, nodeName='n'):
+
+        eprint("WILL ONLY WORK WITH ENTERPRISE EDITION!")
+        return None
+
+        labelStr = self.makeLabels(label)
+        propStr = ", ".join([nodeName + "." + x for x in properties])
+
+        createConstraint = "CREATE CONSTRAINT ON (n{label}) ASSERT ({propstr}) IS NODE KEY".format(label=labelStr, propstr = propStr)
+
+        return self.runInDatabase(createConstraint)

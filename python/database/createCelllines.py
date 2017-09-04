@@ -47,11 +47,11 @@ for cellID in celloObo.dTerms:
 
             id2derived_from[oboID].add(term.id)
 
-db = neo4jInterface(simulate=True, printQueries=False)
+db = neo4jInterface(simulate=False, printQueries=False)
 db.deleteRelationship('n', ['CELLLINE'], None, 'm', ['CELLLINE'], None, ['CELLINE_DERIVED_FROM'], None)
-db.deleteRelationship('n', ['TAX'], None, 'm', ['CELLLINE'], None, ['IS_ORGANISM'], None)
-db.deleteNode(['DISEASE'], None)
-db.createUniquenessConstraint('DISEASE', 'id')
+db.deleteRelationship('n', ['TAX'], None, 'm', ['CELLLINE'], None, ['HAS_CELLLINE'], None)
+db.deleteNode(['CELLLINE'], None)
+db.createUniquenessConstraint('CELLLINE', 'id')
 
 
 for id in id2node:
@@ -64,7 +64,7 @@ for id in id2node:
     for species in allSpecies:
         try:
             taxID = int(species)
-            db.createRelationship('tax', ['TAX'], {'id': taxID}, 'cell', ['CELLLINE'], node, ['IS_ORGANISM'],
+            db.createRelationship('tax', ['TAX'], {'id': taxID}, 'cell', ['CELLLINE'], node, ['HAS_CELLLINE'],
                                   {'unique': cellLineUnique})
         except:
             eprint(str(species) + "is not a valid tax id in database")
@@ -78,6 +78,7 @@ for id in id2derived_from:
     for deriv in allDerivatives:
 
         if not deriv in id2node:
+            eprint("Not in id2node: " + str(deriv))
             continue
 
         db.createRelationship('id', ['CELLLINE'], {'id': id}, 'other', ['CELLLINE'], {'id': deriv}, ['CELLINE_DERIVED_FROM'], None)
