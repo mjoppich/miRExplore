@@ -125,10 +125,18 @@ class neo4jInterface:
 
         # TODO this can be done much nicer -> merge n:labelscheck {propsCheck} set props return n
 
-        if labelsCheck!= None or propsCheck != None:
+        if labelsCheck!= None or propsCheck != None or True:
+
+            if labelsCheck == None:
+                labelsCheck = labels
+
+            if propsCheck == None:
+                propsCheck = props
+
             if not self.nodeExists(labelsCheck, propsCheck, nodename):
                 self.createNode(labels, props, nodename)
         else:
+            exit(-1)
             slabels = self.makeLabels(labels, sep=':')
             propclause = self.makePropsCreate(props)
 
@@ -269,11 +277,16 @@ class neo4jInterface:
 
         relCreate = self.__createMatchRelationShip(selectorLeft, selLeftLabels, propsLeft, selectorRight, selRightLabels, propsRight, labels, props, relname)
 
-        relCreate += " return {selLeft},{relname},{selRight}".format(selLeft = selectorLeft, selRight = selectorRight, relname=relname)
+        relCreate += " return {selLeft},{relname},{selRight} limit 1".format(selLeft = selectorLeft, selRight=selectorRight, relname=relname)
 
         res = self.runInDatabase(relCreate)
 
-        if res == None or res._keys == None or len(res._keys) == 0:
+        if res == None:
+            return False
+
+        checkVec = [x for x in res]
+
+        if len(checkVec) == 0:
             return False
 
         return True
