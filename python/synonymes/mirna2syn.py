@@ -158,6 +158,18 @@ globalKeywordExcludes = loadExludeWords()
 for synFilename in synFiles:
     print(synFilename)
 
+    singleMature = ['mir', 'miR', 'MiR', 'Mir' ,'microRNA', 'MicroRNA', 'micro-RNA', 'Micro-RNA', 'miRNA', 'MiRNA']
+    pluralMature = [x+'s' for x in singleMature]
+    singleMature.append('MiRNAS')
+    singleMature.append('miRNAs')
+
+    allupper = [x.upper() for x in singleMature+pluralMature]
+
+    for x in singleMature+pluralMature+allupper:
+        globalKeywordExcludes['generic'].add(x)
+
     vAllSyns = synFiles[synFilename]
+
     vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=21)
+
     printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/" + synFilename)

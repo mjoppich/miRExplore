@@ -143,7 +143,10 @@ class Synonym:
 
             syns2remove = set()
             for syn in self.syns:
-                if syn in listToExclude or syn.upper() in listToExclude:
+
+                usyn = syn.upper()
+
+                if syn in listToExclude or usyn in listToExclude:
                     syns2remove.add(syn)
 
             for syn in syns2remove:
@@ -191,7 +194,7 @@ class Synonym:
 
         if type(syn) == str:
 
-            if syn in self.syns:
+            while syn in self.syns:
                 idx = self.syns.index(syn)
                 self.removeSyn(idx)
 

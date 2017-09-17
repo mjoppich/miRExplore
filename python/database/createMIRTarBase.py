@@ -25,6 +25,9 @@ db.deleteNode(["MIRTARBASE_SUPPORT"], None)
 db.deleteNode(["MIRTARBASE_EXPERIMENT"], None)
 db.createUniquenessConstraint('MIRTARBASE', 'id')
 
+if False:
+    db.close()
+    exit(0)
 
 dbcreatedExpTypes = set()
 dbcreatedSupportTypes = set()
@@ -36,6 +39,7 @@ dbcreatedMIRT2ExpTypes = defaultdict(set)
 dbcreatedMIRT2SupportTypes = defaultdict(set)
 
 dbcreatedMIRT2MIRNA = defaultdict(set)
+dbcreatedMIRT2GENE = defaultdict(set)
 
 print("Starting Evidences")
 lastCheckedMIRT = 0
@@ -92,10 +96,10 @@ for mirnaEvidence in mirtarbaseEvidences:
 
     if not mirtarID in dbcreatedMIRTIDs:
         dbcreatedMIRTIDs.add(mirtarID)
-        db.createNodeIfNotExists(['MIRTARBASE', 'EVIDENCE'], {'id': mirtarID, 'tax_gene': geneSpeciesID, 'tax_mirna': mirnaSpeciesID})
+        db.createNode(['MIRTARBASE', 'EVIDENCE'], {'id': mirtarID, 'tax_gene': geneSpeciesID, 'tax_mirna': mirnaSpeciesID})
 
     if not mirtarSupport in dbcreatedSupportTypes:
-        db.createNodeIfNotExists(['MIRTARBASE_SUPPORT'], {'id': mirtarSupport})
+        db.createNode(['MIRTARBASE_SUPPORT'], {'id': mirtarSupport})
         dbcreatedSupportTypes.add(mirtarSupport)
 
     if not mirtarSupport in dbcreatedMIRT2SupportTypes[mirtarID]:
@@ -105,7 +109,7 @@ for mirnaEvidence in mirtarbaseEvidences:
     for expType in mirtarExperiment:
 
         if not expType in dbcreatedExpTypes:
-            db.createNodeIfNotExists(['MIRTARBASE_EXPERIMENT'], {'id': expType})
+            db.createNode(['MIRTARBASE_EXPERIMENT'], {'id': expType})
             dbcreatedExpTypes.add(expType)
 
         if not expType in dbcreatedMIRT2ExpTypes[mirtarID]:
@@ -124,11 +128,13 @@ for mirnaEvidence in mirtarbaseEvidences:
             db.createRelationship('mtb', ['MIRTARBASE'], {'id': mirtarID}, 'taxid', ['TAX'], {'id': mirnaSpeciesID}, ['ORGANISM_SUPPORT'], {})
 
 
-    db.createRelationshipIfNotExists('gene', ['GENE'], {'id': mirtarGENE}, 'mtb', ['MIRTARBASE'], {'id': mirtarID}, ['GENE_MENTION'], {'tax': geneSpeciesID})
+    if not mirtarGENE in dbcreatedMIRT2GENE[mirtarID]:
+        dbcreatedMIRT2GENE[mirtarID].add(mirtarGENE)
+        db.createRelationship('gene', ['GENE'], {'id': mirtarGENE}, 'mtb', ['MIRTARBASE'], {'id': mirtarID}, ['GENE_MENTION'], {'tax': geneSpeciesID})
 
     if not mirtarMIRNA in dbcreatedMIRT2MIRNA[mirtarID]:
         dbcreatedMIRT2MIRNA[mirtarID].add(mirtarMIRNA)
-        db.createRelationshipIfNotExists('mtb', ['MIRTARBASE'], {'id': mirtarID}, 'mirna', ['MIRNA'],
+        db.createRelationship('mtb', ['MIRTARBASE'], {'id': mirtarID}, 'mirna', ['MIRNA'],
                                          {'name': mirtarMIRNA}, ['MIRNA_MENTION'], {'tax': mirnaSpeciesID})
 
 print(referencesWithComma)

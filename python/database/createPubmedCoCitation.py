@@ -2,10 +2,11 @@ from database.Neo4JInterface import neo4jInterface
 from pubmed.CoCitationStore import CoCitationStore
 from utils.idutils import eprint, dataDir
 
-db = neo4jInterface(simulate=False, printQueries=True)
-db.deleteRelationship('n', ['PUBMED'], None, 'm', ['PUBMED'], None, ['PUBMED_CITED_BY'], None)
 
-createCitationLists = False
+db = neo4jInterface(simulate=False, printQueries=True)
+
+createCitationLists = True
+addToDB = False
 
 citationFile = dataDir + "/miRExplore/pubmed_citations.tsv"
 citedByFile = dataDir + "/miRExplore/pubmed_citedby.tsv"
@@ -13,8 +14,9 @@ citedByFile = dataDir + "/miRExplore/pubmed_citedby.tsv"
 if createCitationLists:
     retVal = db.matchNodes(['PUBMED'], None, nodename='n')
 
-    pmids = set()
+    print("Query finished")
 
+    pmids = set()
     for x in retVal:
         nodeData = x['n']
         if 'id' in nodeData.properties:
@@ -39,38 +41,46 @@ if createCitationLists:
         for pmid in foundCitedBy:
             outfile.write(str(pmid) + "\t" + str(",".join([x for x in foundCitedBy[pmid]])) + "\n")
 
-with open(citationFile, 'r') as infile:
 
-    for line in infile:
+    if not addToDB:
+        exit(0)
 
-        if len(line.strip()) == 0:
-            continue
+if addToDB:
+    with open(citationFile, 'r') as infile:
+        db.deleteRelationship('n', ['PUBMED'], None, 'm', ['PUBMED'], None, ['PUBMED_CITED_BY'], None)
 
-        aline = [x.strip() for x in line.split('\t')]
+        for line in infile:
 
-        if len(aline) < 2 or aline[1]== '':
-            continue
+            if len(line.strip()) == 0:
+                continue
 
-        targetPMID = aline[0]
-        sourcePMIDs = set([x.strip() for x in aline[1].split(",")])
+            aline = [x.strip() for x in line.split('\t')]
 
-        for pmid in sourcePMIDs:
-            db.createRelationship('source', ['PUBMED'], {'id': pmid}, 'target', ['PUBMED'], {'id': targetPMID}, ['PUBMED_CITED_BY'], None)
+            if len(aline) < 2 or aline[1] == '':
+                continue
 
-with open(citedByFile, 'r') as infile:
+            targetPMID = aline[0]
+            sourcePMIDs = set([x.strip() for x in aline[1].split(",")])
 
-    for line in infile:
+            for pmid in sourcePMIDs:
+                db.createRelationship('source', ['PUBMED'], {'id': pmid}, 'target', ['PUBMED'], {'id': targetPMID},
+                                      ['PUBMED_CITED_BY'], None)
 
-        if len(line.strip()) == 0:
-            continue
+    with open(citedByFile, 'r') as infile:
 
-        aline = [x.strip() for x in line.split('\t')]
+        for line in infile:
 
-        if len(aline) < 2 or aline[1]== '':
-            continue
+            if len(line.strip()) == 0:
+                continue
 
-        sourcePMID = aline[0]
-        targetPMIDs = set([x.strip() for x in aline[1].split(",")])
+            aline = [x.strip() for x in line.split('\t')]
 
-        for pmid in targetPMIDs:
-            db.createRelationship('source', ['PUBMED'], {'id': targetPMID}, 'target', ['PUBMED'], {'id': pmid}, ['PUBMED_CITED_BY'], None)
+            if len(aline) < 2 or aline[1] == '':
+                continue
+
+            sourcePMID = aline[0]
+            targetPMIDs = set([x.strip() for x in aline[1].split(",")])
+
+            for pmid in targetPMIDs:
+                db.createRelationship('source', ['PUBMED'], {'id': sourcePMID}, 'target', ['PUBMED'], {'id': pmid},
+                                      ['PUBMED_CITED_BY'], None)

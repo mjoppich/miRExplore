@@ -45,7 +45,7 @@ print("DB prepared")
 
 def createMatureMIRNAEntry(matureAcc, matureID, preMatureID, familyID):
 
-    db.createNodeIfNotExists( ['MIRNA','IS_A_MIRNA'], {'id': matureAcc, 'name': matureID, 'family': familyID}, propsCheck={'id': matureAcc})
+    db.createNodeIfNotExists( ['MIRNA','MIRNAS'], {'id': matureAcc, 'name': matureID, 'family': familyID}, propsCheck={'id': matureAcc})
     db.createRelationship('mi', ['MIRNA'], {'id': matureAcc}, 'premat', ['MIRNA_PRE'], {'id': preMatureID}, ['MIRNA_MATURE_OF'], None)
 
     if familyID != None:
@@ -64,7 +64,7 @@ print("Starting MIRNA_FAMILY")
 mirFamiliesByMI = {}
 for family in familyDB:
 
-    db.createNodeIfNotExists(['MIRNA_FAMILY'], {'id': family.familyID, 'name': family.familyName})
+    db.createNodeIfNotExists(['MIRNA_FAMILY', 'MIRNAS'], {'id': family.familyID, 'name': family.familyName})
 
     for (miID, miName) in family.childMIMATs:
         mirFamiliesByMI[miID] = family
@@ -75,7 +75,7 @@ orgmirDB = ORGMIRDB(dataDir + "/miRExplore/orgmir.tsv")
 
 print("Starting MIRNA_ORG")
 for orgmir in orgmirDB.orgmir2mimat:
-    db.createNodeIfNotExists(['MIRNA_ORGMIR','IS_A_MIRNA'], {'id': orgmir})
+    db.createNodeIfNotExists(['MIRNA_ORGMIR','MIRNAS'], {'id': orgmir})
 
     orgFamilies = orgmirDB.orgmir2mi.get(orgmir, None)
 
@@ -96,7 +96,7 @@ print("Finished MIRNA_ORGMIR")
 
 print("Starting MIRNA_ORGMI")
 for orgmi in orgmirDB.orgmi2mi:
-    db.createNodeIfNotExists(['MIRNA_ORGMI','IS_A_MIRNA'], {'id': orgmi})
+    db.createNodeIfNotExists(['MIRNA_ORGMI','MIRNAS'], {'id': orgmi})
 
     orgFamilies = orgmirDB.orgmi2mi.get(orgmi, None)
 
@@ -112,7 +112,7 @@ for orgmi in orgmirDB.orgmi2mi:
                 orgmi2families.add(famID)
 
         for famID in orgmi2families:
-            db.createRelationship('org', ['MIRNA_ORGMI'], {'id': orgmir}, 'mifam', ['MIRNA_FAMILY'], {'id': famID}, ['MIRNA_BELONGS_TO'], None)
+            db.createRelationship('org', ['MIRNA_ORGMI'], {'id': orgmi}, 'mifam', ['MIRNA_FAMILY'], {'id': famID}, ['MIRNA_BELONGS_TO'], None)
 
 print("Finished MIRNA_ORGMI")
 
@@ -124,7 +124,7 @@ doneRows = 0
 for row in mirbase:
     # CREATE PRE-MATURE MIRNA NODE
     mirnaAccession = row['Accession']
-    db.createNodeIfNotExists(['MIRNA_PRE','IS_A_MIRNA'], {'id': mirnaAccession})
+    db.createNodeIfNotExists(['MIRNA_PRE','MIRNAS'], {'id': mirnaAccession})
 
     mirnaFamily = mirFamiliesByMI[mirnaAccession] if mirnaAccession in mirFamiliesByMI else None
     mirnaFamilyID = None

@@ -30,10 +30,12 @@ class miRNA:
             miRNASynonymeTYPE.MIMAT: [ [miRNAPART.ORGANISM, miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR, miRNAPART.MATURE_SEQS, miRNAPART.ARM] ],
             miRNASynonymeTYPE.MI: [ [miRNAPART.ORGANISM, miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR, miRNAPART.MATURE_SEQS] ],
             miRNASynonymeTYPE.MIORG: [
-                [miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR],
-                [miRNAPART.MATURE, miRNAPART.ID],
+                [miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR, miRNAPART.MATURE_SEQS, miRNAPART.ARM],
                 [miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR, miRNAPART.ARM],
+                [miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR, miRNAPART.MATURE_SEQS],
+                [miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR],
                 [miRNAPART.MATURE, miRNAPART.ID, miRNAPART.ARM],
+                [miRNAPART.MATURE, miRNAPART.ID],
 
             ],
             miRNASynonymeTYPE.FAMILY: [
@@ -70,9 +72,9 @@ class miRNA:
     def make_string(self, partsList):
 
 
-        def makeArmVersions(organismStr, matureStr, idStr, precursorStr, matureSeqStr, armStr):
+        def makeArmVersions(organismStr, matureStr, idStr, precursorStr, matureSeqStr, armStr, armVersions):
             retVersion = []
-            armValues = self.armAlternatives[armStr] if len(armStr) > 0 else [armStr]
+            armValues = self.armAlternatives[armStr] if len(armStr) > 0 and armVersions else [armStr]
 
             delim = '-'
 
@@ -118,18 +120,25 @@ class miRNA:
 
         createdVersions = []
 
-        if miRNAPART.MATURE not in partsList or matureSeqStr.upper() == 'LET' or not matureSeqStr.upper() in self.validMature:
+        addArmVersions = True
+        if miRNAPART.ARM not in partsList:
+            addArmVersions = False
 
-            newVersions = makeArmVersions(organismStr, matureStr, idStr, precursorStr, matureSeqStr, armStr)
+        if miRNAPART.MATURE not in partsList or matureStr.upper() == 'LET' or not matureStr.upper() in self.validMature:
+            matureValues = [matureStr]
+
+
+        if organismStr == '':
+            matureValues += ['microRNA', 'MicroRNA', 'micro-RNA', 'Micro-RNA', 'miRNA', 'MiRNA']
+
+        for selMatureStr in matureValues:
+            newVersions = makeArmVersions(organismStr, selMatureStr, idStr, precursorStr, matureSeqStr, armStr, addArmVersions)
             createdVersions += newVersions
-        else:
 
             if organismStr == '':
-                matureValues += ['microRNA', 'MicroRNA', 'micro-RNA', 'Micro-RNA']
-
-            for selMatureStr in matureValues:
-                newVersions = makeArmVersions(organismStr, selMatureStr, idStr, precursorStr, matureSeqStr, armStr)
-                createdVersions += newVersions
+                for suffix in ['-mediated']:
+                    altVersions = [x+suffix for x in newVersions]
+                    createdVersions += altVersions
 
         return createdVersions
 
@@ -304,6 +313,8 @@ if __name__ == '__main__':
         print()
         print()
 
+
+    testMIRNA('hsa-miR-126a-3p')
 
     testMIRNA('sv40-miR-S1-5p')
     testMIRNA('kshv-miR-K12-10a-5p')
