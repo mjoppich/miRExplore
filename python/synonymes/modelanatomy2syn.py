@@ -5,12 +5,12 @@ from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID
 
-celloObo = GeneOntology(dataDir + "miRExplore/doid.obo")
+bodypartsObo = GeneOntology(dataDir + "miRExplore/foundational_model_anatomy/fma_obo.obo")
 vAllSyns = []
 
-for cellID in celloObo.dTerms:
+for cellID in bodypartsObo.dTerms:
 
-    oboNode = celloObo.dTerms[cellID]
+    oboNode = bodypartsObo.dTerms[cellID]
 
     oboID = oboNode.id
     oboName = oboNode.name
@@ -21,6 +21,17 @@ for cellID in celloObo.dTerms:
     newSyn = Synonym(oboID)
     newSyn.addSyn(oboName)
 
+
+    aName = oboName.split(' ')
+
+    if len(aName) > 1 and len(aName) < 5:
+
+        acro = ""
+        if aName[-1].upper() == 'CELL':
+            acro = "".join([x[0].upper() for x in aName])
+
+        newSyn.addSyn(acro)
+
     if oboSyns != None:
         for x in oboSyns:
             newSyn.addSyn(x.syn)
@@ -29,7 +40,7 @@ for cellID in celloObo.dTerms:
 
     vAllSyns.append(newSyn)
 
-globalKeywordExcludes = loadExludeWords()
+globalKeywordExcludes = loadExludeWords(cell_co=False)
 
 vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=10, maxCommonCount=5)
-printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/disease.syn")
+printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/model_anatomy.syn")

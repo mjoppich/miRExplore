@@ -1,9 +1,13 @@
+import glob
+import os
+
 from mjoppich.geneontology import GeneOntology
+from porestat.utils.Parallel import MapReduce
 
 from database.Neo4JInterface import neo4jInterface
 from synonymes.SynfileMap import SynfileMap
 from textmining.SyngrepHitFile import SyngrepHitFile
-from utils.idutils import dataDir, speciesName2TaxID
+from utils.idutils import dataDir, speciesName2TaxID, eprint
 
 resultBase = dataDir + "/miRExplore/textmine/results/"
 celllinesMap = SynfileMap(resultBase + "/cellline/synfile.map")
@@ -37,9 +41,32 @@ celllinesObo = GeneOntology(dataDir + "miRExplore/cellosaurus/cellosaurus.obo")
 db = neo4jInterface(simulate=False, printQueries=False)
 db.deleteRelationship('n', ['CELLLINE'], None, 'm', ['PUBMED'], None, ['CELLLINE_MENTION'], None)
 
-
+addUnknownPubmeds = False
 allSet = {'all'}
-for splitFileID in range(892, 0, -1):
+
+allfiles = glob.glob(resultBase + "/hgnc/medline17n*.index")
+allfileIDs = [int(os.path.basename(x).replace('medline17n', '').replace('.index','')) for x in allfiles]
+allfileIDs = sorted(allfileIDs, reverse=True)
+
+retVal = db.matchNodes(['PUBMED'], None, nodename='n')
+relevantPMIDs = set()
+
+for x in retVal:
+
+    nodeData = x['n']
+    if 'id' in nodeData.properties:
+        pmid = nodeData.properties['id']
+        relevantPMIDs.add(pmid)
+    else:
+        eprint("No data in: ", str(nodeData))
+
+db.close()
+
+if len(relevantPMIDs) == 0:
+    eprint("No RELEVANT PUBMED entries found")
+
+
+def analyseFile(splitFileID, relPMIDs):
 
     fileID = "{:>4}".format(splitFileID).replace(" ", "0")
 
@@ -48,11 +75,17 @@ for splitFileID in range(892, 0, -1):
     hitsFile = SyngrepHitFile(diseaseHitsFile, celllinesMap)
 
     if len(hitsFile) == 0:
-        continue
+        return
 
-    print("Document: " + str(fileID))
+    print("Start Document: " + str(fileID))
+
+    procDB = neo4jInterface(simulate=False, printQueries=False)
 
     for docID in hitsFile:
+
+        if not docID in relPMIDs:
+            continue
+
         synHits = hitsFile.getHitsForDocument(docID)
 
         foundUniqueHits = set()
@@ -73,8 +106,19 @@ for splitFileID in range(892, 0, -1):
             continue
 
         for celllineID in foundUniqueHits:
-            db.createNodeIfNotExists(['EVIDENCE', 'PUBMED'], {'id': docID})
-            db.createRelationship('cellline', ['CELLLINE'], {'id': celllineID}, 'pubmed', ['PUBMED'], {'id': docID}, ['CELLLINE_MENTION'], None)
+
+            pubmedExists=False
+            if addUnknownPubmeds:
+                procDB.createNodeIfNotExists(['EVIDENCE', 'PUBMED'], {'id': docID})
+                pubmedExists = True
+            else:
+                if procDB.nodeExists(['PUBMED'], {'id': docID}):
+                    pubmedExists = True
+
+
+            if pubmedExists:
+                res = procDB.createRelationship('cellline', ['CELLLINE'], {'id': celllineID}, 'pubmed', ['PUBMED'], {'id': docID}, ['CELLLINE_MENTION'], None)
+                print("Add: ", fileID, docID, celllineID, [x for x in res if res != None])
 
         foundOrgs = foundOrgs.difference(allSet)
 
@@ -88,5 +132,10 @@ for splitFileID in range(892, 0, -1):
             # print('Ambiguous pubmed: ' + docID)
             pass
 
+    print("End Document: " + str(fileID))
+    procDB.close()
 
-db.close()
+
+
+ll = MapReduce(6)
+result = ll.exec( allfileIDs, analyseFile, relevantPMIDs, 1, None)

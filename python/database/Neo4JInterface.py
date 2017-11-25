@@ -102,6 +102,19 @@ class neo4jInterface:
         delString = "MERGE ({nodename}{labels} {propclause}) ON MATCH SET {newpropsclause} return {nodename}".format(nodename=nodename, labels=slabels, propclause=propclause, newpropsclause=newpropsclause)
         return self.runInDatabase(delString)
 
+    def addNodeLabel(self, labels, props, addlabels, nodename='n'):
+
+        slabels = self.makeLabels(labels, sep=':')
+        propclause = self.makeWherePropsMatch(nodename, props)
+
+        for addlabel in addlabels:
+            testString = "match ({nodename}{labels}) {propclause} set {nodename} :{newlabel}".format(nodename=nodename,
+                                                                                            labels=slabels,
+                                                                                            propclause=propclause,
+                                                                                            newlabel=addlabel)
+
+            self.runInDatabase(testString)
+
     def nodeExists(self, labels, props, nodename='n'):
 
         slabels = self.makeLabels(labels, sep=':')
@@ -227,7 +240,7 @@ class neo4jInterface:
                     valueStr = str(value)
                 elif type(value) == list:
                     valueStr = str(value)
-                elif type(value) == set:
+                elif type(value) == set or type(value) == tuple:
                     valueStr = str(list(value))
                 else:
                     valueStr = "\"" + str(value) + "\""

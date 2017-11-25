@@ -1,6 +1,11 @@
+import glob
+import os
 from collections import Counter, defaultdict
 from porestat.utils.DataFrame import DataFrame
 import re
+
+from porestat.utils.Parallel import MapReduce
+
 from database.ORGMIRs import ORGMIRDB
 from synonymes.SynfileMap import SynfileMap
 from synonymes.SynonymFile import Synfile
@@ -19,12 +24,18 @@ hgncSyns.loadSynFiles( ('/home/users/joppich/ownCloud/data/', dataDir) )
 
 db = neo4jInterface(simulate=False)
 db.deleteRelationship('n', ['GENE'], None, 'm', ['PUBMED'], None, ['ST_MENTION'], None, 'r')
+
+db.deleteRelationship('n', ['PUBMED_AUTHOR'], None, 'm', ['PUBMED'], None, ['IS_AUTHOR'], None, 'r')
+db.deleteRelationship('n', ['DISEASE'], None, 'm', ['PUBMED'], None, ['DISEASE_MENTION'], None, 'r')
+db.deleteRelationship('n', ['PUBMED'], None, 'm', ['MIRTARBASE'], None, ['MIRTARBASE_LITERATURE_SUPPORT'], None, 'r')
+
 db.deleteRelationship('n', ['PUBMED'], None, 'm', ['MIRNA'], None, ['ST_MENTION'], None, 'r')
 db.deleteRelationship('n', ['PUBMED'], None, 'm', ['MIRNA_FAMILY'], None, ['ST_MENTION'], None, 'r')
 db.deleteRelationship('n', ['PUBMED'], None, 'm', ['MIRNA_ORGMI'], None, ['ST_MENTION'], None, 'r')
 db.deleteRelationship('n', ['PUBMED'], None, 'm', ['MIRNA_ORGMIR'], None, ['ST_MENTION'], None, 'r')
 db.deleteRelationship('n', ['PUBMED'], None, 'm', ['MIRNA_PRE'], None, ['ST_MENTION'], None, 'r')
 db.deleteRelationship('n', ['PUBMED'], None, 'm', ['IS_A_MIRNA'], None, ['ST_MENTION'], None, 'r')
+
 db.deleteNode(["PUBMED"], None)
 
 db.createUniquenessConstraint('PUBMED', 'id')
@@ -92,7 +103,13 @@ coocCounter = Counter()
 idTuple2Pubmed = defaultdict(set)
 orgmirDB = ORGMIRDB(dataDir + "/miRExplore/orgmir.tsv")
 
-for splitFileID in range(892, 0, -1):
+
+allfiles = glob.glob(resultBase + "/hgnc/medline17n*.index")
+allfileIDs = [int(os.path.basename(x).replace('medline17n', '').replace('.index','')) for x in allfiles]
+allfileIDs = sorted(allfileIDs, reverse=True)
+
+def analyseFile(splitFileID, env):
+
 
     fileID = "{:>4}".format(splitFileID).replace(" ", "0")
 
@@ -101,18 +118,15 @@ for splitFileID in range(892, 0, -1):
 
     mirnaHits = SyngrepHitFile(mirnaFile, mirnaSyns)
     if len(mirnaHits) == 0:
-        continue
+        return
 
     hgncHits = SyngrepHitFile(hgncFile, hgncSyns)
     if len(hgncHits) == 0:
-        continue
+        return
 
     print("Found something in: " + str(fileID))
 
     for docID in mirnaHits:
-
-        if docID == '22419229':
-            print(docID)
 
         if docID in hgncHits:
 
@@ -189,17 +203,19 @@ for splitFileID in range(892, 0, -1):
 
                 for edge in geneEdges:
 
-                    edgeMirnas = list(geneEdges[edge])
+                    edgeMirnas = [x[0] for x in geneEdges[edge]]
                     db.createRelationship('gene', [edge[1]], {'id': edge[0]}, 'pmid', ['PUBMED'], {'id': docID},
                                           ['ST_MENTION'], {'type': 'GENE_MENTION', 'mirnas': edgeMirnas})
 
                 for edge in mirnaEdges:
 
-                    edgeGenes = list(mirnaEdges[edge])
+                    edgeGenes = [x[0] for x in mirnaEdges[edge]]
                     db.createRelationship('pmid', ['PUBMED'], {'id': docID}, 'mi', [edge[1]], {'id': edge[0]},
                                           ['ST_MENTION'], {'type': 'MIRNA_MENTION', 'genes': edgeGenes})
 
 
+ll = MapReduce(6)
+result = ll.exec( allfileIDs, analyseFile, None, 1, None)
 
 for idTuple in coocCounter:
 

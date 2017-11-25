@@ -45,37 +45,69 @@ ltype2label = {
 
 aminoAcids = ['Phe', 'Leu', 'Ser', 'Tyr', 'Cys', 'Trp', 'Leu', 'Pro', 'His', 'Gln','Arg', 'Ile', 'Met', 'Thr', 'Asn', 'Lsy', 'Ser', 'Arg', 'Val', 'Ala', 'Asp', 'Glu', 'Gly']
 
-def loadExludeWords():
+def loadExludeWords(common=True, generic=True, disease=True, taxnames=True, cell_co=True):
 
     exclWords = defaultdict(set)
 
-    with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.generic.syn") as infile:
-        for line in infile:
-            line = line.strip()
 
-            exclWords['generic'].add(line)
-            exclWords['generic'].add(line.upper())
+    if common:
+        """
+        loads 10.000 most common english words
+        """
+        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.common.syn") as infile:
+            for line in infile:
+                line = line.strip()
 
-    with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.disease.syn") as infile:
-        for line in infile:
-            line = line.strip()
+                exclWords['common'].add(line)
+                exclWords['common'].add(line.upper())
 
-            exclWords['disease'].add(line)
-            exclWords['disease'].add(line.upper())
 
-    with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.names.syn") as infile:
-        for line in infile:
-            line = line.strip()
+    if generic:
+        """
+        loads words that have been removed manually/curated
+        """
+        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.generic.syn") as infile:
+            for line in infile:
+                line = line.strip()
 
-            exclWords['names'].add(line)
-            exclWords['names'].add(line.upper())
+                exclWords['generic'].add(line)
+                exclWords['generic'].add(line.upper())
 
-    with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.cell_co.syn") as infile:
-        for line in infile:
-            line = line.strip()
 
-            exclWords['cell_co'].add(line)
-            exclWords['cell_co'].add(line.upper())
+    if disease:
+        """
+        loads diseases from pharmgkb?
+        """
+        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.disease.syn") as infile:
+            for line in infile:
+                line = line.strip()
+
+                exclWords['disease'].add(line)
+                exclWords['disease'].add(line.upper())
+
+
+    if taxnames:
+        """
+        loads species names
+        """
+        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.names.syn") as infile:
+            for line in infile:
+                line = line.strip()
+
+                exclWords['taxnames'].add(line)
+                exclWords['taxnames'].add(line.upper())
+
+
+    if cell_co:
+        """
+        loads entities from go cellular component to remove any conflicts with cell types
+        """
+        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.cell_co.syn") as infile:
+            for line in infile:
+                line = line.strip()
+
+                exclWords['cell_co'].add(line)
+                exclWords['cell_co'].add(line.upper())
 
     return exclWords
 

@@ -1,25 +1,18 @@
-from Bio import Entrez
+import glob
 from collections import defaultdict
 
 from database.Neo4JInterface import neo4jInterface
 from pubmed.CoCitationStore import CoCitationStore
 from utils.idutils import eprint, dataDir
 
-Entrez.email = "joppich@bio.ifi.lmu.de"
-
-db = neo4jInterface(simulate=False, printQueries=True)
+db = neo4jInterface(simulate=False, printQueries=False)
 db.deleteRelationship('n', ['PUBMED_AUTHOR'], None, 'm', ['PUBMED'], None, ['IS_AUTHOR'], None, 'r')
 db.deleteNode(["PUBMED_AUTHOR"], None)
-#db.createNodeKeyConstraint(['PUBMED_AUTHOR'], ['firstname', 'lastname'])
 db.createUniquenessConstraint('PUBMED_AUTHOR', 'id')
 
 retVal = db.matchNodes(['PUBMED'], None, nodename='n')
-
 pmids = set()
-
 for x in retVal:
-    if len(pmids) == -1:
-        break
 
     nodeData = x['n']
     if 'id' in nodeData.properties:
@@ -28,6 +21,11 @@ for x in retVal:
 
     else:
         eprint("No data in: ", str(nodeData))
+
+if len(pmids) == 0:
+    eprint("No RELEVANT PUBMED entries found")
+else:
+    print("Relevant PMIDs found: ", len(pmids))
 
 class PubmedAuthor:
 
@@ -56,6 +54,40 @@ class PubmedAuthor:
     def __hash__(self):
         return hash(self.makeNodeID())
 
+
+allfiles = glob.glob('/local/storage/pubmed/*.author')
+allpmids = defaultdict(set)
+
+for file in allfiles:
+
+    with open(file, 'r') as infile:
+
+        for line in infile:
+
+            aline = line.split('\t')
+
+            pmid = aline[0]
+            fname = aline[1]
+            iname = aline[2]
+            lname = aline[3]
+
+            if pmid in pmids:
+                allpmids[pmid].add( PubmedAuthor(fname, lname, iname) )
+
+createdAuthors = set()
+for pmid in allpmids:
+
+    for author in allpmids[pmid]:
+
+        if not author in createdAuthors:
+            authProps = author.to_node_props()
+            db.createNode(['PUBMED_AUTHOR'], authProps)
+
+        authID = author.makeNodeID()
+        db.createRelationship('author', ['PUBMED_AUTHOR'], {'id': authID}, 'pmid', ['PUBMED'], {'id': pmid}, ['IS_AUTHOR'], None)
+
+
+"""
 handle = Entrez.efetch(db="pubmed", id=",".join(pmids), retmode='XML')
 record = Entrez.read(handle)
 
@@ -116,3 +148,5 @@ for author in author2pmid:
         db.createRelationship('author', ['PUBMED_AUTHOR'], {'id': authID}, 'pmid', ['PUBMED'], {'id': pmid}, ['IS_AUTHOR'], None)
 
 db.close()
+
+"""

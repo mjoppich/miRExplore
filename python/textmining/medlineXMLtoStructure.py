@@ -391,7 +391,7 @@ if __name__ == '__main__':
     allXMLFiles = glob.glob('/local/storage/pubmed/*.xml.gz')
     storagePath = '/local/storage/pubmed/'
 
-    startFrom = 0
+    startFrom = 1289
     endOn = 2000
 
 

@@ -42,6 +42,8 @@ if addDisease:
                 globalKeywordExcludes.add(x.strip())
 
         globalKeywordExcludes = sorted(globalKeywordExcludes)
+        globalKeywordExcludes = set()
+
         printToFile(globalKeywordExcludes, dataDir + "miRExplore/textmine/excludes/exclude_words.disease.syn")
         print("Done: disease")
 

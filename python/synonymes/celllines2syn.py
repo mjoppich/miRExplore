@@ -5,7 +5,8 @@ from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID
 
-celloObo = GeneOntology(dataDir + "miRExplore/cellosaurus/cellosaurus.obo")
+celloObo = GeneOntology(dataDir + "miRExplore/meta_cells.obo")
+
 tax2cells = defaultdict(set)
 
 allowedTaxIDs = set([str(speciesName2TaxID[x]) for x in speciesName2TaxID])
@@ -16,6 +17,9 @@ for cellID in celloObo.dTerms:
 
     oboID = oboNode.id
     oboName = oboNode.name
+
+    if oboID.startswith('GO'):
+        continue
 
     oboSyns = oboNode.synonym
     oboXRefs = oboNode.xref
@@ -37,12 +41,34 @@ for cellID in celloObo.dTerms:
         for x in oboSyns:
             newSyn.addSyn(x.syn)
 
+
+    if oboNode.id.startswith('CL:'):
+
+        toadd = set()
+        for syn in newSyn.syns:
+            asyn = syn.split(' ')
+            if asyn[-1].upper() == 'CELL' and len(asyn) < 4:
+                short = "".join([x[0].upper() for x in asyn])
+                toadd.add(short)
+
+        if len(toadd) > 0:
+            print(oboNode.id)
+
+            for x in toadd:
+                newSyn.addSyn(x)
+
+    if oboNode.name.split(" ")[-1].upper() == 'CELL':
+        allsyn = [x for x in newSyn.syns]
+
+        for x in allsyn:
+            newSyn.addSyn(x + "s")
+
     for taxid in taxID:
         tax2cells[taxid].add(newSyn)
 
     #print(str(taxID) + " " + str(newSyn))
 
-globalKeywordExcludes = loadExludeWords()
+globalKeywordExcludes = loadExludeWords(cell_co=False)
 
 for taxid in tax2cells:
     taxSyns = tax2cells[taxid]

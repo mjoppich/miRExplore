@@ -1,86 +1,72 @@
+import glob
+from collections import defaultdict
+
+from porestat.utils.Parallel import MapReduce
+
 from database.Neo4JInterface import neo4jInterface
 from pubmed.CoCitationStore import CoCitationStore
 from utils.idutils import eprint, dataDir
 
-
 db = neo4jInterface(simulate=False, printQueries=True)
+db.deleteRelationship('n', ['PUBMED'], None, 'm', ['PUBMED'], None, ['PUBMED_CITED_BY'], None, 'r')
+retVal = db.matchNodes(['PUBMED'], None, nodename='n')
 
-createCitationLists = True
-addToDB = False
+pmids = set()
 
-citationFile = dataDir + "/miRExplore/pubmed_citations.tsv"
-citedByFile = dataDir + "/miRExplore/pubmed_citedby.tsv"
+for x in retVal:
+    if len(pmids) == -1:
+        break
 
-if createCitationLists:
-    retVal = db.matchNodes(['PUBMED'], None, nodename='n')
+    nodeData = x['n']
+    if 'id' in nodeData.properties:
+        pmid = nodeData.properties['id']
+        pmids.add(pmid)
 
-    print("Query finished")
+    else:
+        eprint("No data in: ", str(nodeData))
 
-    pmids = set()
-    for x in retVal:
-        nodeData = x['n']
-        if 'id' in nodeData.properties:
-            pmid = nodeData.properties['id']
-            pmids.add(pmid)
+if len(pmids) == 0:
+    eprint("No RELEVANT PUBMED entries found")
+else:
+    print("Relevant PMIDs found: ", len(pmids))
 
-        else:
-            eprint("No data in: ", str(nodeData))
+allfiles = glob.glob('/local/storage/pubmed/*.citation')
 
-    print(len(pmids))
+db.close()
 
-    store = CoCitationStore()
-    foundCitations = store.getCites(pmids)
-    foundCitedBy = store.getCitedBy(pmids)
+def analyseFile(file, envPMIDs):
 
+    allpmids = defaultdict(set)
 
-    with open(citationFile, 'w') as outfile:
-        for pmid in foundCitations:
-            outfile.write(str(pmid) + "\t" + str(",".join([str(x) for x in foundCitations[pmid]])) + "\n")
+    print("Starting file: ", file)
 
-    with open(citedByFile, 'w') as outfile:
-        for pmid in foundCitedBy:
-            outfile.write(str(pmid) + "\t" + str(",".join([x for x in foundCitedBy[pmid]])) + "\n")
+    procDB = neo4jInterface(simulate=False, printQueries=True)
 
 
-    if not addToDB:
-        exit(0)
-
-if addToDB:
-    with open(citationFile, 'r') as infile:
-        db.deleteRelationship('n', ['PUBMED'], None, 'm', ['PUBMED'], None, ['PUBMED_CITED_BY'], None)
+    with open(file, 'r') as infile:
 
         for line in infile:
 
-            if len(line.strip()) == 0:
-                continue
+            aline = line.strip().split('\t')
 
-            aline = [x.strip() for x in line.split('\t')]
+            pmid_cites = aline[0]
+            pmid_cited_by = aline[1]
 
-            if len(aline) < 2 or aline[1] == '':
-                continue
+            if pmid_cites in envPMIDs and pmid_cited_by in envPMIDs:
+                allpmids[pmid_cites].add(pmid_cited_by)
 
-            targetPMID = aline[0]
-            sourcePMIDs = set([x.strip() for x in aline[1].split(",")])
+    if len(allpmids) > 0:
 
-            for pmid in sourcePMIDs:
-                db.createRelationship('source', ['PUBMED'], {'id': pmid}, 'target', ['PUBMED'], {'id': targetPMID},
-                                      ['PUBMED_CITED_BY'], None)
+        for pmid in allpmids:
 
-    with open(citedByFile, 'r') as infile:
+            for opmid in allpmids[pmid]:
 
-        for line in infile:
+                if not opmid in envPMIDs:
+                    continue
 
-            if len(line.strip()) == 0:
-                continue
+                procDB.createRelationship('cpmid', ['PUBMED'], {'id': pmid}, 'opmid', ['PUBMED'], {'id': opmid}, ['PUBMED_CITED_BY'], None)
 
-            aline = [x.strip() for x in line.split('\t')]
+    procDB.close()
 
-            if len(aline) < 2 or aline[1] == '':
-                continue
-
-            sourcePMID = aline[0]
-            targetPMIDs = set([x.strip() for x in aline[1].split(",")])
-
-            for pmid in targetPMIDs:
-                db.createRelationship('source', ['PUBMED'], {'id': sourcePMID}, 'target', ['PUBMED'], {'id': pmid},
-                                      ['PUBMED_CITED_BY'], None)
+ll = MapReduce(6)
+result = ll.exec( allfiles, analyseFile, pmids, 1, None)
