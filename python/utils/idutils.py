@@ -7,6 +7,8 @@ import sys
 dataDir = "/mnt/c/ownCloud/data/"
 dataDir = "/home/users/joppich/ownCloud/data/"
 
+miRExploreDir = dataDir + "miRExplore/"
+
 class ParseObject(object):
     pass
 
