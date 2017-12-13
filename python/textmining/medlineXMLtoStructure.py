@@ -6,7 +6,6 @@ from lxml import etree
 from porestat.utils.Parallel import MapReduce
 
 from utils.idutils import eprint
-from nertoolkit.textmining.JATSext import JATSext
 import logging
 logger = logging.getLogger('convertJatsToText')
 
@@ -388,10 +387,13 @@ if __name__ == '__main__':
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-    allXMLFiles = glob.glob('/local/storage/pubmed/*.xml.gz')
-    storagePath = '/local/storage/pubmed/'
+    storagePath = '/local/storage/pubmed18/'
+    baseFileName = 'pubmed18n'
 
-    startFrom = 1289
+    allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
+
+
+    startFrom = 0
     endOn = 2000
 
 
@@ -399,7 +401,7 @@ if __name__ == '__main__':
     for filename in allXMLFiles:
         basefile = os.path.basename(filename)
         basefile = basefile.split('.')[0]
-        basefile = basefile.replace('medline17n', '')
+        basefile = basefile.replace(baseFileName, '')
         number = int(basefile)
 
         if startFrom <= number and number <= endOn:
@@ -513,7 +515,7 @@ if __name__ == '__main__':
                     outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(6)
+    ll = MapReduce(4)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)
 
     print("Done")

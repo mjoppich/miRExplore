@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     for fileExt in ['.sent', '.author', '.citation', '.title']:
 
-        allfiles = glob.glob('/local/storage/pubmed/*'+fileExt)
+        allfiles = glob.glob('/local/storage/pubmed18/*'+fileExt)
         allfiles = sorted(allfiles, key=lambda x: os.path.basename(x), reverse=True)
 
         seenPMIDs = set()
@@ -56,8 +56,3 @@ if __name__ == '__main__':
 
                         for line in foundDocs[docID]:
                             outfile.write(line)
-
-
-
-
-
