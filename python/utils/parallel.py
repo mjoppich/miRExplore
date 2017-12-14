@@ -25,7 +25,7 @@ class MapReduce:
 
     def exec(self, oIterable, oFunc, sEnvironment, chunkSize = 1, pReduceFunc = None):
 
-        self.pool = mp.ProcessPool(procs=self.nprocs)
+        self.pool = mp.ProcessPool(self.nprocs)
         allResults = []
 
         resultObj = None
