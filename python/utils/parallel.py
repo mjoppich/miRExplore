@@ -9,6 +9,13 @@ import pickle
 from pathos import multiprocessing as mp
 
 import itertools
+import uuid
+
+class MyProcessPool(mp.ProcessPool):
+
+    def __init__(self, procs=4):
+        super(MyProcessPool, self).__init__(nodes=procs)
+        self._id = str(uuid.uuid4())
 
 class MapReduce:
 
@@ -18,14 +25,15 @@ class MapReduce:
 
     def exec(self, oIterable, oFunc, sEnvironment, chunkSize = 1, pReduceFunc = None):
 
-        self.pool = mp.ProcessPool(nodes=self.nprocs)
-
+        self.pool = mp.ProcessPool(procs=self.nprocs)
         allResults = []
 
         resultObj = None
 
         for x in self.chunkIterable(oIterable, chunkSize):
             allResults.append( self.pool.apipe( oFunc, x, sEnvironment ) )
+
+        self.pool.close()
 
         while len(allResults) > 0:
 
@@ -55,7 +63,7 @@ class MapReduce:
             time.sleep(0.5)
 
         self.pool.join()
-        self.pool.close()
+        self.pool.clear()
 
         return resultObj
 

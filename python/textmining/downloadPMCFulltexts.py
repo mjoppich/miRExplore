@@ -82,13 +82,17 @@ if __name__ == '__main__':
                 print("Adding", fileURL, filePATH)
 
             ftp.cwd("..")
+
+            if len(toDownloadFiles) > 50:
+                break
             #print(ftp.pwd())
+
 
 
         print("Downloading", len(toDownloadFiles), "Files")
         ftp.close()
 
-        ll = MapReduce(8)
+        ll = MapReduce(2)
         result = ll.exec(toDownloadFiles, downloadFiles, None, 1, None)
 
 
