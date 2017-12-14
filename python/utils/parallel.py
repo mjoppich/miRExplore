@@ -13,10 +13,12 @@ import itertools
 class MapReduce:
 
     def __init__(self, procs = 4):
-        self.pool = mp.ProcessPool(nodes=procs)
-
+        self.pool = None
+        self.nprocs = procs
 
     def exec(self, oIterable, oFunc, sEnvironment, chunkSize = 1, pReduceFunc = None):
+
+        self.pool = mp.ProcessPool(nodes=self.nprocs)
 
         allResults = []
 
@@ -51,6 +53,9 @@ class MapReduce:
                     i += 1
 
             time.sleep(0.5)
+
+        self.pool.join()
+        self.pool.close()
 
         return resultObj
 
