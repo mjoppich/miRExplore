@@ -1,0 +1,17 @@
+{
+  "name": "YAWP",
+  "description": "Yet Another Wedding Platform",
+  "repository": "https://github.com/mjoppich/yawp",
+  "logo": "",
+  "keywords": [],
+  "env": {
+    "PORT": {
+      "description": "port for webserver",
+      "value": "3000"
+    }
+  },
+  "buildpacks": [
+    { "url": "heroku/nodejs" },
+    { "url": "https://github.com/romeovs/heroku-buildpack-npm-build" }
+  ]
+}
