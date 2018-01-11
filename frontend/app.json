@@ -1,7 +1,7 @@
 {
-  "name": "YAWP",
-  "description": "Yet Another Wedding Platform",
-  "repository": "https://github.com/mjoppich/yawp",
+  "name": "miRExplore",
+  "description": "Do you know your miRNAs?",
+  "repository": "https://github.com/mjoppich/miRExplore",
   "logo": "",
   "keywords": [],
   "env": {

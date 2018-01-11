@@ -30,12 +30,50 @@ console.log(SERVER_RENDER);
 const app = express();
 const server = new Server(app);
 
+import * as n4j from 'neo4j-driver';
+var n4jdriver = n4j.v1.driver("bolt://localhost", n4j.v1.auth.basic("neo4j", "neo4j2"));
+
 // use ejs templates
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // define the folder that will be used for static assets
 app.use(express.static(path.join(__dirname, 'static')));
+
+app.get("/api", (req, res) => {
+  const session = n4jdriver.session();
+
+  session.run("MATCH (n) RETURN distinct labels(n) as desc, count(*) as num;").then(
+    result => {
+      session.close();
+
+      var retValues = {};
+    
+      for (let elem of result.records)
+      {
+        console.log(elem);
+
+        for (let descr of elem.get('desc'))
+        {
+
+          if (!(descr in retValues))
+          {
+            retValues[descr] = 0
+          }
+
+          retValues[ descr ] += n4j.v1.integer.toNumber(elem.get('num'));
+
+        }
+      }
+    
+      // on application exit:
+      n4jdriver.close();
+
+      res.send(retValues);
+
+  });  
+
+});
 
 // universal routing and rendering
 app.get('*', (req, res) => {

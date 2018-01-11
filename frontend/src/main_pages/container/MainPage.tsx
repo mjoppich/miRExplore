@@ -28,10 +28,13 @@ export class WelcomePage extends React.Component<{},{}> {
 
             <Card>
                 <CardTitle
-                    title=""
+                    title="Welcome!"
+                    subtitle="miRExplore v0.1"
                 />
                 <CardText >
-                <img style={{width: 480+'px', display: "block", margin: "auto"}} src={`/img/welcome.png`} />
+                    <p>miRExplore v.01 now online.</p>
+                    <p>Following PubMed state: 2018 base</p>
+
                 </CardText>
             </Card>
 
