@@ -305,7 +305,7 @@ if __name__ == '__main__':
         for task in allMirnaComps:
 
             comps = allMirnaComps[task]
-            print(task)
+            print(task, len(comps))
 
             for comp in comps:
                 print(str(task) + " " + str(testMirna.make_string(comp)))
@@ -314,10 +314,10 @@ if __name__ == '__main__':
         print()
 
 
-    testMIRNA('hsa-miR-126a-3p')
+    testMIRNA('hsa-miR-126a-1-3p')
 
-    testMIRNA('sv40-miR-S1-5p')
-    testMIRNA('kshv-miR-K12-10a-5p')
-    testMIRNA('ose-bantam-5p')
-    testMIRNA('ebv-mir-BHRF1-2-5p')
-    testMIRNA('ath-MIR399a-5p')
+    #testMIRNA('sv40-miR-S1-5p')
+    #testMIRNA('kshv-miR-K12-10a-5p')
+    #testMIRNA('ose-bantam-5p')
+    #testMIRNA('ebv-mir-BHRF1-2-5p')
+    #testMIRNA('ath-MIR399a-5p')

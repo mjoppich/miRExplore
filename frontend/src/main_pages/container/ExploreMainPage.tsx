@@ -4,6 +4,9 @@ import FlatButton from 'material-ui/FlatButton';
 
 import Paper from 'material-ui/Paper';
 
+import SelectedElements from '../components/SelectedElements';
+import ACInput from '../components/AutoComplete';
+
 //import {cytoscape} from 'cytoscape';
 var cytoscape = require('cytoscape');
 
@@ -62,13 +65,61 @@ class CyParent extends React.Component<CyParentProps, CyParentState>{
       )
     }
 }
+
+import axios from 'axios';
+import D3Neo4JViewer from '../components/D3Neo4JViewer';
+
+export interface D3ParentProps { };
+export interface D3ParentState { n4jdata: any };
+class D3Parent extends React.Component<CyParentProps, CyParentState>{
+
+    neo4jd3: any = null;
+
+    constructor(props)
+    {
+        super(props);
+
+    }
+
+    componentWillMount()
+    {
+
+
+
+    }
+
+    componentDidMount(){
+
+    
+
+    }
+  
+    render(){
+      return (
+          <D3Neo4JViewer id="bla"/>
+      )
+    }
+}
   
 export interface QueryComponentProps { key: number};
-export interface QueryComponentState { };
+export interface QueryComponentState { selectedElementsCount: number };
+
 class QueryComponent extends React.Component<QueryComponentProps, QueryComponentState> {
     constructor(props) {
         super(props);
 
+    }
+
+    allElements: Array<any> = [];
+
+    newElementSelected( newElement )
+    {
+        this.allElements.push(newElement);
+
+        console.log("Element Added");
+        console.log(newElement);
+
+        this.setState({selectedElementsCount: this.allElements.length})
     }
 
     render()
@@ -80,10 +131,20 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
                 title="Query"
                 subtitle="Subtitle"
                 />
+                 <CardActions>
+                    <FlatButton label="Go To Analysis" onClick={() => console.log("Go To Analysis")}/>
+                </CardActions>
                 <CardText>
 
+                    <div>
+                        <ACInput onElementSelected={this.newElementSelected.bind(this)} />
+                        <FlatButton label="Add Element" onClick={() => console.log("Add Element Clicked")}/>
+
+                        <SelectedElements elements={this.allElements}/>
+                    </div>
+
                     <p>This is a query!</p>
-                    <CyParent/>
+                    <D3Parent/>
 
                 </CardText>
             </Card>

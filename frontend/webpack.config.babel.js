@@ -2,6 +2,7 @@ import path from 'path';
 import nodeExternals from 'webpack-node-externals';
 import UglifyJSPlugin from 'uglifyjs-webpack-plugin';
 
+import webpack from 'webpack';
 
 const client = {
   entry: './src/app-client.tsx',
@@ -25,7 +26,7 @@ const client = {
       path.join(__dirname, 'src'),
       'node_modules',
     ],
-  },
+  }
 };
 
 const server = {
