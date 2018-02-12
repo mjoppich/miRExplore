@@ -25,7 +25,7 @@ class CytoscapeGrapher:
 
         graphNodes = []
 
-        for node in graph.nodes_iter():
+        for node in graph.nodes():
 
             nodeName = nodeLabel(node)
             nodeColor = '#555555'

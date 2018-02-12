@@ -1,6 +1,14 @@
+import pickle
+import tempfile
+
+from collections import defaultdict
+
+import os
+
 from database.Neo4JInterface import neo4jInterface
 import networkx as nx
 
+from synonymes.mirnaID import miRNA
 from utils.cytoscape_grapher import CytoscapeGrapher
 
 
@@ -40,8 +48,9 @@ class InteractionRetriever:
     def _queryDB(self, chemokine):
 
         print("Query: ", chemokine)
-        queryStr = "match p=(g:GENE)-[h]-(s:EVIDENCE)-[r*2]-(t:MIRNA) where g.id='{geneID}' and t.name starts with '{orgPrefix}' return p, LENGTH(p) as length".format(geneID=chemokine, orgPrefix='hsa-')
+        queryStr = "match p=(g:GENE)-[h]-(s:EVIDENCE)-[*..2]-(t:MIRNA) where g.id='{geneID}' and (t.name starts with 'hsa-' or t.name starts with 'mmu-') return p, LENGTH(p) as length".format(geneID=chemokine, orgPrefix='hsa-')
 
+        print("Query String: ", queryStr)
         res = self.db.runInDatabase(queryStr)
 
         resVals = [x for x in res]
@@ -61,15 +70,31 @@ class InteractionRetriever:
             for rel in pathRelations:
                 self._addRelationship(rel)
 
-            simpleRelation = ( path.start.properties['id'], path.end.properties['name'] )
+            pathEvidences = []
+            for pNode in path.nodes:
+                if 'EVIDENCE' in pNode.labels:
+
+                    if 'PUBMED' in pNode.labels:
+                        pathEvidences.append( ('PUBMED', pNode.properties['id']) )
+                    elif 'MIRTARBASE' in pNode.labels:
+                        pathEvidences.append( ('MIRTARBASE', pNode.properties['id']))
+                    else:
+                        pathEvidences.append( (tuple(pNode.labels), tuple([(x, pNode.properties[x]) for x in pNode.properties])))
+
+
+            simpleRelation = ( path.start.properties['id'], path.end.properties['name'],  tuple(pathEvidences))
+
+            print(simpleRelation)
             self.simple_connections.add(simpleRelation)
 
 
 if __name__ == '__main__':
 
-    #test = InteractionRetriever(chemokines=['CXCL9, CXCL10, CCL22, CCL4, CXCL13, CXCR2, CXCL7, CXCL5'])
-    test = InteractionRetriever(chemokines=['CXCR2','CCL9', 'CXCL5', 'CXCL1', 'CXCL13', 'CXCL7', 'CXCL12', 'CXCL14', 'CCR7', 'CXCL9', 'CCL2', 'CCR7', 'CCL7', 'CCL3', 'CXCL10', 'CCL22', 'CCL22', 'CCL4', 'CXCR4', 'CX3CL1'])
+    selChemokines = ['CXCL9', 'CXCL10', 'CCL22', 'CCL4', 'CXCL13', 'CXCR2', 'CXCL7', 'CXCL5', 'CXCR4', 'CXCL12', 'CCR7']
+    selChemokines = ['CXCR2','CCL9', 'CXCL5', 'CXCL1', 'CXCL13', 'CXCL7', 'CXCL12', 'CXCL14', 'CCR7', 'CXCL9', 'CCL2', 'CCR7', 'CCL7', 'CCL3', 'CXCL10', 'CCL22', 'CCL22', 'CCL4', 'CXCR4', 'CX3CL1']
 
+    #test = InteractionRetriever(chemokines=selChemokines)
+    #test = InteractionRetriever(chemokines=['CXCR2','CCL9', 'CXCL5', 'CXCL1', 'CXCL13', 'CXCL7', 'CXCL12', 'CXCL14', 'CCR7', 'CXCL9', 'CCL2', 'CCR7', 'CCL7', 'CCL3', 'CXCL10', 'CCL22', 'CCL22', 'CCL4', 'CXCR4', 'CX3CL1'])
 
     interactions = {
         'CCL9': ['miR-30d-3p', 'miR-3473c', 'let-7g-5p'],
@@ -89,9 +114,9 @@ if __name__ == '__main__':
         'CCL4': ['miR-27b-3p', 'miR-27a-3p', 'miR-21-3p', 'miR-467f'],
         'CX3CL1': ['miR-15a-5p', 'miR-322-5p', 'miR-706', 'miR-762', 'miR-665-3p', 'miR-758-3p', 'miR-381-3p'],
         'CXCR4': ['miR-381-3p', 'miR-21-3p', 'miR-467a-5p', 'miR-467h', 'miR-218-5p', 'miR-1a-3p', 'miR-181d-5p', 'miR-206-3p', 'miR-181b-5p', 'miR-9-5p', 'miR-132-3p', 'miR-25-3p', 'miR-467d-5p', 'miR-669k-3p', 'miR-146b-5p', 'miR467b-5p', 'miR-467e-5p', 'miR-467f', 'miR-146a-5p'],
-        'CCR-7': ['let-7g-5p', 'miR-23b-3p', 'miR-669p-5p', 'miR-23a-5p', 'let-7e-5p', 'miR-669l-5p', 'miR-15a-5p', 'miR-467e-5p', 'miR-21-5p', 'miR-16-5p', 'let-7d-5p', 'miR-669n', 'miR-98-5p', 'let-7b-5p', 'let-7a-5p', 'let-7i-5p', 'let-7c-5p', 'miR-15b-5p', 'miR-467h'],
+        'CCR7': ['let-7g-5p', 'miR-23b-3p', 'miR-669p-5p', 'miR-23a-5p', 'let-7e-5p', 'miR-669l-5p', 'miR-15a-5p', 'miR-467e-5p', 'miR-21-5p', 'miR-16-5p', 'let-7d-5p', 'miR-669n', 'miR-98-5p', 'let-7b-5p', 'let-7a-5p', 'let-7i-5p', 'let-7c-5p', 'miR-15b-5p', 'miR-467h'],
         'CXCL12': [
-            'mIR-532-5p', 'miR-130b-3p', 'miR-222-3p', 'miR144-3p', 'miR-542-3p', 'miR-149-5p', 'miR-330-3p', 'miR-532-3p', 'miR-3470b', 'miR-125b-5p', 'miR-221-3p', 'miR-19b-3p', 'miR-301b-3p',
+            'miR-532-5p', 'miR-130b-3p', 'miR-222-3p', 'miR144-3p', 'miR-542-3p', 'miR-149-5p', 'miR-330-3p', 'miR-532-3p', 'miR-3470b', 'miR-125b-5p', 'miR-221-3p', 'miR-19b-3p', 'miR-301b-3p',
             'miR-34b-5p', 'miR-125a-3p', 'miR-126-3p', 'miR-16-1-3p', 'miR-882', 'miR-497-5p', 'miR-26a-5p', 'miR-124-3p', 'miR-26b-5p', 'miR-5620-3p', 'mIR-19a-3p', 'miR-130a-3p', 'miR-690',
             'miR-185-5p', 'miR-31-5p', 'miR-340-5p', 'miR-1843-5p', 'miR-466f-3p', 'miR-301a-3p', 'miR-101a-3p', 'miR-210-3p', 'miR-107-3p', 'miR-706', 'miR-23b-3p', 'miR-146a-5p', 'miR-467f',
             'miR-322-5p', 'miR-15a-5p', 'miR-29b-1-5p', 'let-7e-5p', 'miR-23a-3p', 'miR-338-3p', 'miR-103-3p', 'miR-362-3p', 'let-7g-5p', 'miR-155-5p', 'miR-140-5p', 'miR-122-5p', 'miR-22-3p', 'miR-3470a', 'let-7d-5p'
@@ -99,10 +124,126 @@ if __name__ == '__main__':
 
     }
 
+    for gene in interactions:
+
+        mirlist = interactions[gene]
+        mirids = [miRNA(x) for x in mirlist]
+        interactions[gene] = mirids
+
     graph = nx.Graph()
 
-    for x in test.simple_connections:
+    foundInteractions = defaultdict(set)
+
+
+    pickleFile = '/home/mjoppich/chemokines.upd.graph.pickle'
+
+    if os.path.isfile(pickleFile):
+
+        with open(pickleFile, 'rb') as infile:
+            graphConnections = pickle.load(infile)
+    else:
+
+        test = InteractionRetriever(chemokines=selChemokines)
+        graphConnections = test.simple_connections
+
+        with open(pickleFile, 'wb') as outfile:
+            pickle.dump(graphConnections, outfile)
+
+
+    for x in graphConnections:
         print(x)
+
+
+        foundInteractions[x[0]].add(x[1].replace('hsa-', '').replace('mmu-', ''))
+
+        gene = x[0]
+        mirna = x[1].replace('hsa-', '').replace('mmu-', '')
+
         graph.add_edge(x[0], x[1], attr_dict={'color': "#FF0000"})
 
-    CytoscapeGrapher.showGraph(graph, name='chemokines', title='Chemokines', nodeLabel=lambda x: x, edgeLabel=lambda x: '')
+    dirTemp = tempfile.mkdtemp()
+    print("Graph Data located in " + dirTemp)
+
+    print()
+    print()
+    print()
+
+    def findEdgeInfo( geneID, mirnaID):
+
+        foundResults = set()
+
+        for x in graphConnections:
+            if x[0] == geneID and mirnaID.accept(x[1]):
+
+                for ev in x[2]:
+                    foundResults.add(ev)
+
+        return  foundResults
+
+    for x in foundInteractions:
+            print(x, foundInteractions[x])
+
+    print()
+    print()
+    print()
+
+    missingInteractions = defaultdict(set)
+    additionalInteractions = defaultdict(set)
+
+    foundAcceptedInteractions = defaultdict(set)
+
+
+    for x in interactions:
+
+        defInts = interactions[x]
+
+        if x in foundInteractions:
+            fInts = foundInteractions[x]
+        else:
+            fInts = set()
+
+        for mirna in defInts:
+
+            mirnaFound = False
+            for foundMirna in fInts:
+                if mirna.accept(foundMirna):
+                    mirnaFound = True
+                    break
+
+            if mirnaFound == False:
+                missingInteractions[x].add(mirna)
+            else:
+                foundAcceptedInteractions[x].add(mirna)
+
+
+        for mirna in fInts:
+
+            mirnaFound = False
+
+            for defMirna in defInts:
+                if defMirna.accept(mirna):
+                    mirnaFound = True
+                    break
+
+            if mirnaFound == False:
+                additionalInteractions[x].add(miRNA(mirna))
+
+
+    print("Accepted miRNAs")
+    for x in foundAcceptedInteractions:
+
+        for interact in foundAcceptedInteractions[x]:
+            print(x, interact, findEdgeInfo(x, interact))
+
+
+    print("Missing miRNAs")
+    for x in missingInteractions:
+        print(x, len(missingInteractions[x]), len(interactions[x]), missingInteractions[x])
+
+    print("Additional miRNAs")
+    for x in additionalInteractions:
+
+        for interact in additionalInteractions[x]:
+            print(x, interact, findEdgeInfo(x, interact))
+
+    CytoscapeGrapher.showGraph(graph, location=dirTemp, name='chemokines', title='Chemokines', nodeLabel=lambda x: x, edgeLabel=lambda x: '')

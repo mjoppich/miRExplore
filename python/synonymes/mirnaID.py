@@ -20,6 +20,11 @@ class miRNASynonymeTYPE(Enum):
     FAMILY=2
     MIORG=3
 
+class miRNACOMPARISONLEVEL(Enum):
+    ORGANISM=[miRNAPART.ORGANISM]
+    MATUREID=[miRNAPART.MATURE, miRNAPART.ID]
+
+
 class miRNA:
 
     @classmethod
@@ -141,6 +146,31 @@ class miRNA:
                     createdVersions += altVersions
 
         return createdVersions
+
+
+    def accept(self, other, compLevel=miRNACOMPARISONLEVEL.MATUREID):
+
+        if type(other) == str:
+            other = miRNA(other)
+
+        if not isinstance(other, miRNA):
+            raise ValueError("Comparison must be either miRNA object or string convertible to miRNA", other)
+
+        for part in compLevel.value:
+            if not part in other.part2idx or other.part2idx[part] == None:
+                return False
+
+            if not other.getPart(part) == self.getPart(part):
+                return False
+
+        return True
+
+    def __str__(self):
+        return '-'.join([str(self.parts[x]) for x in self.parts])
+
+
+    def __repr__(self):
+        return self.__str__()
 
     def __init__(self, mirnaStr):
 
@@ -313,8 +343,12 @@ if __name__ == '__main__':
         print()
         print()
 
+        print(testMirna.accept("miR-126"))
+
 
     testMIRNA('hsa-miR-126a-1-3p')
+
+
 
     #testMIRNA('sv40-miR-S1-5p')
     #testMIRNA('kshv-miR-K12-10a-5p')
