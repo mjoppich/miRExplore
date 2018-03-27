@@ -8,16 +8,7 @@ import {blue300, indigo900} from 'material-ui/styles/colors';
 const FaceIcon = <SvgIconFace/>
 
 
-
-function handleRequestDelete() {
-  alert('You clicked the delete button.');
-}
-
-function handleClick() {
-  alert('You clicked the Chip.');
-}
-
-export interface SelectedElementsProps { elements: any };
+export interface SelectedElementsProps { elements: Array<any>, onElementDelete: any, onElementClicked:any };
 export interface SelectedElementsState { };
 
 const styles = {
@@ -33,6 +24,14 @@ const styles = {
  */
 export default class SelectedElements extends React.Component<SelectedElementsProps, SelectedElementsState> {
 
+  handleRequestDelete( deleteKey: number ) {
+    this.props.elements.splice(deleteKey)
+  }
+  
+  handleClick() {
+    alert('You clicked the Chip.');
+  }
+
   render() {
 
     var allChips: Array<any> = [];
@@ -41,11 +40,12 @@ export default class SelectedElements extends React.Component<SelectedElementsPr
     {
       let elem = this.props.elements[i];
 
-      allChips.push(        <Chip
+      allChips.push(
+      <Chip
       key={i}
         backgroundColor={blue300}
-        onRequestDelete={handleRequestDelete}
-        onClick={handleClick}
+        onRequestDelete={() => this.props.onElementDelete(elem)}
+        onClick={() => this.props.onElementClicked(elem, i)}
         style={styles.chip}
       >
         <Avatar icon={FaceIcon} />
@@ -56,15 +56,6 @@ export default class SelectedElements extends React.Component<SelectedElementsPr
 
     return (
       <div style={{display: 'flex', flexWrap: 'wrap'}}>
-
-        <Chip
-          onRequestDelete={handleRequestDelete}
-          onClick={handleClick}
-          style={styles.chip}
-        >
-          <Avatar icon={FaceIcon} />
-          Deletable Avatar Chip
-        </Chip>
       {allChips}
       </div>
     );

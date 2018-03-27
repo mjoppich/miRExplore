@@ -15,6 +15,10 @@ class SyngrepHit:
 
         self.perfectHit = False
 
+        self.position = (None, None)
+
+        self.originalLine = None
+
 
 
     @classmethod
@@ -40,9 +44,18 @@ class SyngrepHit:
         retObj.foundSyn = aline[2]
         retObj.hitSyn = aline[5]
 
+        sentStart = int(aline[3])
+        sentLength = int(aline[4])
+
+        sentStart -= len(str(retObj.documentID))+1
+
+        retObj.position = (int(sentStart), int(sentStart)+int(sentLength))
+
         if len(aline) < 7:
             retObj.perfectHit = True
         else:
             retObj.perfectHit = aline[6].upper() == 'TRUE'
+
+        retObj.originalLine = line
 
         return retObj

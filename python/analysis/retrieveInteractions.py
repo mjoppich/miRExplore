@@ -5,10 +5,12 @@ from collections import defaultdict
 
 import os
 
+from porestat.utils.DataFrame import DataFrame, DataRow, ExportTYPE
+
 from database.Neo4JInterface import neo4jInterface
 import networkx as nx
 
-from synonymes.mirnaID import miRNA
+from synonymes.mirnaID import miRNA, miRNAPART
 from utils.cytoscape_grapher import CytoscapeGrapher
 
 
@@ -16,7 +18,7 @@ class InteractionRetriever:
 
     def __init__(self, chemokines = list(), db=neo4jInterface(simulate=False, printQueries=False)):
 
-        self.chemokines = list(set(chemokines))
+        self.chemokines = list(chemokines)
         self.db = db
 
         self.all_nodes = dict()
@@ -48,7 +50,9 @@ class InteractionRetriever:
     def _queryDB(self, chemokine):
 
         print("Query: ", chemokine)
-        queryStr = "match p=(g:GENE)-[h]-(s:EVIDENCE)-[*..2]-(t:MIRNA) where g.id='{geneID}' and (t.name starts with 'hsa-' or t.name starts with 'mmu-') return p, LENGTH(p) as length".format(geneID=chemokine, orgPrefix='hsa-')
+        #queryStr = "match p=(g:GENE)-[h]-(s:EVIDENCE)-[*..2]-(t:MIRNA) where g.id='{geneID}' and (t.name starts with 'hsa-' or t.name starts with 'mmu-') return p, LENGTH(p) as length".format(geneID=chemokine, orgPrefix='hsa-')
+        #queryStr = "MATCH p=(g:GENE {id: '{geneID}' })-[]-(e:EVIDENCE)-[]-(m:MIRNAS) WITH g,e,m MATCH s=(g)--(e)--(m)-[*0..1]-(t:MIRNA) where (t.name starts with 'hsa-' or t.name starts with 'mmu-') RETURN s;".format(geneID=chemokine)
+        queryStr = "MATCH f=(g:GENE {{ id: '{geneID}' }})-[]-(e:EVIDENCE)-[]-(m:MIRNAS) WITH g,e,m MATCH p=(g)--(e)--(m)-[:MIRNA_BELONGS_TO*0..1]-()<-[:IS_ORG_MIR*0..1]-()<-[:IS_ORG_MI*0..1]-()<-[:IS_ORG_MIRNA*0..1]-(t:MIRNA) where (t.name starts with 'hsa-' or t.name starts with 'mmu-') RETURN p, length(p);".format(geneID=chemokine)
 
         print("Query String: ", queryStr)
         res = self.db.runInDatabase(queryStr)
@@ -58,7 +62,6 @@ class InteractionRetriever:
         print("Found Results: ", len(resVals))
 
         for hit in resVals:
-
             path = hit['p']
 
             pathNodes = path.nodes
@@ -84,7 +87,7 @@ class InteractionRetriever:
 
             simpleRelation = ( path.start.properties['id'], path.end.properties['name'],  tuple(pathEvidences))
 
-            print(simpleRelation)
+            #print(simpleRelation)
             self.simple_connections.add(simpleRelation)
 
 
@@ -113,7 +116,7 @@ if __name__ == '__main__':
         'CCR5': ['miR-186-5p', 'miR-669j', 'miR-21-5p', 'miR-146a-5p', 'miR-150-5p', 'miR-136b-5p', 'miR-669k-3p', 'miR-142-3p', 'miR-34a-5p'],
         'CCL4': ['miR-27b-3p', 'miR-27a-3p', 'miR-21-3p', 'miR-467f'],
         'CX3CL1': ['miR-15a-5p', 'miR-322-5p', 'miR-706', 'miR-762', 'miR-665-3p', 'miR-758-3p', 'miR-381-3p'],
-        'CXCR4': ['miR-381-3p', 'miR-21-3p', 'miR-467a-5p', 'miR-467h', 'miR-218-5p', 'miR-1a-3p', 'miR-181d-5p', 'miR-206-3p', 'miR-181b-5p', 'miR-9-5p', 'miR-132-3p', 'miR-25-3p', 'miR-467d-5p', 'miR-669k-3p', 'miR-146b-5p', 'miR467b-5p', 'miR-467e-5p', 'miR-467f', 'miR-146a-5p'],
+        'CXCR4': ['miR-381-3p', 'miR-21-3p', 'miR-467a-5p', 'miR-467h', 'miR-218-5p', 'miR-1a-3p', 'miR-181d-5p', 'miR-206-3p', 'miR-181b-5p', 'miR-9-5p', 'miR-132-3p', 'miR-25-3p', 'miR-467d-5p', 'miR-669k-3p', 'miR-146b-5p', 'miR-467b-5p', 'miR-467e-5p', 'miR-467f', 'miR-146a-5p'],
         'CCR7': ['let-7g-5p', 'miR-23b-3p', 'miR-669p-5p', 'miR-23a-5p', 'let-7e-5p', 'miR-669l-5p', 'miR-15a-5p', 'miR-467e-5p', 'miR-21-5p', 'miR-16-5p', 'let-7d-5p', 'miR-669n', 'miR-98-5p', 'let-7b-5p', 'let-7a-5p', 'let-7i-5p', 'let-7c-5p', 'miR-15b-5p', 'miR-467h'],
         'CXCL12': [
             'miR-532-5p', 'miR-130b-3p', 'miR-222-3p', 'miR144-3p', 'miR-542-3p', 'miR-149-5p', 'miR-330-3p', 'miR-532-3p', 'miR-3470b', 'miR-125b-5p', 'miR-221-3p', 'miR-19b-3p', 'miR-301b-3p',
@@ -143,7 +146,7 @@ if __name__ == '__main__':
             graphConnections = pickle.load(infile)
     else:
 
-        test = InteractionRetriever(chemokines=selChemokines)
+        test = InteractionRetriever(chemokines=sorted([x for x in interactions]))
         graphConnections = test.simple_connections
 
         with open(pickleFile, 'wb') as outfile:
@@ -168,7 +171,7 @@ if __name__ == '__main__':
     print()
     print()
 
-    def findEdgeInfo( geneID, mirnaID):
+    def findEdgeInfo( geneID, mirnaID, mustBeType = None):
 
         foundResults = set()
 
@@ -176,7 +179,9 @@ if __name__ == '__main__':
             if x[0] == geneID and mirnaID.accept(x[1]):
 
                 for ev in x[2]:
-                    foundResults.add(ev)
+
+                    if mustBeType == None or ev[0] in mustBeType:
+                        foundResults.add(ev)
 
         return  foundResults
 
@@ -229,21 +234,109 @@ if __name__ == '__main__':
                 additionalInteractions[x].add(miRNA(mirna))
 
 
-    print("Accepted miRNAs")
-    for x in foundAcceptedInteractions:
-
-        for interact in foundAcceptedInteractions[x]:
-            print(x, interact, findEdgeInfo(x, interact))
+    missingDF = DataFrame()
+    missingDF.addColumns(['chemokine', 'miRNA Group', 'miRNA', 'Weber', 'PubMed', 'MIRTARBASE'])
 
 
+    linkedDF = DataFrame()
+    linkedDF.addColumns(['chemokine', 'miRNA Group', 'miRNA', 'Weber', 'PubMed', 'MIRTARBASE'])
+
+    totalMissing = 0
     print("Missing miRNAs")
     for x in missingInteractions:
         print(x, len(missingInteractions[x]), len(interactions[x]), missingInteractions[x])
 
+        totalMissing += len(missingInteractions[x])
+
+        selInts = missingInteractions[x]
+
+        for mirna in selInts:
+            addRow = {
+                'chemokine': x,
+                'miRNA Group': mirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]),
+                'miRNA': mirna,
+                'Weber': True,
+                'PubMed': "",
+                'MIRTARBASE': ""
+            }
+
+            row = DataRow.fromDict(addRow)
+            missingDF.addRow(row)
+            linkedDF.addRow(row)
+
+
+    def makeLinks( mylist, lnkFnc):
+
+        return [lnkFnc(x) for x in mylist]
+
+    print("Accepted miRNAs")
+    for x in foundAcceptedInteractions:
+
+        for interact in foundAcceptedInteractions[x]:
+            #print(x, interact, findEdgeInfo(x, interact))
+
+            addRow = {
+                'chemokine': x,
+                'miRNA Group': interact.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]),
+                'miRNA': interact,
+                'Weber': True,
+                'PubMed': ", ".join(sorted([x[1] for x in findEdgeInfo(x, interact, ['PUBMED'])])),
+                'MIRTARBASE': ", ".join(sorted([x[1] for x in findEdgeInfo(x, interact, ['MIRTARBASE'])]))
+            }
+
+            row = DataRow.fromDict(addRow)
+            missingDF.addRow(row)
+
+            addRow = {
+                'chemokine': x,
+                'miRNA Group': interact.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]),
+                'miRNA': interact,
+                'Weber': True,
+                'PubMed': ", ".join(makeLinks(sorted([x[1] for x in findEdgeInfo(x, interact, ['PUBMED'])]), lambda lid: "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/"+lid+"\">"+lid+"</a>")),
+                'MIRTARBASE': ", ".join(makeLinks(sorted([x[1] for x in findEdgeInfo(x, interact, ['MIRTARBASE'])]), lambda lid: "<a href=\"http://mirtarbase.mbc.nctu.edu.tw/php/search.php?opt=search_box&kw="+x+"&sort=id\">"+lid+"</a>"))
+            }
+
+            row = DataRow.fromDict(addRow)
+            linkedDF.addRow(row)
+
+    totalAdditional = 0
     print("Additional miRNAs")
     for x in additionalInteractions:
 
-        for interact in additionalInteractions[x]:
-            print(x, interact, findEdgeInfo(x, interact))
+        totalAdditional += len(additionalInteractions[x])
 
-    CytoscapeGrapher.showGraph(graph, location=dirTemp, name='chemokines', title='Chemokines', nodeLabel=lambda x: x, edgeLabel=lambda x: '')
+        for interact in additionalInteractions[x]:
+            #print(x, interact, findEdgeInfo(x, interact))
+
+            addRow = {
+                'chemokine': x,
+                'miRNA Group': interact.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]),
+                'miRNA': interact,
+                'Weber': False,
+                'PubMed': ", ".join(sorted([x[1] for x in findEdgeInfo(x, interact, ['PUBMED'])])),
+                'MIRTARBASE': ", ".join(sorted([x[1] for x in findEdgeInfo(x, interact, ['MIRTARBASE'])]))
+            }
+
+            row = DataRow.fromDict(addRow)
+            missingDF.addRow(row)
+
+            addRow = {
+                'chemokine': x,
+                'miRNA Group': interact.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]),
+                'miRNA': interact,
+                'Weber': False,
+                'PubMed': ", ".join(makeLinks(sorted([x[1] for x in findEdgeInfo(x, interact, ['PUBMED'])]), lambda lid: "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/"+lid+"\">"+lid+"</a>")),
+                'MIRTARBASE': ", ".join(makeLinks(sorted([x[1] for x in findEdgeInfo(x, interact, ['MIRTARBASE'])]), lambda lid: "<a href=\"http://mirtarbase.mbc.nctu.edu.tw/php/search.php?opt=search_box&kw="+x+"&sort=id\">"+lid+"</a>"))
+            }
+
+            row = DataRow.fromDict(addRow)
+            linkedDF.addRow(row)
+
+    print("Total Missing miRNAs", totalMissing)
+    print("Total Additional miRNAs", totalAdditional)
+
+
+    missingDF.export("/mnt/c/ownCloud/data/miRExplore/overview_weber.xlsx", ExportTYPE.XLSX)
+    linkedDF.export("/mnt/c/ownCloud/data/miRExplore/overview_weber.html", ExportTYPE.HTML)
+
+    #CytoscapeGrapher.showGraph(graph, location=dirTemp, name='chemokines', title='Chemokines', nodeLabel=lambda x: x, edgeLabel=lambda x: '')

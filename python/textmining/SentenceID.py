@@ -6,6 +6,13 @@ class SentenceID:
         self.parID = None
         self.senID = None
 
+    def __eq__(self, other):
+
+        if not isinstance(other, SentenceID):
+            return False
+
+        return other.docID == self.docID and other.parID == self.parID and other.senID == self.senID
+
     def __repr__(self):
         return self.__str__()
 

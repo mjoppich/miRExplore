@@ -73,6 +73,17 @@ class miRNA:
 
         return default
 
+    def getStringFromParts(self, partsList):
+
+        collectedParts = []
+
+        for part in partsList:
+
+            if part in self.parts:
+                collectedParts.append(self.parts[part])
+
+        return "-".join(collectedParts)
+
 
     def make_string(self, partsList):
 
@@ -264,6 +275,10 @@ class miRNA:
         self.armAlternatives['5p'] = ['5p', 's' , '']
         self.armAlternatives['3p'] = ['3p', 'as', '*']
 
+        self.armAlternatives['s'] = ['5p', 's' , '']
+        self.armAlternatives['as'] = ['3p', 'as', '*']
+
+        self.armAlternatives['*'] = ['3p', 'as', '*']
 
         # fetch organism
         if miRNAPART.ORGANISM in self.part2idx:

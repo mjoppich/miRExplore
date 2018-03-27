@@ -1,77 +1,22 @@
 import * as React from 'react'; 
 import {Card, CardActions, CardHeader, CardText} from 'material-ui/Card';
 import FlatButton from 'material-ui/FlatButton';
-
 import Paper from 'material-ui/Paper';
-
 import SelectedElements from '../components/SelectedElements';
 import ACInput from '../components/AutoComplete';
-
-//import {cytoscape} from 'cytoscape';
-var cytoscape = require('cytoscape');
-
-let cyStyle = {
-  height: '400px',
-  display: 'block'
-};
-
-export interface CytoscapeProps { elements: any };
-export interface CytoscapeState { queriesStored: number};
-
-class Cytoscape extends React.Component<CytoscapeProps, CytoscapeState> {
-  cy = null;
-
-  componentDidMount(){
-
-    let cy = cytoscape({style: cyStyle, container: this.refs.cyelement});
-
-    this.cy = cy;
-    cy.json({elements: this.props.elements});
-  }
-
-  shouldComponentUpdate(){
-    return false;
-  }
-
-  componentWillReceiveProps(nextProps){
-    this.cy.json(nextProps);
-  }
-
-  componentWillUnmount(){
-    this.cy.destroy();
-  }
-
-  getCy(){
-    return this.cy;
-  }
-
-  render(){
-    return <div style={cyStyle} ref="cyelement" />
-  }
-}
-
-
-export interface CyParentProps { };
-export interface CyParentState { };
-class CyParent extends React.Component<CyParentProps, CyParentState>{
-    componentDidMount(){
-      // this is a good place for events
-      //this.refs.graph.getCy();
-    }
-  
-    render(){
-      return (
-          <Cytoscape ref="graph" elements={[{data: { id: 'a' }}]} />
-      )
-    }
-}
-
+import MSATableViewer from '../components/MSATableViewer';
 import axios from 'axios';
-import D3Neo4JViewer from '../components/D3Neo4JViewer';
+import config from '../config';
+import D3GraphViewer from '../components/D3GraphViewer';
+import Toggle from 'material-ui/Toggle';
+import OrganismChipAC from '../components/OrganismChipAC';
+import EntityChipAC from '../components/EntityChipAC';
 
-export interface D3ParentProps { };
-export interface D3ParentState { n4jdata: any };
-class D3Parent extends React.Component<CyParentProps, CyParentState>{
+import * as Collections from 'typescript-collections';
+
+export interface D3ParentProps { graphData: any};
+export interface D3ParentState { graph: any };
+class D3GraphComponent extends React.Component<D3ParentProps, D3ParentState>{
 
     neo4jd3: any = null;
 
@@ -83,26 +28,29 @@ class D3Parent extends React.Component<CyParentProps, CyParentState>{
 
     componentWillMount()
     {
-
-
-
     }
 
     componentDidMount(){
 
-    
-
     }
-  
+ 
     render(){
       return (
-          <D3Neo4JViewer id="bla"/>
+          <D3GraphViewer id="bla" />
       )
     }
 }
+
+
   
 export interface QueryComponentProps { key: number};
-export interface QueryComponentState { selectedElementsCount: number };
+export interface QueryComponentState { 
+    selectedElements: Array<any>,
+    selectedOrganisms: Array<any>,
+    interactions: any,
+    matureMIRNA: boolean,
+    restrictOrganism: boolean
+ };
 
 class QueryComponent extends React.Component<QueryComponentProps, QueryComponentState> {
     constructor(props) {
@@ -110,46 +58,129 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
 
     }
 
-    allElements: Array<any> = [];
+    componentWillMount()
+    {
+        this.setState({selectedElements: [], matureMIRNA:true, restrictOrganism: false});
+    }
 
     newElementSelected( newElement )
     {
-        this.allElements.push(newElement);
-
-        console.log("Element Added");
-        console.log(newElement);
-
-        this.setState({selectedElementsCount: this.allElements.length})
+        this.state.selectedElements.push(newElement);
+        this.setState({selectedElements: this.state.selectedElements});
     }
+
+    elementClicked( elementText )
+    {
+        console.log("Clicked on: " + elementText)
+    }
+
+    deleteElement( elementText, i )
+    {
+        var idx = this.state.selectedElements.indexOf(elementText);
+
+        if (idx >= 0)
+        {
+            this.state.selectedElements.splice(idx, 1);
+        }
+
+        this.setState({selectedElements: this.state.selectedElements})
+    }
+
+    prepareResults()
+    {
+        var self = this;
+
+        let sendData = {};
+
+        console.log("Selected Elements in EXplore")
+        console.log(this.state.selectedElements);
+        console.log(sendData)
+
+        for (var i = 0; i < this.state.selectedElements.length; ++i)
+        {
+            let elem = this.state.selectedElements[i];
+
+            let elemGroup = elem['group'];
+            let elemName = elem['name'];
+
+            console.log(elemGroup)
+            console.log(elemName)
+
+            if (elemGroup in sendData)
+            {
+                sendData[elemGroup].push(elemName);
+            } else {
+                sendData[elemGroup] = [elemName];
+            }
+        }
+
+        console.log(sendData);
+
+        axios.post(config.getRestAddress() + "/find_interactions",sendData, config.axiosConfig)
+        .then(function (response) {
+          console.log(response.data)
+
+          self.setState({interactions: response.data})
+
+        })
+        .catch(function (error) {
+          console.log(error);
+          self.setState({interactions: {}});
+        });
+    }
+
+
 
     render()
     {
-        return (
 
-            <Card>
+        var alignResults = [];
+        if ((this.state.interactions == null) || (this.state.interactions.length == 0))
+        {
+            alignResults.push(<p key={0}>No Result Available yet</p>)   ;
+            alignResults.push(<pre key={1}>{JSON.stringify(this.state.selectedOrganisms, null, 2)}</pre>)   ;
+
+        } else {
+
+            alignResults.push(<pre key={0}>{JSON.stringify(this.state.interactions, null, 2)}</pre>)   ;
+            alignResults.push(<pre key={1}>{JSON.stringify(this.state.selectedOrganisms, null, 2)}</pre>)   ;
+
+            //var alignKeys = Object.keys(this.state.alignments);        
+        }
+
+        return (<Card style={{marginBottom: "20px"}}>
                 <CardHeader
-                title="Query"
-                subtitle="Subtitle"
+                title="Search Homology Entries"
+                subtitle="Search by Gene/Protein ID"
                 />
-                 <CardActions>
-                    <FlatButton label="Go To Analysis" onClick={() => console.log("Go To Analysis")}/>
-                </CardActions>
                 <CardText>
 
                     <div>
-                        <ACInput onElementSelected={this.newElementSelected.bind(this)} />
-                        <FlatButton label="Add Element" onClick={() => console.log("Add Element Clicked")}/>
+                        <EntityChipAC onValueChange={(newvalues) => {console.log("onVC called"); this.setState({selectedElements: newvalues})}} />
+                        <OrganismChipAC onValueChange={(newvalues) => this.setState({selectedOrganisms: newvalues})}/>
 
-                        <SelectedElements elements={this.allElements}/>
+
+                <Toggle
+                label="Use mature miRNA (instead of pre-miRNA)"
+                defaultToggled={true}
+                toggled={this.state.matureMIRNA}
+                onToggle={(event, newValue) => this.setState({matureMIRNA: !this.state.matureMIRNA})}
+                />
+                <Toggle
+                label="Restrict to specified organisms"
+                defaultToggled={false}
+                toggled={this.state.restrictOrganism}
+                onToggle={(event, newValue) => this.setState({restrictOrganism: !this.state.restrictOrganism})}
+                />
+                        <FlatButton label="Query specified Elements" onClick={() => this.prepareResults()}/>
                     </div>
 
-                    <p>This is a query!</p>
-                    <D3Parent/>
+                    <div>
+                        {alignResults}
+                    </div>
 
                 </CardText>
-            </Card>
-
-        );
+            </Card>);
     }
 };
 
@@ -164,7 +195,6 @@ export class ExploreMainPage extends React.Component<ExplorePageProps, ExplorePa
      */
     constructor(props) {
         super(props);
-
     }
 
     /**
@@ -178,18 +208,14 @@ export class ExploreMainPage extends React.Component<ExplorePageProps, ExplorePa
 
     newQuery()
     {
-
-
         this.allQueries.push(<QueryComponent key={this.allQueries.length}/>);
         this.setState({queriesStored: this.allQueries.length});
-        console.log("Query added");
     }
 
     clearQueries()
     {
         this.allQueries = [];
         this.setState({queriesStored: this.allQueries.length});
-        console.log("Queries cleared");
     }
 
     /**
@@ -197,17 +223,15 @@ export class ExploreMainPage extends React.Component<ExplorePageProps, ExplorePa
      */
     render() {
 
-        console.log("ExploreMainpage render");
-
 
         return (
 
-            <Paper>
+            <div>
 
-                <Card>
+                <Card style={{marginBottom: "20px"}}>
                     <CardHeader
-                    title="Without Avatar"
-                    subtitle="Subtitle"
+                    title="Create Query"
+                    subtitle="Manage your queries"
                     actAsExpander={true}
                     showExpandableButton={true}
                     />
@@ -226,7 +250,7 @@ export class ExploreMainPage extends React.Component<ExplorePageProps, ExplorePa
                 {this.allQueries}
                 </div>
 
-            </Paper>
+            </div>
 
         );
     }

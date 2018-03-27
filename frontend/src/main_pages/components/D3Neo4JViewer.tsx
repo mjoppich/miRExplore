@@ -23,8 +23,8 @@ interface Graph {
     links: Array<SimLink>;
 }
 
-export interface D3Neo4JViewerProps { id: string }
-export interface D3Neo4JViewerState { graph: any }
+export interface D3Neo4JViewerProps { graph: any, id: string }
+export interface D3Neo4JViewerState { }
 
 
 export default class D3Neo4JViewer extends React.Component<D3Neo4JViewerProps, D3Neo4JViewerState> {
@@ -47,21 +47,6 @@ export default class D3Neo4JViewer extends React.Component<D3Neo4JViewerProps, D
     componentWillMount()
     {
    
-        axios.get('http://localhost:3000/api/query')
-        .then((response)=>{
-          
-            console.log("Data received");
-            console.log(response.data);
-            this.setState({ graph: response.data });
-
-          })
-        .catch((err)=>{
-
-            console.log("Fetching data failed");
-            console.log(err);
-
-            this.setState({ graph: {nodes: [], links: []} });
-        })
     }
 
     drawChart() {
@@ -109,9 +94,9 @@ export default class D3Neo4JViewer extends React.Component<D3Neo4JViewerProps, D
 
             this.canvasTransform = d3.zoomIdentity;
 
-        this.canvasSimulation.nodes(this.state.graph.nodes).on("tick", () => {this.canvasRender();});
+        this.canvasSimulation.nodes(this.props.graph.nodes).on("tick", () => {this.canvasRender();});
         var d3simforce: d3.ForceLink<SimNode, SimLink> = this.canvasSimulation.force("link");
-        d3simforce.links(this.state.graph.links);
+        d3simforce.links(this.props.graph.links);
 
         }
 
@@ -146,10 +131,10 @@ export default class D3Neo4JViewer extends React.Component<D3Neo4JViewerProps, D
           dy,
           mindist = 100;
 
-        console.log("get subject with " + this.state.graph.nodes.length);
+        console.log("get subject with " + this.props.graph.nodes.length);
     
-      for (i = this.state.graph.nodes.length - 1; i >= 0; --i) {
-        var point = this.state.graph.nodes[i];
+      for (i = this.props.graph.nodes.length - 1; i >= 0; --i) {
+        var point = this.props.graph.nodes[i];
         
         dx = x - point.x;
         dy = y - point.y;
@@ -205,19 +190,19 @@ export default class D3Neo4JViewer extends React.Component<D3Neo4JViewerProps, D
       this.context.translate(this.canvasTransform.x, this.canvasTransform.y);
       this.context.scale(this.canvasTransform.k, this.canvasTransform.k);
       
-      this.state.graph.links.forEach( (d) => this.drawLink(d, this.context));
+      this.props.graph.links.forEach( (d) => this.drawLink(d, this.context));
           this.context.strokeStyle = "#aaa";
           this.context.stroke();
       
       
       
           this.context.beginPath();
-          this.state.graph.nodes.forEach((d) => this.drawNode(d, this.context));
+          this.props.graph.nodes.forEach((d) => this.drawNode(d, this.context));
       this.context.fill();
       
       
       this.context.beginPath();
-      this.state.graph.nodes.forEach((d) => this.drawNodeLabel(d, this.context));
+      this.props.graph.nodes.forEach((d) => this.drawNodeLabel(d, this.context));
       this.context.fill();
       
       this.context.restore();

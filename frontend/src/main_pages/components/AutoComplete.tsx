@@ -1,24 +1,18 @@
 import * as React from 'react'; 
 import AutoComplete from 'material-ui/AutoComplete';
 
-const colors = [
-  'Red',
-  'Orange',
-  'Yellow',
-  'Green',
-  'Blue',
-  'Purple',
-  'Black',
-  'White',
-];
+import axios from 'axios';
+
+import config from '../config';
 
 /**
+ *
  * `AutoComplete` search text can be implemented as a controlled value,
  * where `searchText` is handled by state in the parent component.
  * This value is reset with the `onNewRequest` callback.
  */
 export interface AutoCompleteProps {onElementSelected: any};
-export interface AutoCompleteState { searchText: string};
+export interface AutoCompleteState { searchText: string, terms: Array<string>};
 
 
 export default class ACInput extends React.Component<AutoCompleteProps,AutoCompleteState> {
@@ -30,14 +24,30 @@ export default class ACInput extends React.Component<AutoCompleteProps,AutoCompl
 
     componentWillMount()
     {
-        this.setState({searchText: ""});
+        this.setState({searchText: "", terms: []});
     }
 
   handleUpdateInput(searchText)
   {
-    this.setState({
-      searchText: searchText,
-    });
+
+    console.log("Search Text inserted: " + searchText)
+    var self = this;
+
+    self.setState({searchText: searchText})
+
+    axios.post(config.getRestAddress() + "/autocomplete", {search: searchText}, config.axiosConfig)
+          .then(function (response) {
+
+
+            console.log(response.data)
+
+            self.setState({terms: [].concat(response.data.genes).concat(response.data.mirna)})
+
+          })
+          .catch(function (error) {
+            console.log(error)
+            self.setState({terms: []})
+          });
   };
 
   handleNewRequest(chosenRequest: string, index: number) {
@@ -57,7 +67,7 @@ export default class ACInput extends React.Component<AutoCompleteProps,AutoCompl
           searchText={this.state.searchText}
           onUpdateInput={this.handleUpdateInput.bind(this)}
           onNewRequest={this.handleNewRequest.bind(this)}
-          dataSource={colors}
+          dataSource={this.state.terms}
           filter={(searchText, key) => (key.indexOf(searchText) !== -1)}
           openOnFocus={true}
         />

@@ -5,7 +5,7 @@ from collections import defaultdict
 import sys
 
 dataDir = "/mnt/c/ownCloud/data/"
-dataDir = "/home/users/joppich/ownCloud/data/"
+#dataDir = "/home/users/joppich/ownCloud/data/"
 
 miRExploreDir = dataDir + "miRExplore/"
 

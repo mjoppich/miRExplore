@@ -23,7 +23,11 @@ for cellID in celloObo.dTerms:
         namespace2syn[ns].add(oboNode)
 
 
-globalKeywordExcludes = loadExludeWords()
+globalKeywordExcludes = loadExludeWords(common=False, cell_co=False, disease=False, generic=False)
+
+for x in globalKeywordExcludes:
+    if 'membrane' in globalKeywordExcludes[x]:
+        print("Membrane: " + x)
 
 for namespace in namespace2syn:
 
@@ -36,10 +40,13 @@ for namespace in namespace2syn:
 
         if node.synonym != None:
             for x in node.synonym:
+                if x == None:
+                    continue
                 newSyn.addSyn(x.syn)
 
         synSet.add(newSyn)
 
 
-    vPrintSyns = handleCommonExcludeWords(synSet, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=5)
-    printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/go."+namespace.replace(' ', '_') + ".syn")
+    vPrintSyns = handleCommonExcludeWords(synSet, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=5, minSynCount=0)
+    #printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/go."+namespace.replace(' ', '_') + ".syn")
+    printToFile(vPrintSyns, dataDir + "/hpyloriDB/tm/go."+namespace.replace(' ', '_') + ".syn")

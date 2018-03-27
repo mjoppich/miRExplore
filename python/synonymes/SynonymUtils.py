@@ -1,7 +1,7 @@
 from collections import Counter
 
 
-def handleCommonExcludeWords(synList, excludeWords, mostCommonCount=66, maxCommonCount=10, addAlphaBeta=False, removeSyn=None):
+def handleCommonExcludeWords(synList, excludeWords, mostCommonCount=66, maxCommonCount=10, addAlphaBeta=False, removeSyn=None, minSynCount=0):
 
     synCounter = Counter()
     for synonym in synList:
@@ -34,7 +34,7 @@ def handleCommonExcludeWords(synList, excludeWords, mostCommonCount=66, maxCommo
             if removeSyn(synonym):
                 continue
 
-        if len(synonym) > 0:
+        if len(synonym) > minSynCount:
             vPrintSyns.append(synonym)
 
     return vPrintSyns
