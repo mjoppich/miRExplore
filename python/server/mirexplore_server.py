@@ -1,9 +1,15 @@
 import re
 import sys
+import os
+
+from textdb.PMID2PMCDB import PMID2PMCDB
+from textdb.PMID2XDB import PMID2XDB
+
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../../")
+
 from io import StringIO
 
 from flask import Flask, jsonify, request, redirect, url_for, send_from_directory
-import os
 import json
 import pprint
 from collections import defaultdict
@@ -27,6 +33,25 @@ for elem in mirecords.elems:
     allInteractions[(elem[0].upper(), elem[1])].append(('MIRECORD', elem[2]))
 
 
+pmidBase = '/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmid/'
+pmcBase = '/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmc/'
+
+
+pmid2pmcDB = PMID2PMCDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/pmid2pmc')
+
+pmid2go = PMID2XDB.loadFromFile(pmidBase + "/go.pmid")
+pmid2disease = PMID2XDB.loadFromFile(pmidBase + "/disease.pmid")
+pmid2fma = PMID2XDB.loadFromFile(pmidBase + "/model_anatomy.pmid")
+pmid2cell = PMID2XDB.loadFromFile(pmidBase + "/cellline.pmid")
+
+
+
+mirelPMID = MiGenRelDB.loadFromFile()
+
+
+print("Loading finished")
+
+
 
 # For a given file, return whether it's an allowed type or not
 def allowed_file(filename):
@@ -36,7 +61,7 @@ def allowed_file(filename):
 @app.route('/test', methods=['GET', 'POST'])
 def test():
 
-    return "<html><body>heliPyloriDB Server v0.01</body></html>", 200, None
+    return "<html><body>miRExplore Server v0.01</body></html>", 200, None
 
 
 @app.route('/help', methods=['GET', 'POST'])
