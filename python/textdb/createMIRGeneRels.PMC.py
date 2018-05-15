@@ -15,7 +15,7 @@ import re
 
 from database.ORGMIRs import ORGMIRDB
 from synonymes.SynfileMap import SynfileMap
-from synonymes.SynonymFile import Synfile
+from synonymes.SynonymFile import Synfile, AssocSynfile
 from synonymes.mirnaID import miRNA, miRNAPART
 from textmining.SentenceDB import SentenceDB, RegPos
 from textmining.SyngrepHitFile import SyngrepHitFile
@@ -25,12 +25,17 @@ from database.Neo4JInterface import neo4jInterface
 from utils.parallel import MapReduce
 from enum import Enum
 
-resultBase = dataDir + "/miRExplore/textmine/results/"
+resultBase = dataDir + "/miRExplore/textmine/results_pmc/"
 mirnaSyns = SynfileMap(resultBase + "/mirna/synfile.map")
 mirnaSyns.loadSynFiles( ('/home/users/joppich/ownCloud/data/', dataDir) )
 
 hgncSyns = SynfileMap(resultBase + "/hgnc/synfile.map")
 hgncSyns.loadSynFiles( ('/home/users/joppich/ownCloud/data/', dataDir) )
+
+relSyns = SynfileMap(resultBase + "/relations/synfile.map")
+relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir) )
+
+relationSyns = AssocSynfile('/mnt/c/ownCloud/data/miRExplore/relations/allrels.csv')
 
 db = None
 
@@ -77,34 +82,6 @@ class Cooccurrence:
     def getIdTuple(self):
         return (self.gene, self.mirna, self.idtype)
 
-
-neutralAssoc = {'modulate': [RegPos.BEFORE, RegPos.AFTER, RegPos.BETWEEN],
-                'involve': [RegPos.BEFORE, RegPos.AFTER],
-                'inhibit': [RegPos.BEFORE, RegPos.AFTER]
-                }
-posRegulation = {'induce': [RegPos.BETWEEN],
-                 'promote': [RegPos.BETWEEN],
-                 'enhance': [RegPos.BETWEEN],
-                 'up-regulate': [RegPos.BETWEEN],
-                 'increase': [RegPos.BETWEEN]
-
-                 }
-
-negRegulation = {'reduce': [RegPos.BETWEEN],
-                 'inhibit': [RegPos.BETWEEN],
-                 'enhance': [RegPos.BETWEEN],
-                 'down-regulate': [RegPos.BETWEEN],
-                 'decrease': [RegPos.BETWEEN]
-
-                 }
-
-negation = {'don\'t': [RegPos.BEFORE, RegPos.BETWEEN, RegPos.AFTER],
-            'doesn\'t': [RegPos.BEFORE, RegPos.BETWEEN, RegPos.AFTER],
-            'didn\'t': [RegPos.BEFORE, RegPos.BETWEEN, RegPos.AFTER],
-            'couldn\'t': [RegPos.BEFORE, RegPos.BETWEEN, RegPos.AFTER],
-            'not': [RegPos.BEFORE, RegPos.BETWEEN, RegPos.AFTER]
-            }
-
 def findAssocs( assocs, text, textLoc):
 
     res = []
@@ -122,7 +99,17 @@ def findAssocs( assocs, text, textLoc):
 
 
 
-def findRelation(mirnaHit, hgncHit, sentDB):
+def findRelation(mirnaHit, hgncHit, sentDB, relHits):
+    """
+
+    same sentence can be assumed!
+
+    :param mirnaHit:
+    :param hgncHit:
+    :param sentDB:
+    :param relHits:
+    :return:
+    """
 
     sentence = sentDB.get_sentence( mirnaHit.documentID )
 
@@ -185,48 +172,25 @@ def findRelation(mirnaHit, hgncHit, sentDB):
     idxG = findTagWithPos(test, hgncHit.position)
 
 
-    # cases to consider
-
-    ## 1: find verb between two elements => take that
-    ## 2: no verb between two elements
-    ##### take closest verb to mirna
-
-    def findInteraction(alltags, startI, endI):
-
-        foundInteractions = []
-        for i in range(min(startI, endI), max(startI, endI)):
-
-            tagpos = alltags[i]
-
-            tagPrev = None if i-1 < 0 else alltags[i-1]
-            tagNext = None if i+1 >= len(alltags) else alltags[i+1]
-
-            if tagpos[1][0:2] == 'VB':
-
-                for x in negRegulation:
-                    if x in tagpos[0]:
-                        foundInteractions.append( (x, 'NEG') )
-
-                for x in posRegulation:
-                    if x in tagpos[0]:
-                        foundInteractions.append( (x, 'POS') )
-
-                for x in neutralAssoc:
-                    if x in tagpos[0]:
-                        foundInteractions.append( (x, 'NEU') )
-
-
-        return foundInteractions
-
     if idxM == None or idxG == None:
         #print(idxM, idxG)
         return None
+
+
+    def findInteraction(a,b,c):
+
+        return None
+
+
+    relSyns = relHits.getHitsForDocument(mirnaHit.documentID.docID)
+    relSyns = [x for x in relSyns if x.documentID == mirnaHit.documentID]
 
 
     if idxM[0] < idxG[0]:
         # type MG
         betweeenInteractions = findInteraction(test, idxM[1], idxG[0])
     else:
+        #type GM
         betweeenInteractions = findInteraction(test, idxM[0], idxG[1])
 
 
@@ -236,7 +200,80 @@ def findRelation(mirnaHit, hgncHit, sentDB):
     return None
 
 
-def findCooccurrences( pubmed, hgncHits, mirnaHits, sentDB ):
+def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
+
+    sentence = sentDB.get_sentence( mirnaHit.documentID )
+    (textBefore, textBetween, textAfter, hitOrder) = sentence.extract_text(mirnaHit.position, hgncHit.position)
+
+
+    detRelations = relHits.getHitsForDocument(mirnaHit.documentID.docID)
+
+    if detRelations == None or len(detRelations) == 0:
+        return None
+
+    sentHits = []
+    for rel in detRelations:
+        if rel.documentID == mirnaHit.documentID:
+            sentHits.append(rel)
+
+
+    negatedSentence = any([x in sentence.text for x in ['not', 'n\'t', 'nega']])
+
+    allRelations = []
+
+    for rel in sentHits:
+        assocDir = None
+        assocType = None
+        assocWord = None
+        assocSent = None
+        assocDirRel = None
+
+        if mirnaHit.position[0] < hgncHit.position[0]:
+            assocDir = 'MG'
+
+            if rel.position[0] < mirnaHit.position[0]:
+                assocDirRel = 'V'+assocDir
+            elif hgncHit.position[0] < rel.position[0]:
+                assocDirRel = assocDir + 'V'
+            else:
+                assocDirRel = 'MVG'
+
+        else:
+            assocDir = 'GM'
+
+            if rel.position[0] < hgncHit.position[0]:
+                assocDirRel = 'V'+assocDir
+            elif mirnaHit.position[0] < rel.position[0]:
+                assocDirRel = assocDir + 'V'
+            else:
+                assocDirRel = 'GVM'
+
+        assocSent = str(mirnaHit.documentID)
+        assocWord = rel.synonym.id
+
+        assocType = relationSyns.synid2class[rel.synonym.id]
+
+        allRelations.append(
+            (
+                assocDir,
+                assocDirRel,
+                assocType,
+                assocWord,
+                assocSent,
+                negatedSentence,
+                mirnaHit.position,
+                hgncHit.position,
+                rel.position
+            )
+        )
+
+
+    return allRelations
+
+
+
+
+def findCooccurrences( pubmed, hgncHits, mirnaHits, sentDB, relHits ):
 
     def checkSynHit(synhit):
         if len(synhit.foundSyn) <= 5:
@@ -317,13 +354,14 @@ def findCooccurrences( pubmed, hgncHits, mirnaHits, sentDB ):
                     foundCooc.mirnaFound = outstr
 
                 except:
-                    print("cannot parse mirna ", x.synonym.syns[idx])
 
-                    sys.stderr.write("cannot parse mirna: " + x.synonym.syns[idx])
+
+                    #sys.stderr.write("cannot parse mirna: " + x.synonym.syns[idx])
 
                     if __debug__:
-                        miRNA(x.synonym.syns[idx])
-                        exit(-1)
+                        pass
+                        #miRNA(x.synonym.syns[idx])
+                        #exit(-1)
 
                     foundCooc.mirnaFound = None
 
@@ -337,10 +375,6 @@ def findCooccurrences( pubmed, hgncHits, mirnaHits, sentDB ):
                         foundCooc.mirnaFound = outstr
                         break
 
-            if True and pubmed == '21682933':
-                print(pubmed)
-
-
             miRNALoc = mirnaToSent[x]
             hgncLoc = hgncToSent[y]
 
@@ -350,7 +384,7 @@ def findCooccurrences( pubmed, hgncHits, mirnaHits, sentDB ):
                 if miRNALoc[1] == hgncLoc[1]:
                     foundCooc.sameSentence = True
 
-                    foundCooc.relation = findRelation(x,y, sentDB)
+                    foundCooc.relation = findRelationBySyns(x,y, sentDB, relHits)
 
             allCoocs.append(foundCooc)
 
@@ -360,8 +394,8 @@ idTuple2Pubmed = defaultdict(set)
 orgmirDB = ORGMIRDB(dataDir + "/miRExplore/orgmir.tsv")
 
 
-allfiles = glob.glob(resultBase + "/hgnc/pubmed18n*.index")
-allfileIDs = [int(os.path.basename(x).replace('pubmed18n', '').replace('.index','')) for x in allfiles]
+allfiles = glob.glob(resultBase + "/hgnc/*.index")
+allfileIDs = [os.path.basename(x).replace(".index", "") for x in allfiles]
 allfileIDs = sorted(allfileIDs, reverse=True)
 
 #allfileIDs = [894]
@@ -374,11 +408,12 @@ def analyseFile(splitFileIDs, env):
 
     for splitFileID in splitFileIDs:
 
-        fileID = "{:>4}".format(splitFileID).replace(" ", "0")
 
-        hgncFile = resultBase + "/hgnc/pubmed18n"+fileID+".index"
-        mirnaFile = resultBase + "/mirna/pubmed18n"+fileID+".index"
-        sentFile = "/mnt/c/dev/data/pubmed/pubmed18n" + fileID + ".sent"
+        hgncFile = resultBase + "/hgnc/"+splitFileID +".index"
+        mirnaFile = resultBase + "/mirna/"+splitFileID +".index"
+        relFile = resultBase + "/relations/" + splitFileID + ".index"
+
+        sentFile = "/mnt/c/dev/data/pmc/allsent/"+splitFileID +".sent"
 
         mirnaHits = SyngrepHitFile(mirnaFile, mirnaSyns)
         if len(mirnaHits) == 0:
@@ -388,9 +423,12 @@ def analyseFile(splitFileIDs, env):
         if len(hgncHits) == 0:
             continue
 
+        relHits = SyngrepHitFile(relFile, relSyns)
+
+
         sentDB = SentenceDB(sentFile)
 
-        sys.stderr.write("Found something in: " + str(fileID) + "\n")
+        sys.stderr.write("Found something in: " + str(splitFileID) + "\n")
 
         for docID in mirnaHits:
 
@@ -403,89 +441,9 @@ def analyseFile(splitFileIDs, env):
                 #    [print(x.synonyme) for x in hgncSynHits]
                 #    [print(x.synonyme) for x in mirnaSynHits]
 
-                foundCoocs = findCooccurrences(str(docID), hgncSynHits, mirnaSynHits, sentDB)
+                foundCoocs = findCooccurrences(str(docID), hgncSynHits, mirnaSynHits, sentDB, relHits)
 
                 fileCoocs += foundCoocs
-
-
-
-                assocByGene = defaultdict(set)
-                for x in foundCoocs:
-
-                    geneID = x.gene
-                    geneLabel = 'GENE'
-                    mirnaID = x.mirna
-                    mirnaLabel = x.idtype
-
-                    assoc= (geneID, geneLabel, mirnaID, mirnaLabel)
-                    assocByGene[assoc[0]].add(assoc)
-
-                addDocAsEvidence = False
-                assocByTypeForGene = {}
-                for gene in assocByGene:
-                    assocs = assocByGene[gene]
-
-                    mimatSet = set()
-                    miSet = set()
-                    orgmirSet = set()
-                    familySet = set()
-
-                    for assoc in assocs:
-                        if assoc[3] == 'MIRNA':
-                            mimatSet.add(assoc)
-                        elif assoc[3] == 'MIRNA_PRE':
-                            miSet.add(assoc)
-                        elif assoc[3] == 'MIRNA_ORGMIR':
-                            orgmirSet.add(assoc)
-                        elif assoc[3] == 'MIRNA_FAMILY':
-                            familySet.add(assoc)
-                        else:
-                            print("Unknown relation in doc: " + docID)
-                            print(assoc)
-
-                    if len(mimatSet) > 0 or len(miSet) > 0 or len(orgmirSet) > 0 or len(familySet) > 0:
-
-                        assocByTypeForGene[gene] = (mimatSet, miSet, orgmirSet, familySet)
-
-                    #filter assocs here such that if a taxid specific version was found, not the general version is added
-                if len(assocByTypeForGene) > 0:
-
-                    if db:
-                        db.createNodeIfNotExists(['EVIDENCE', 'PUBMED'], {'id': docID})
-                        print("Adding: " + str(docID) + ": " + str(assocByTypeForGene))
-                    #
-                    # TODO first create all unique edges
-                    # TODO add genes to mirna edges and mirnas to gene edges to keep track from where an edge originates
-                    # TODO edges should get weights = how many relations have been found
-                    #
-
-                    mirnaEdges = defaultdict(set)
-                    geneEdges = defaultdict(set)
-
-
-                    for gene in assocByTypeForGene:
-                        assocsForGene = assocByTypeForGene[gene] # (mimatSet, miSet, orgmirSet, familySet)
-
-                        for subSet in assocsForGene:
-                            for cooc in subSet:
-
-                                geneEdges[ (cooc[0], cooc[1]) ].add( (cooc[2], cooc[3]) )
-                                mirnaEdges[(cooc[2], cooc[3])].add(  (cooc[0], cooc[1]) )
-
-                    for edge in geneEdges:
-
-                        edgeMirnas = [x[0] for x in geneEdges[edge]]
-
-                        if db:
-                            db.createRelationship('gene', [edge[1]], {'id': edge[0]}, 'pmid', ['PUBMED'], {'id': docID},
-                                              ['ST_MENTION'], {'type': 'GENE_MENTION', 'mirnas': edgeMirnas})
-
-                    for edge in mirnaEdges:
-
-                        edgeGenes = [x[0] for x in mirnaEdges[edge]]
-                        if db:
-                            db.createRelationship('pmid', ['PUBMED'], {'id': docID}, 'mi', [edge[1]], {'id': edge[0]},
-                                              ['ST_MENTION'], {'type': 'MIRNA_MENTION', 'genes': edgeGenes})
 
 
     sys.stderr.write("Found {cnt} elems in files {ids}\n".format(cnt=str(len(fileCoocs)), ids=str(splitFileIDs)))

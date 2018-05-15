@@ -73,14 +73,19 @@ class miRNA:
 
         return default
 
-    def getStringFromParts(self, partsList):
+    def getStringFromParts(self, partsList, normalized=False):
 
         collectedParts = []
 
         for part in partsList:
 
             if part in self.parts:
-                collectedParts.append(self.parts[part])
+
+                if normalized and part == miRNAPART.MATURE and self.parts[part].upper() in ['MIR', 'MIRNA', 'MICRORNA']:
+                    collectedParts.append('miR')
+                else:
+
+                    collectedParts.append(self.parts[part])
 
         return "-".join(collectedParts)
 
@@ -132,7 +137,7 @@ class miRNA:
         matureSeqStr = self.parts[miRNAPART.MATURE_SEQS] if miRNAPART.MATURE_SEQS in partsList and miRNAPART.MATURE_SEQS in self.parts else ''
         armStr = self.parts[miRNAPART.ARM] if miRNAPART.ARM in partsList and miRNAPART.ARM in self.parts else ''
 
-        matureValues = ['mir', 'miR', 'MiR', 'Mir']
+        matureValues = ['miR','mir', 'MiR', 'Mir']
 
         createdVersions = []
 
@@ -176,6 +181,19 @@ class miRNA:
 
         return True
 
+
+    def normalized_str(self):
+
+        thisElems = {}
+        for x in self.parts:
+            thisElems[x] = self.parts[x]
+
+            if x == miRNAPART.MATURE and thisElems[x].upper() in ['MIR', 'MIRNA']:
+                thisElems[x] = 'miR'
+
+
+        return '-'.join([str(thisElems) for x in thisElems])
+
     def __str__(self):
         return '-'.join([str(self.parts[x]) for x in self.parts])
 
@@ -192,6 +210,18 @@ class miRNA:
             self.idx2part[part.value[1]] = part
 
         amirna = mirnaStr.split("-")
+
+        if len(amirna) == 1:
+
+            for abbrev in ['MIR', 'MICRORNA', 'MIRNA']:
+
+                abbrevLen = len(abbrev)
+
+                if amirna[0].upper().startswith(abbrev) and len(amirna[0]) > abbrevLen and amirna[0][abbrevLen].isdigit():
+                    origval = amirna[0]
+
+                    amirna[0] = abbrev
+                    amirna.append(origval[abbrevLen:])
 
         self.validMature = ['MIR', 'LET']
 
@@ -360,6 +390,8 @@ if __name__ == '__main__':
 
         print(testMirna.accept("miR-126"))
 
+
+    testMIRNA('miRUS')
 
     testMIRNA('hsa-miR-126a-1-3p')
 

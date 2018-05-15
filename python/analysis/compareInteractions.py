@@ -53,6 +53,12 @@ if __name__ == '__main__':
 
     }
 
+    ti = 0
+    for x in interactions:
+        ti += len(interactions[x])
+
+    print("Total Interactions", ti)
+
     for gene in interactions:
 
         mirlist = interactions[gene]
@@ -65,25 +71,46 @@ if __name__ == '__main__':
 
 
     graphConnections = defaultdict(list)
-    with open('/tmp/mirtex/mirel', 'r') as fin:
+    saseRels = 0
 
-        for line in fin:
 
-            if 'something' in line:
-                continue
+    def loadTextmining(path):
 
-            aline = line.split('\t')
+        global saseRels
 
-            gene = aline[0]
+        with open(path, 'r') as fin: #/tmp/mirtex/mirel_sase_new
 
-            if not gene in interactions:
-                continue
+            for line in fin:
 
-            mirna = aline[1]
-            evidences = eval(aline[3])
+                if 'something' in line:
+                    continue
 
-            for x in evidences:
-                graphConnections[(gene, mirna)].append(('PUBMED', x[0], x[1]))
+                aline = line.split('\t')
+
+                gene = aline[0]
+
+                if not gene in interactions:
+                    continue
+
+                mirna = aline[1]
+                #evidences = eval(aline[3])
+
+                pmid = aline[3]
+                samePar = eval(aline[4])
+                sameSen = eval(aline[5])
+
+                if not sameSen:# and not samePar:
+                    continue
+
+                saseRels += 1
+
+                graphConnections[(gene, mirna)].append(('PUBMED', pmid, None))
+
+
+    loadTextmining('/tmp/mirpmc/pmc_mirel')
+    loadTextmining('/tmp/mirtex/mirel_sase_new')
+
+    print("MIREL SASE Hits", saseRels)
 
     mirecords = miRecordDB.from_xslx()
     for elem in mirecords.elems:
@@ -93,33 +120,37 @@ if __name__ == '__main__':
     targetscandb.make_dictionary()
 
 
+    loadMirwalk=False
+    if loadMirwalk:
 
-    mirwalk = miRWalk3DB()#.from_xslx(targetGenes=[x for x in interactions], minScore=0.95)
-    loadedElems = 0
-    for elem in mirwalk.elems:
-        if elem[0].upper() in interactions:
+        mirwalk = miRWalk3DB()  # .from_xslx(targetGenes=[x for x in interactions], minScore=0.95)
+        loadedElems = 0
 
-            tsres = targetscandb.gene2mirnas[elem[0].upper()]
+        for elem in mirwalk.elems:
 
-            accept = False
-            if tsres == None or len(tsres) == 0:
-                accept=True
+            if elem[0].upper() in interactions:
 
-            else:
-                mirwalk_mirna = miRNA(elem[1].replace('hsa-', '').replace('mmu-', ''))
+                tsres = targetscandb.gene2mirnas[elem[0].upper()]
 
-                for tselem in tsres:
-                    if mirwalk_mirna.accept(tselem[1]):
-                        accept=True
-                        break
+                accept = False
+                if tsres == None or len(tsres) == 0:
+                    accept=True
 
-            if accept:
-                graphConnections[(elem[0].upper(), elem[1])].append(('MIRWALK', str(elem[2])))
-                loadedElems += 1
+                else:
+                    mirwalk_mirna = miRNA(elem[1].replace('hsa-', '').replace('mmu-', ''))
+
+                    for tselem in tsres:
+                        if mirwalk_mirna.accept(tselem[1]):
+                            accept=True
+                            break
+
+                if accept:
+                    graphConnections[(elem[0].upper(), elem[1])].append(('MIRWALK', str(elem[2])))
+                    loadedElems += 1
 
 
 
-    print("Loaded miRWalk 3:", len(mirwalk.elems), loadedElems)
+        print("Loaded miRWalk 3:", len(mirwalk.elems), loadedElems)
 
     pickleFile = '/home/mjoppich/chemokines.upd.graph.pickle'
     if os.path.isfile(pickleFile):
@@ -327,7 +358,7 @@ if __name__ == '__main__':
                                     "Accepted</br>"
                                     "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/?term="+x+"+"+interact.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID])+"\">Search PUBMED</a>"
                                     "</br><a href=\""+dianaLink+"\">Search DIANA</a>",
-                'PubMed': ", ".join(makeLinks(pubmedEvs, lambda lid: "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/"+lid+"\">"+lid+"</a>")),
+                'PubMed': ", ".join(makeLinks(pubmedEvs, lambda lid: "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/"+lid+"\">"+lid+"</a>" if not lid.startswith('PMC') else "<a href=\"https://www.ncbi.nlm.nih.gov/pmc/articles/"+lid+"\">"+lid+"</a>")),
                 'MIRECORD': ", ".join(makeLinks(mirecordEvs, lambda
                     lid: "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/" + lid + "\">" + lid + "</a>")),
 
@@ -343,7 +374,8 @@ if __name__ == '__main__':
     print("Additional miRNAs")
     for x in additionalInteractions:
 
-        print(x, len(additionalInteractions[x]), len(interactions[x]), additionalInteractions[x])
+        addInteracts = additionalInteractions[x]
+        print(x, len(addInteracts), len(interactions[x]), addInteracts if len(addInteracts) < 150 else [])
         totalAdditional += len(additionalInteractions[x])
 
         geneCap = x.upper()
@@ -397,7 +429,9 @@ if __name__ == '__main__':
                                     "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/?term="+x+"+"+interact.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID])+"\">Search PUBMED</a></br>"
                                     "<a href=\""+dianaLink+"\">Search DIANA</a>",
                 'PubMed': ", ".join(makeLinks(pubmedEvs, lambda
-                    lid: "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/" + lid + "\">" + lid + "</a>")),
+                    lid: "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/" + lid + "\">" + lid + "</a>" if not lid.startswith(
+                    'PMC') else "<a href=\"https://www.ncbi.nlm.nih.gov/pmc/articles/" + lid + "\">" + lid + "</a>")),
+
                 'MIRECORD': ", ".join(makeLinks(mirecordEvs, lambda
                     lid: "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/" + lid + "\">" + lid + "</a>")),
 
@@ -412,7 +446,7 @@ if __name__ == '__main__':
     print("Total Additional miRNAs", totalAdditional)
 
 
-    missingDF.export("/mnt/c/ownCloud/data/miRExplore/overview_weber_tmn.xlsx", ExportTYPE.XLSX)
-    linkedDF.export("/mnt/c/ownCloud/data/miRExplore/overview_weber_tmn.html", ExportTYPE.HTML)
+    missingDF.export("/mnt/c/ownCloud/data/miRExplore/overview_no_mirwalk_sase.xlsx", ExportTYPE.XLSX)
+    linkedDF.export("/mnt/c/ownCloud/data/miRExplore/overview_no_mirwalk_sase.html", ExportTYPE.HTML)
 
     #CytoscapeGrapher.showGraph(graph, location=dirTemp, name='chemokines', title='Chemokines', nodeLabel=lambda x: x, edgeLabel=lambda x: '')

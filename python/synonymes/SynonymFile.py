@@ -2,12 +2,23 @@ import codecs
 from collections import OrderedDict, Counter
 
 from synonymes.Synonym import Synonym
+
+
+
 class Synfile:
 
     def __init__(self, sFileLocation):
 
         self.mSyns = {}
         self.line2syn = {}
+
+        self.synIDs = None
+        self.synIDidx = None
+
+        if sFileLocation != None:
+            self._load_file(sFileLocation)
+
+    def _load_file(self, sFileLocation):
 
         def addSyn(sLine, iLine):
 
@@ -21,9 +32,6 @@ class Synfile:
             for line in infile:
                 addSyn(line, idx)
                 idx += 1
-
-        self.synIDs = None
-        self.synIDidx = None
 
     def __iter__(self):
 
@@ -76,3 +84,36 @@ class Synfile:
             synOrdered = OrderedDict(sorted(synCounter.items(), key=lambda x: x[1]))
 
         return synOrdered
+
+
+class AssocSynfile(Synfile):
+
+    def __init__(self, path):
+        super().__init__(None)
+
+        self.synid2class = {}
+        self.synline2class = {}
+
+        self._load_file(path)
+
+    def _load_file(self, sFileLocation):
+        def addSyn(sLine, iLine):
+
+            aline = sLine.strip().split(",")
+
+            regClass = aline[0]
+            sLine = aline[1]
+
+            oSyn = Synonym.parseFromLine(sLine)
+
+            self.mSyns[oSyn.id] = oSyn
+            self.line2syn[iLine] = oSyn.id
+
+            self.synid2class[oSyn.id] = regClass
+            self.synline2class[iLine] = regClass
+
+        with codecs.open(sFileLocation, 'r', 'latin1') as infile:
+            idx = 0
+            for line in infile:
+                addSyn(line, idx)
+                idx += 1
