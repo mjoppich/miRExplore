@@ -394,87 +394,40 @@ export interface QueryResultState {
         var allEvs = allInfo['evidences'];
         var evStuff = [];
 
+        var sortedEvs = allEvs.sort((lev, rev) => {
+            if ((lev['data_source'] == 'pmid') && (rev['data_source'] != 'pmid'))
+            {
+                return -1;
+            } else if ((lev['data_source'] == 'pmid') && (rev['data_source'] == 'pmid'))
+            {
+                return 0;
+            } else  if ((lev['data_source'] != 'pmid') && (rev['data_source'] == 'pmid'))
+            {
+                return 1;
+            }
+
+            return 1;
+        }).reverse();
+
         for (var i = 0; i < allEvs.length; ++i)
         {
 
             let tev = allEvs[i];
 
-            tev['mirna'] = allInfo['mirna']
-            tev['gene'] = allInfo['gene']
-
-            var relDirection;
-            if (tev['rel_direction_verb'] != null)
+            if (tev['data_source'] == 'pmid')
             {
-                relDirection = tev['rel_direction_verb'];
-            } else {
-                relDirection = tev['rel_direction'];
+                var infoRows =this.prepareInfoRowPubmed(tev, evStuff.length, allInfo['mirna'], allInfo['gene'], "");
+                evStuff = evStuff.concat(infoRows);
+            } else if (tev['data_source'] == 'mirecords')
+            {
+                var infoRows =this.prepareInfoRowMirecords(tev, evStuff.length, allInfo['mirna'], allInfo['gene'], "");
+                evStuff = evStuff.concat(infoRows);
+            } else if(tev['data_source'] == 'miRTarBase')
+            {
+                var infoRows =this.prepareInfoRowMirTarBase(tev, evStuff.length, allInfo['mirna'], allInfo['gene'], "");
+                evStuff = evStuff.concat(infoRows);
             }
 
-            var relNegated = "";
-            if (tev['rel_negated'] == true)
-            {
-                relNegated = ", negated";
-            }
-
-            var relLocation = ""
-            
-            if (tev['rel_sentence'] != null)
-            {
-                relLocation = tev['rel_sentence'] + " (same sentence)";
-            } else {
-                if (tev['same_paragraph'])
-                {
-                    relLocation = "same paragraph";
-                }
-            }
-
-
-            var infoRow = <tr key={evStuff.length}>
-                            <td>{tev['rel_verb']}, {tev['rel_category']}</td>
-                            <td>{relDirection + relNegated}</td>
-                            <td>{relLocation}</td>
-                            <td>{}</td>
-                            <td rowSpan={2}>
-                            <FlatButton label="Accept REL" onClick={() => self.reportEvidence(tev, true)} icon={<CheckIcon/>}/>
-                            <FlatButton label="Disagree REL" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/>
-
-                            </td>
-                            </tr>
-
-            evStuff.push(infoRow);
-
-            var tevHighlights = [];
-
-            if (tev['rel_pos'] != null)
-            {
-                tevHighlights.push([
-                    tev['rel_pos'][0],
-                    tev['rel_pos'][1],
-                    "green"
-                ])
-            }
-
-            if (tev['lpos'] != null)
-            {
-                tevHighlights.push([
-                    tev['lpos'][0],
-                    tev['lpos'][1],
-                    "blue"
-                ])
-            }
-
-            if (tev['rpos'] != null)
-            {
-                tevHighlights.push([
-                    tev['rpos'][0],
-                    tev['rpos'][1],
-                    "red"
-                ])
-            }
-
-
-            var sentRow = <tr key={evStuff.length}><td colSpan={4}>{this.highlightedText(tev['sentence'], tevHighlights)}</td></tr>
-            evStuff.push(sentRow);
 
 
         }
@@ -493,6 +446,182 @@ export interface QueryResultState {
             </table>;
 
     }
+
+    prepareInfoRowMirTarBase(tev, idx, mirna, gene, outlinkBase)
+    {
+
+        /*
+
+                        {
+                    "data_source": "mirecords",
+                    "docid": "18568019",
+                    "lid": "CXCR4",
+                    "ltype": "gene",
+                    "rid": "hsa-miR-146a",
+                    "rtype": "mirna"
+                }
+
+                */
+
+        var outRows = [];
+
+        var self=this;
+
+        var headRow = <tr key={idx}>
+        <th>Gene</th>
+        <th>miRNA</th>
+        <th>Data Source</th>
+        <th>Data Evidence</th>
+        <th rowSpan={2}>
+                    <FlatButton label="Accept Entry" onClick={() => self.reportEvidence(tev, true)} icon={<CheckIcon/>}/>
+                    <FlatButton label="Disagree Entry" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/></th>
+        </tr>
+
+        var infoRow = <tr key={idx}>
+                        <td>{tev['lid']}, {tev['ltype']}</td>
+                        <td>{tev['rid']}, {tev['rtype']}</td>
+                        <td>{tev['data_id']} ({tev['data_source']})</td>
+                        <td>{tev['docid']}</td>
+                        <td>
+                        </td>
+                      </tr>;
+
+        outRows.push(infoRow);
+
+        return outRows;
+    }
+
+    prepareInfoRowMirecords(tev, idx, mirna, gene, outlinkBase)
+    {
+
+        /*
+
+                        {
+                    "data_source": "mirecords",
+                    "docid": "18568019",
+                    "lid": "CXCR4",
+                    "ltype": "gene",
+                    "rid": "hsa-miR-146a",
+                    "rtype": "mirna"
+                }
+
+                */
+
+        var outRows = [];
+
+        var self=this;
+
+        var headRow = <tr key={idx}>
+        <th>Gene</th>
+        <th>miRNA</th>
+        <th>Data Source</th>
+        <th>Data Evidence</th>
+        <th rowSpan={2}>
+                    <FlatButton label="Accept Entry" onClick={() => self.reportEvidence(tev, true)} icon={<CheckIcon/>}/>
+                    <FlatButton label="Disagree Entry" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/></th>
+        </tr>
+
+        var infoRow = <tr key={idx}>
+                        <td>{tev['lid']}, {tev['ltype']}</td>
+                        <td>{tev['rid']}, {tev['rtype']}</td>
+                        <td>{tev['data_id']} ({tev['data_source']})</td>
+                        <td>{tev['docid']}</td>
+                        <td>
+                        </td>
+                      </tr>;
+
+        outRows.push(infoRow);
+
+        return outRows;
+    }
+
+    prepareInfoRowPubmed(tev, idx, mirna, gene, outlinkBase)
+    {
+
+        var outRows = [];
+
+        var self=this;
+
+        tev['mirna'] = mirna;
+        tev['gene'] = gene;
+
+        var relDirection;
+        if (tev['rel_direction_verb'] != null)
+        {
+            relDirection = tev['rel_direction_verb'];
+        } else {
+            relDirection = tev['rel_direction'];
+        }
+
+        var relNegated = "";
+        if (tev['rel_negated'] == true)
+        {
+            relNegated = ", negated";
+        }
+
+        var relLocation = ""
+        
+        if (tev['rel_sentence'] != null)
+        {
+            relLocation = tev['rel_sentence'] + " (same sentence)";
+        } else {
+            if (tev['same_paragraph'])
+            {
+                relLocation = "same paragraph";
+            }
+        }
+
+
+        var infoRow = <tr key={idx}>
+                        <td>{tev['rel_verb']}, {tev['rel_category']}</td>
+                        <td>{relDirection + relNegated}</td>
+                        <td>{relLocation}</td>
+                        <td>{}</td>
+                        <td rowSpan={2}>
+                        <FlatButton label="Accept REL" onClick={() => self.reportEvidence(tev, true)} icon={<CheckIcon/>}/>
+                        <FlatButton label="Disagree REL" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/>
+
+                        </td>
+                        </tr>;
+
+        outRows.push(infoRow);
+
+        var tevHighlights = [];
+
+        if (tev['rel_pos'] != null)
+        {
+            tevHighlights.push([
+                tev['rel_pos'][0],
+                tev['rel_pos'][1],
+                "green"
+            ])
+        }
+
+        if (tev['lpos'] != null)
+        {
+            tevHighlights.push([
+                tev['lpos'][0],
+                tev['lpos'][1],
+                "blue"
+            ])
+        }
+
+        if (tev['rpos'] != null)
+        {
+            tevHighlights.push([
+                tev['rpos'][0],
+                tev['rpos'][1],
+                "red"
+            ])
+        }
+
+        var sentRow = <tr key={idx+1}><td colSpan={4}>{this.highlightedText(tev['sentence'], tevHighlights)}</td></tr>
+
+        outRows.push(sentRow);
+
+        return outRows;
+
+}
 
     reportEvidence(ev, accept)
     {

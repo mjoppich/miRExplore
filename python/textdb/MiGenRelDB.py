@@ -2,8 +2,10 @@ from collections import defaultdict
 
 import os
 
+from textdb.AbstractDBClasses import DataBaseRel, DataBaseDescriptor
 
-class MiRGeneRel:
+
+class MiRGeneRel(DataBaseRel):
 
     def __init__(self, intuple, docid, sameParagraph, sameSentence, lent, rent, datasource, dataID):
 
@@ -17,11 +19,8 @@ class MiRGeneRel:
         self.rPOS = None
         self.assocPos = None
 
-        self.ltype=lent[1]
-        self.rtype=rent[1]
-
-        self.lid = lent[0]
-        self.rid = rent[0]
+        self.lent=lent
+        self.rent=rent
 
         self.data_source=datasource
         self.data_id = dataID
@@ -38,16 +37,29 @@ class MiRGeneRel:
             self.lPOS = intuple[7]
             self.assocPos = intuple[8]
 
-        self.docid = docid
+        self.pubID = docid
         self.same_sentence = sameSentence
         self.same_paragraph = sameParagraph
 
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+    @property
+    def lid(self):
+        return self.lent[0]
 
-    def __hash__(self):
+    @property
+    def rid(self):
+        return self.rent[0]
 
-        return hash(tuple([(x, self.__dict__[x]) for x in sorted(self.__dict__)]))
+    @property
+    def ltype(self):
+        return self.lent[1]
+
+    @property
+    def rtype(self):
+        return self.rent[1]
+
+    @property
+    def docid(self):
+        return self.pubID
 
 
     def toJSON(self):
@@ -74,82 +86,27 @@ class MiRGeneRel:
             'data_id': self.data_id
         }
 
-class MiGenRelDB:
+class MiGenRelDB(DataBaseDescriptor):
 
 
     def __init__(self, ltype, rtype):
 
-        self.ltype = ltype
-        self.rtype = rtype
+        super().__init__()
 
-        self.ltype2rel = defaultdict(set)
-        self.rtype2rel = defaultdict(set)
+        self.ltyped = ltype
+        self.rtyped = rtype
 
-        self.all_ltypes = set()
-        self.all_rtypes = set()
+    @property
+    def ltype(self):
+        return self.ltyped
 
-    def get_evidence_docids(self):
+    @property
+    def rtype(self):
+        return self.rtyped
 
-        docIDs = set()
-
-        for lid in self.ltype2rel:
-            for ev in self.ltype2rel[lid]:
-                docIDs.add(ev.docid)
-
-        return docIDs
-
-    def get_rels(self, etype, eid):
-
-        if etype == self.ltype:
-            return self.get_lid_rels(eid)
-        elif etype == self.rtype:
-            return self.get_rid_rels(eid)
-
-        return None
-
-    def get_lid_rels(self, geneID):
-        return self.ltype2rel.get(geneID, None)
-
-    def get_rid_rels(self, mirnaID):
-        return self.rtype2rel.get(mirnaID, None)
 
     @classmethod
     def loadFromFile(cls, filepath, ltype='gene', rtype='mirna'):
-
-
-        def harmonizeMIRNA(mirna):
-            """
-
-            :param mirna:
-            :return: tries to return a normalized name ...
-
-            9761 microRNA
-           7958 MicroRNA
-           2311 MiRNA
-           2191 miRNA
-           1844 hsa
-           1440 let
-            578 miRNAS
-            437 MICRORNA
-            299 microRNAS
-            256 MIRNA
-            155 mmu
-            125 Micro
-            116 micro
-            """
-
-            possibleStarts = ['microRNA', 'MicroRNA', 'MiRNA', 'miRNA', 'MICRORNA', 'microRNA', 'MIRNA']
-
-
-            for x in possibleStarts:
-
-                if mirna.startswith(x +"-"):
-                    mirna = mirna.replace(x, "miR", 1)
-                    break
-
-            return mirna
-
-
 
 
         ret = MiGenRelDB(ltype, rtype)
@@ -168,7 +125,7 @@ class MiGenRelDB:
 
                 lid = aline[0]
                 rid = aline[1]
-                rid = harmonizeMIRNA(rid)
+                (org, rid) = cls.harmonizeMIRNA(rid)
 
                 docid = aline[3]
 

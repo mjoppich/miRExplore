@@ -9,6 +9,7 @@ import time
 from nertoolkit.geneontology.GeneOntology import GeneOntology
 
 from textdb.MiGenRelDB import MiGenRelDB
+from textdb.MirTarBaseDB import MirTarBaseDB
 from textdb.PMID2PMCDB import PMID2PMCDB
 from textdb.PMID2XDB import PMID2XDB
 from textdb.SentenceDB import SentenceDB
@@ -34,17 +35,20 @@ CORS(app)
 app.config['DEBUG'] = False
 app.config['UPLOAD_FOLDER'] = ""
 
+miRExploreBase = '/mnt/c/ownCloud/data/miRExplore/'
+pmidBase = '/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmid/'
+pmcBase = '/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmc/'
+
 print("Loading Interactions")
 
 #allInteractions = defaultdict(list)
 
 recordsDB = miRecordDB.from_xslx()
+mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=miRExploreBase+"/miRTarBase.csv")
+
 #for elem in mirecords.elems:
 #    allInteractions[(elem[0].upper(), elem[1])].append(('MIRECORD', elem[2]))
 
-miRExploreBase = '/mnt/c/ownCloud/data/miRExplore/'
-pmidBase = '/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmid/'
-pmcBase = '/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmc/'
 
 allDBS = None
 
@@ -57,7 +61,7 @@ lncMirPMID = MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype=
 geneLncPMID = MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
 
 
-relDBs = [mirelPMID, lncMirPMID, geneLncPMID, recordsDB]
+relDBs = [recordsDB, mirtarbaseDB, mirelPMID, lncMirPMID, geneLncPMID]
 
 print(datetime.datetime.now(), "Finished mirel")
 
