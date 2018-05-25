@@ -5,6 +5,8 @@ import sys
 import glob
 import os
 
+import spacy
+
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 
@@ -25,6 +27,9 @@ from textmining.SyngrepHitFile import SyngrepHitFile
 
 from utils.parallel import MapReduce
 from enum import Enum
+
+nlp = spacy.load('en')  # create blank Language class
+
 
 class Cooccurrence:
 
@@ -72,7 +77,7 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
     sentHits = relHits[str(mirnaHit.documentID)]
 
     sentence = sentDB.get_sentence(mirnaHit.documentID)
-    (textBefore, textBetween, textAfter, hitOrder) = sentence.extract_text(mirnaHit.position, hgncHit.position)
+    #(textBefore, textBetween, textAfter, hitOrder) = sentence.extract_text(mirnaHit.position, hgncHit.position)
 
     negatedSentence = any([x in sentence.text for x in ['not', 'n\'t', 'nega']])
 
@@ -80,7 +85,62 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
 
     if len(sentHits) > 0:
 
+        doc = nlp(sentence.text)
+        alldeps = [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]
+        verbDeps = [x for x in alldeps if x[3] == 'VERB']
+
+        assocRelDeps = []
+
         for rel in sentHits:
+
+            for dep in verbDeps:
+
+                if rel.position[0] <= dep[0] and dep[0]+len(dep[1]) <= rel.position[1]:
+
+                    if dep[3] == 'VERB':
+                        assocDep = dep
+                        assocRel = rel
+
+                        assocRelDeps.append((assocRel, assocDep))
+
+                        break
+
+
+        depHits = []
+
+        if len(assocRelDeps) != 0:
+
+            curDist = len(sentence.text) + 1
+            curRel = None
+            for reldep in assocRelDeps:
+
+                relDist = abs(reldep[0].position[0] - mirnaHit.position[0])
+                if relDist < curDist:
+                    curDist = relDist
+                    curRel = reldep
+
+            if curRel != None:
+                depHits = [curRel[0]]
+                discoveredBy = "spacy"
+
+
+        elif len(assocRelDeps) == 0 or len(depHits) == 0:
+
+            curDist = len(sentence.text)+1
+            curRel = None
+            for rel in sentHits:
+
+                relDist = abs(rel.position[0]-mirnaHit.position[0])
+                if relDist < curDist:
+                    curDist = relDist
+                    curRel = rel
+                    depHits = [curRel]
+
+                    discoveredBy = "all_rels"
+
+
+
+        for rel in depHits:
             assocDir = None
             assocType = None
             assocWord = None
@@ -122,7 +182,8 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
                     negatedSentence,
                     mirnaHit.position,
                     hgncHit.position,
-                    rel.position
+                    rel.position,
+                    discoveredBy
                 )
             )
 
@@ -144,6 +205,7 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
                 negatedSentence,
                 mirnaHit.position,
                 hgncHit.position,
+                None,
                 None
             )
         )
@@ -281,8 +343,8 @@ def analyseFile(splitFileIDs, env):
 
     for splitFileID in splitFileIDs:
 
-        hgncFile = resultBase + "/hgnc/" + splitFileID + ".index"
-        mirnaFile = resultBase + "/mirna/" + splitFileID + ".index"
+        hgncFile = resultBase + "/"+args.folderG+"/" + splitFileID + ".index"
+        mirnaFile = resultBase + "/"+args.folderM+"/" + splitFileID + ".index"
         relFile = resultBase + "/relations/" + splitFileID + ".index"
 
         sentFile = args.sentdir + "/" + splitFileID + ".sent"
@@ -319,9 +381,12 @@ def analyseFile(splitFileIDs, env):
 
     printed = printStuff(None, fileCoocs, None)
 
-    sys.stderr.write("Found {cnt} (printed: {printed}) elems in files {ids}\n".format(cnt=str(len(fileCoocs)),
-                                                                                      ids=str(splitFileIDs),
-                                                                                      printed=printed))
+    thisProcID = str(os.getpid())
+    sys.stderr.write("{procID}: Found {cnt} (printed: {printed}) elems in files {ids}\n".format(
+        cnt=str(len(fileCoocs)),
+        ids=str(splitFileIDs),
+        printed=printed,
+        procID=thisProcID))
 
     return None
 
@@ -333,16 +398,20 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--resultdir', type=str, help='where are all the index-files?', required=True)
     parser.add_argument('-d', '--datadir', type=str, help='where is te miRExplore bsae?', required=True)
 
+    parser.add_argument('-f1', '--folderM', type=str, help='where is te miRExplore bsae?', default="mirna", required=False)
+    parser.add_argument('-f2', '--folderG', type=str, help='where is te miRExplore bsae?', default="hgnc", required=False)
+
+
     args = parser.parse_args()
 
     #resultBase = dataDir + "/miRExplore/textmine/results_pmc/"
     resultBase = args.resultdir
     dataDir = args.datadir
 
-    mirnaSyns = SynfileMap(resultBase + "/mirna/synfile.map")
+    mirnaSyns = SynfileMap(resultBase + "/"+args.folderM+"/synfile.map")
     mirnaSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
 
-    hgncSyns = SynfileMap(resultBase + "/hgnc/synfile.map")
+    hgncSyns = SynfileMap(resultBase + "/"+args.folderG+"/synfile.map")
     hgncSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
 
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
@@ -354,13 +423,13 @@ if __name__ == '__main__':
     idTuple2Pubmed = defaultdict(set)
     orgmirDB = ORGMIRDB(dataDir + "/miRExplore/orgmir.tsv")
 
-    allfiles = glob.glob(resultBase + "/hgnc/*.index")
+    allfiles = glob.glob(resultBase + "/"+args.folderG+"/*.index")
     allfileIDs = [os.path.basename(x).replace(".index", "") for x in allfiles]
     allfileIDs = sorted(allfileIDs, reverse=True)
 
 
     # allfileIDs = [894]
-    threads = 6
+    threads = 4
 
     if __debug__:
         threads = 1

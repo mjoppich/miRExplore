@@ -43,6 +43,9 @@ class PMID2PMCDB:
 
                 aline = line.split('\t')
 
+                if len(aline) < 2:
+                    continue
+
                 pmid = aline[0]
                 pmc = aline[1]
 

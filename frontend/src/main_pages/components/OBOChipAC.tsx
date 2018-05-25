@@ -10,11 +10,11 @@ interface IEntityElement {
     group: string;
  }
 
-export interface EntityChipACProps { onValueChange: any};
-export interface EntityChipACState { values: Array<string>, datasource: Array<string>, selected_elements: Array<IEntityElement>, elements: Array<IEntityElement>};
+export interface OboChipACProps { url: string, floatText:string, hintText: string, onValueChange: any};
+export interface OboChipACState { values: Array<string>, datasource: Array<string>, selected_elements: Array<IEntityElement>, elements: Array<IEntityElement>};
 
 
-export default class EntityChipAC extends React.Component<EntityChipACProps, EntityChipACState>{
+export default class OboChipAC extends React.Component<OboChipACProps, OboChipACState>{
 
     neo4jd3: any = null;
 
@@ -89,11 +89,11 @@ export default class EntityChipAC extends React.Component<EntityChipACProps, Ent
 
     }
 
-    handleOrganismAC(searchText)
+    handleAutoComplete(searchText)
     {
         var self = this;
 
-        axios.post(config.getRestAddress() + "/autocomplete", {search: searchText}, config.axiosConfig)
+        axios.post(config.getRestAddress() + "/" + this.props.url, {search: searchText}, config.axiosConfig)
         .then(function (response) {
             console.log(response.data)
 
@@ -125,9 +125,9 @@ export default class EntityChipAC extends React.Component<EntityChipACProps, Ent
                             dataSource={this.state.datasource}
                             fullWidth
                             fullWidthInput
-                            floatingLabelText='Gene Symbol or miRNA'
-                            hintText='Gene Symbol or miRNA'
-                            onUpdateInput={(searchText, dataSource, params) => this.handleOrganismAC(searchText)}
+                            floatingLabelText={this.props.floatText}
+                            hintText={this.props.hintText}
+                            onUpdateInput={(searchText, dataSource, params) => this.handleAutoComplete(searchText)}
                         />
 
         )

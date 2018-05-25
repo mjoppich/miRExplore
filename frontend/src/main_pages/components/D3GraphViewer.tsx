@@ -68,7 +68,7 @@ export default class D3Neo4JViewer extends React.Component<D3Neo4JViewerProps, D
 
         var self = this;
 
-        var domNode = ReactDOM.findDOMNode(this.refs.graph);
+        var domNode = ReactDOM.findDOMNode(this.refs.graph) as HTMLElement;
 
         while (domNode.firstChild)
         {

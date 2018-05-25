@@ -25,13 +25,22 @@ class CytoscapeGrapher:
 
         graphNodes = []
 
-        for node in graph.nodes():
+        for (node, nodeAttr) in graph.nodes(data=True):
 
             nodeName = nodeLabel(node)
             nodeColor = '#555555'
             nodeId = str(node)
 
-            graphNodes.append({'id': nodeId,'name': nodeName,'color': nodeColor})
+            plotAttr = {'id': nodeId,'name': nodeName, 'color': nodeColor, "size": 20}
+
+            if 'color' in nodeAttr:
+                plotAttr['color'] = nodeAttr['color']
+
+            if 'size' in nodeAttr:
+                plotAttr['size'] = nodeAttr['size']
+
+
+            graphNodes.append(plotAttr)
 
         graphEdges = []
         for edge in graph.edges():

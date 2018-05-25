@@ -91,7 +91,7 @@ name: 'cose',
   nodeRepulsion: function( node ){ return 400000; },
 
   // Node repulsion (overlapping) multiplier
-  nodeOverlap: 10,
+  nodeOverlap: 100,
 
   // Ideal edge (non nested) length
   idealEdgeLength: function( edge ){ return 40; },
@@ -129,7 +129,12 @@ name: 'cose',
         'text-opacity': 0.5,
         'text-valign': 'center',
         'text-halign': 'right',
-        'background-color': 'data(color)'
+        'background-color': 'data(color)',
+        'width': 'data(size)',
+        'height': 'data(size)',
+        'shape': 'ellipse',
+        'text-valign': 'center',
+        'text-halign': 'center'
       }
     },
 
@@ -149,7 +154,7 @@ elements: {
  nodes: [
 
 {% for node in nodes %}
-  {data: {id: '{{node.id}}', name: '{{node.name}}', color: '{{node.color}}'}},
+  {data: {{node}}},
 {% endfor %}
 
 ], 

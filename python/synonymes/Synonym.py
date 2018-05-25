@@ -15,9 +15,14 @@ class Synonym:
 
         retSyn = Synonym(aLine[0].strip())
 
-        aSyns = aLine[1].split('|')
-        for x in [x.strip() for x in aSyns]:
-            retSyn.syns.append(x)
+
+        if len(aLine) > 1:
+            aSyns = aLine[1].split('|')
+            for x in [x.strip() for x in aSyns]:
+                retSyn.syns.append(x)
+
+        else:
+            retSyn.syns.append(aLine[0].strip())
 
         return retSyn
 

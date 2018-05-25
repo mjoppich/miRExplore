@@ -13,6 +13,10 @@ const client = {
   devtool: 'source-map',
   module: {
     rules: [
+      {
+        test: /\.css$/,
+        use: [ 'style-loader', 'css-loader' ]
+      },
       // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
       { test: /\.tsx?$/, loader: 'awesome-typescript-loader' },
 
@@ -21,7 +25,7 @@ const client = {
     ],
   },
   resolve: {
-    extensions: ['.js', '.json', '.tsx', '.ts'],
+    extensions: ['.js', '.json', '.tsx', '.ts', '.css'],
     modules: [
       path.join(__dirname, 'src'),
       'node_modules',
@@ -46,6 +50,10 @@ const server = {
   },
   module: {
     rules: [
+      {
+        test: /\.css$/,
+        use: [ 'style-loader', 'css-loader' ]
+      },
       // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
       { test: /\.tsx?$/, loader: 'awesome-typescript-loader' },
 
@@ -70,7 +78,7 @@ const server = {
     ],
   },
   resolve: {
-    extensions: ['.js', '.json', '.tsx', '.ts'],
+    extensions: ['.js', '.json', '.tsx', '.ts', '.css'],
     modules: [
       path.join(__dirname, 'src'),
       'node_modules',

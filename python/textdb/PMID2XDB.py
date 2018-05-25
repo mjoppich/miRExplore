@@ -4,35 +4,47 @@ from collections import defaultdict
 class PMID2XDB:
 
 
-    def __init__(self):
+    def __init__(self, assocObo):
 
-        self.pmid2pmc = {}
+        self.docid2info = defaultdict(list)
+        self.all_term_names = []
 
-    def hasPMC(self, pmid):
+        if assocObo != None:
 
-        if pmid in self.pmid2pmc:
+            for termid in assocObo.dTerms:
+
+                oterm = assocObo.dTerms[termid]
+                self.all_term_names.append((oterm.name, oterm.id))
+
+    def hasDOC(self, docid):
+
+        if docid in self.docid2info:
             return True
 
-        if str(pmid) in self.pmid2pmc:
+        if str(docid) in self.docid2info:
             return True
 
         return False
 
-    def getPMC(self, pmid, default=None):
+    def getDOC(self, docid, default=None):
 
-        if pmid in self.pmid2pmc:
-            return self.pmid2pmc[pmid]
+        if docid in self.docid2info:
+            return self.docid2info[docid]
 
-        if str(pmid) in self.pmid2pmc:
-            return self.pmid2pmc[str(pmid)]
+        if str(docid) in self.docid2info:
+            return self.docid2info[str(docid)]
 
         return default
 
+    def getTerms(self):
+
+        return self.all_term_names
+
     @classmethod
-    def loadFromFile(cls, filepath):
+    def loadFromFile(cls, filepath, assocObo, reqDocIDs=None):
 
 
-        ret = PMID2XDB()
+        ret = PMID2XDB(assocObo)
 
         with open(filepath, 'r') as fin:
 
@@ -44,10 +56,15 @@ class PMID2XDB:
                 aline = line.split('\t')
 
                 pmid = aline[0]
+
+                if reqDocIDs != None and not pmid in reqDocIDs:
+                    continue
+
                 termid = aline[1]
                 termname = aline[2]
 
-                loc = eval(aline[3])
+                #loc = eval(aline[3])
+                loc = aline[3]
 
 
                 info = {
@@ -58,7 +75,7 @@ class PMID2XDB:
                 }
 
 
-                ret.pmid2info[pmid].append(info)
+                ret.docid2info[pmid].append(info)
 
 
         return ret
