@@ -409,22 +409,78 @@ export interface QueryResultState {
             return 1;
         }).reverse();
 
+
+        var beforeEvType = '';
         for (var i = 0; i < allEvs.length; ++i)
         {
 
             let tev = allEvs[i];
 
+            //tev['lid'] = allInfo['lid']
+            //tev['rid'] = allInfo['rid']
+
             if (tev['data_source'] == 'pmid')
             {
-                var infoRows =this.prepareInfoRowPubmed(tev, evStuff.length, allInfo['mirna'], allInfo['gene'], "");
+
+                if (beforeEvType != 'pmid')
+                {
+                    // add header
+                    var headRow = <tr key={evStuff.length} style={{textAlign: 'left'}}>
+                        <th>Found Relation</th>
+                        <th>Verb-Model</th>
+                        <th>Evidence Location</th>
+                        <th></th>
+                        <th>DB Interaction</th>
+                    </tr>;
+            
+                    evStuff.push(headRow);
+
+                    beforeEvType = 'pmid';
+                }
+
+                var infoRows =this.prepareInfoRowPubmed(tev, evStuff.length, "");
                 evStuff = evStuff.concat(infoRows);
             } else if (tev['data_source'] == 'mirecords')
             {
-                var infoRows =this.prepareInfoRowMirecords(tev, evStuff.length, allInfo['mirna'], allInfo['gene'], "");
+                if (beforeEvType != 'mirecords')
+                {
+                    // add header
+                    var headRow = <tr key={evStuff.length}>
+                    <th>Gene</th>
+                    <th>miRNA</th>
+                    <th>Data Source</th>
+                    <th>Data Evidence</th>
+                    <th>Report</th>
+                    </tr>;
+            
+                    evStuff.push(headRow);
+
+                    beforeEvType = 'mirecords';
+                }
+
+
+                var infoRows =this.prepareInfoRowMirecords(tev, evStuff.length);
                 evStuff = evStuff.concat(infoRows);
             } else if(tev['data_source'] == 'miRTarBase')
             {
-                var infoRows =this.prepareInfoRowMirTarBase(tev, evStuff.length, allInfo['mirna'], allInfo['gene'], "");
+
+                if (beforeEvType != 'miRTarBase')
+                {
+                    // add header
+                    var headRow = <tr key={evStuff.length}>
+                    <th>Gene</th>
+                    <th>miRNA</th>
+                    <th>Data Source</th>
+                    <th>Data Evidence</th>
+                    <th>Report</th>
+                    </tr>;
+            
+                    evStuff.push(headRow);
+
+                    beforeEvType = 'miRTarBase';
+                }
+
+                var infoRows =this.prepareInfoRowMirTarBase(tev, evStuff.length);
                 evStuff = evStuff.concat(infoRows);
             }
 
@@ -434,20 +490,58 @@ export interface QueryResultState {
 
         return <table style={{ tableLayout: "auto", width: "100%"}}>
                 <tbody>
-                    <tr style={{textAlign: 'left'}}>
-                        <th>Found Relation</th>
-                        <th>Verb-Model</th>
-                        <th>Evidence Location</th>
-                        <th></th>
-                        <th>DB Interaction</th>
-                    </tr>
                     {evStuff}
                 </tbody>
             </table>;
 
     }
 
-    prepareInfoRowMirTarBase(tev, idx, mirna, gene, outlinkBase)
+    prepareInfoRowMirTarBase(tev, idx)
+    {
+
+        /*
+
+                {
+                    "data_id": "MIRT054715",
+                    "data_source": "miRTarBase",
+                    "docid": "24141785",
+                    "exp_support": [
+                        "Luciferase reporter assay",
+                        "Western blot"
+                    ],
+                    "functional_type": "Functional MTI",
+                    "lid": "CXCR4",
+                    "ltype": "gene",
+                    "organism": "Homo sapiens",
+                    "rid": "miR-miR-9-5p",
+                    "rtype": "mirna"
+                },
+
+                */
+
+        var outRows = [];
+
+        var infoRow = <tr key={idx+1}>
+                        <td>{tev['lid']} ({tev['ltype']})</td>
+                        <td>{tev['rid']} ({tev['rtype']})</td>
+                        <td><a href={"http://mirtarbase.mbc.nctu.edu.tw/php/detail.php?mirtid="+tev['data_id']}>{tev['data_id']} ({tev['data_source']})</a></td>
+                        <td>
+                            <span style={{display:"block"}}><a href={"https://www.ncbi.nlm.nih.gov/pubmed/"+tev['docid']}>{tev['docid']}</a></span>
+                            <span style={{display:"block"}}>{tev['functional_type']}</span>
+                        </td>
+                        <td>
+                            {
+                                tev['exp_support'].map((exptype, nsi) => <span key={nsi}  style={{display: "block"}}>{exptype}</span>)
+                            }
+                        </td>
+                      </tr>;
+
+        outRows.push(infoRow);
+
+        return outRows;
+    }
+
+    prepareInfoRowMirecords(tev, idx)
     {
 
         /*
@@ -467,22 +561,14 @@ export interface QueryResultState {
 
         var self=this;
 
-        var headRow = <tr key={idx}>
-        <th>Gene</th>
-        <th>miRNA</th>
-        <th>Data Source</th>
-        <th>Data Evidence</th>
-        <th rowSpan={2}>
-                    <FlatButton label="Accept Entry" onClick={() => self.reportEvidence(tev, true)} icon={<CheckIcon/>}/>
-                    <FlatButton label="Disagree Entry" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/></th>
-        </tr>
-
         var infoRow = <tr key={idx}>
                         <td>{tev['lid']}, {tev['ltype']}</td>
                         <td>{tev['rid']}, {tev['rtype']}</td>
                         <td>{tev['data_id']} ({tev['data_source']})</td>
                         <td>{tev['docid']}</td>
                         <td>
+                        <FlatButton label="Accept Entry" onClick={() => self.reportEvidence(tev, true)} icon={<CheckIcon/>}/>
+                         <FlatButton label="Disagree Entry" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/>
                         </td>
                       </tr>;
 
@@ -491,59 +577,12 @@ export interface QueryResultState {
         return outRows;
     }
 
-    prepareInfoRowMirecords(tev, idx, mirna, gene, outlinkBase)
-    {
-
-        /*
-
-                        {
-                    "data_source": "mirecords",
-                    "docid": "18568019",
-                    "lid": "CXCR4",
-                    "ltype": "gene",
-                    "rid": "hsa-miR-146a",
-                    "rtype": "mirna"
-                }
-
-                */
-
-        var outRows = [];
-
-        var self=this;
-
-        var headRow = <tr key={idx}>
-        <th>Gene</th>
-        <th>miRNA</th>
-        <th>Data Source</th>
-        <th>Data Evidence</th>
-        <th rowSpan={2}>
-                    <FlatButton label="Accept Entry" onClick={() => self.reportEvidence(tev, true)} icon={<CheckIcon/>}/>
-                    <FlatButton label="Disagree Entry" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/></th>
-        </tr>
-
-        var infoRow = <tr key={idx}>
-                        <td>{tev['lid']}, {tev['ltype']}</td>
-                        <td>{tev['rid']}, {tev['rtype']}</td>
-                        <td>{tev['data_id']} ({tev['data_source']})</td>
-                        <td>{tev['docid']}</td>
-                        <td>
-                        </td>
-                      </tr>;
-
-        outRows.push(infoRow);
-
-        return outRows;
-    }
-
-    prepareInfoRowPubmed(tev, idx, mirna, gene, outlinkBase)
+    prepareInfoRowPubmed(tev, idx, outlinkBase)
     {
 
         var outRows = [];
 
         var self=this;
-
-        tev['mirna'] = mirna;
-        tev['gene'] = gene;
 
         var relDirection;
         if (tev['rel_direction_verb'] != null)

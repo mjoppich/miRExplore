@@ -8,6 +8,7 @@ import time
 
 from nertoolkit.geneontology.GeneOntology import GeneOntology
 
+from textdb.AbstractDBClasses import DataBaseDescriptor
 from textdb.MiGenRelDB import MiGenRelDB
 from textdb.MirTarBaseDB import MirTarBaseDB
 from textdb.PMID2PMCDB import PMID2PMCDB
@@ -43,7 +44,7 @@ print("Loading Interactions")
 
 #allInteractions = defaultdict(list)
 
-recordsDB = miRecordDB.from_xslx()
+recordsDB = miRecordDB.loadFromFile()
 mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=miRExploreBase+"/miRTarBase.csv")
 
 #for elem in mirecords.elems:
@@ -75,6 +76,8 @@ print(datetime.datetime.now(), "Finished sents")
 
 requiredPMIDs = set()
 for rdb in relDBs:
+
+    assert( isinstance(rdb, DataBaseDescriptor) )
 
     for rpmid in rdb.get_evidence_docids():
         requiredPMIDs.add(rpmid)

@@ -3,30 +3,40 @@ from collections import defaultdict
 
 from openpyxl import load_workbook
 
+from textdb.AbstractDBClasses import DataBaseDescriptor, DataBaseRel
 
-class MiRecordRel:
+
+class MiRecordRel(DataBaseRel):
 
     def __init__(self, lent, rent, docid, relID):
 
-        self.ltype = lent[1]
-        self.rtype = rent[1]
-
-        self.lid = lent[0]
-        self.rid = rent[0]
+        self.lent = lent
+        self.rent = rent
 
         self.relID = relID
-        self.docid = docid
+        self.pmid = docid
 
         self.data_source='mirecords'
 
+    @property
+    def lid(self):
+        return self.lent[0]
 
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+    @property
+    def rid(self):
+        return self.rent[0]
 
-    def __hash__(self):
+    @property
+    def ltype(self):
+        return self.lent[1]
 
-        return hash(tuple([(x, self.__dict__[x]) for x in sorted(self.__dict__)]))
+    @property
+    def rtype(self):
+        return self.rent[1]
 
+    @property
+    def docid(self):
+        return self.pmid
 
     def toJSON(self):
 
@@ -40,49 +50,28 @@ class MiRecordRel:
             'data_id': self.relID
         }
 
-class miRecordDB :
+class miRecordDB(DataBaseDescriptor):
 
 
     def __init__(self, ltype, rtype):
 
-        self.ltype = ltype
-        self.rtype = rtype
+        super().__init__()
 
-        self.ltype2rel = defaultdict(set)
-        self.rtype2rel = defaultdict(set)
+        self.ltyped = ltype
+        self.rtyped = rtype
 
-        self.all_ltypes = set()
-        self.all_rtypes = set()
 
-    def get_evidence_docids(self):
+    @property
+    def ltype(self):
+        return self.ltyped
 
-        docIDs = set()
-
-        for lid in self.ltype2rel:
-            for ev in self.ltype2rel[lid]:
-                docIDs.add(ev.docid)
-
-        return docIDs
-
-    def get_rels(self, etype, eid):
-
-        if etype == self.ltype:
-            return self.get_lid_rels(eid)
-        elif etype == self.rtype:
-            return self.get_rid_rels(eid)
-
-        return None
-
-    def get_lid_rels(self, geneID):
-        return self.ltype2rel.get(geneID, None)
-
-    def get_rid_rels(self, mirnaID):
-        return self.rtype2rel.get(mirnaID, None)
-
+    @property
+    def rtype(self):
+        return self.rtyped
 
 
     @classmethod
-    def from_xslx(cls, filelocation="/mnt/c/ownCloud/data/miRExplore/miRecords/mirecords_v4.xlsx", ltype='gene', rtype='mirna'):
+    def loadFromFile(cls, filelocation="/mnt/c/ownCloud/data/miRExplore/miRecords/mirecords_v4.xlsx", ltype='gene', rtype='mirna'):
 
         ret = miRecordDB(ltype, rtype)
 
@@ -100,7 +89,8 @@ class miRecordDB :
                 continue
 
             gene = gene.upper()
-            mirna = row[6].value
+
+            (org, mirna) = cls.harmonizeMIRNA(row[6].value)
 
             targetSitePosition = row[16].value
 
@@ -127,7 +117,7 @@ class miRecordDB :
 
 if __name__ == '__main__':
 
-    mirecords = miRecordDB.from_xslx()
+    mirecords = miRecordDB.loadFromFile()
 
     for x in mirecords.elems:
         print(x)

@@ -91,8 +91,8 @@ export default class OrganismChipAC extends React.Component<OrganismChipACProps,
                             onUpdateInput={(searchText, dataSource, params) => this.handleOrganismAC(searchText)}
                             fullWidth
                             fullWidthInput
-                            floatingLabelText='Entity Element'
-                            hintText='Gene Symbol or miRNA'
+                            floatingLabelText='Organism'
+                            hintText='Organism Name'
                         />
 
         )
