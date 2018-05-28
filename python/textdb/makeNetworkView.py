@@ -37,7 +37,7 @@ if __name__ == '__main__':
     }
 
     genes = [x for x in interactions if not x in ['CXCR4', 'CXCL12']]
-    genes = ['CCL2', 'CCL3']
+    #genes = ['CCL2', 'CCL3']
 
 
     requestData = {'disease': [{'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'}], 'gene': genes}
@@ -83,4 +83,4 @@ if __name__ == '__main__':
 
         graph.add_node(node, nodeAttr)
 
-    mygraph = CytoscapeGrapher.showGraph(graph, location='/home/mjoppich/win/Desktop/', name="chem_interact_athero")
+    mygraph = CytoscapeGrapher.showGraph(graph, location='/home/mjoppich/win/Desktop/', name="chem_interact_athero_full")

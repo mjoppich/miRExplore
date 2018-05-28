@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import pickle
 import regex
@@ -29,102 +30,11 @@ from flask_cors import CORS
 
 from analysis.miRecordDB import miRecordDB
 
-
 app = Flask(__name__)
 CORS(app)
 
 app.config['DEBUG'] = False
 app.config['UPLOAD_FOLDER'] = ""
-
-miRExploreBase = '/mnt/c/ownCloud/data/miRExplore/'
-pmidBase = '/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmid/'
-pmcBase = '/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmc/'
-
-print("Loading Interactions")
-
-#allInteractions = defaultdict(list)
-
-recordsDB = miRecordDB.loadFromFile()
-mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=miRExploreBase+"/miRTarBase.csv")
-
-#for elem in mirecords.elems:
-#    allInteractions[(elem[0].upper(), elem[1])].append(('MIRECORD', elem[2]))
-
-
-allDBS = None
-
-print(datetime.datetime.now(), "Loading PMID2PMC")
-pmid2pmcDB = PMID2PMCDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/pmid2pmc')
-print(datetime.datetime.now(), "Loading mirel")
-
-mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna")
-lncMirPMID = MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")
-geneLncPMID = MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
-
-
-relDBs = [recordsDB, mirtarbaseDB, mirelPMID, lncMirPMID, geneLncPMID]
-
-print(datetime.datetime.now(), "Finished mirel")
-
-mirFeedback = feedbackDB("/mnt/c/ownCloud/data/miRExplore/feedback_mir")
-
-print(datetime.datetime.now(), "Loading sents")
-sentDB = SentenceDB.loadFromFile("/home/mjoppich/dev/data/pubmed/",
-                                 "/home/mjoppich/ownCloud/data/miRExplore/textmine/aggregated_pmid/pmid2sent")
-print(datetime.datetime.now(), "Finished sents")
-
-
-requiredPMIDs = set()
-for rdb in relDBs:
-
-    assert( isinstance(rdb, DataBaseDescriptor) )
-
-    for rpmid in rdb.get_evidence_docids():
-        requiredPMIDs.add(rpmid)
-
-
-if os.path.isfile(pmidBase + "/dbs.pickle"):
-
-
-    print(datetime.datetime.now(), "Loading pickle")
-    with open(pmidBase + "/dbs.pickle", 'rb') as fin:
-        allDBS = pickle.load(fin)
-
-
-    pmid2go = allDBS[0]
-    pmid2disease = allDBS[1]
-    pmid2fma = allDBS[2]
-    pmid2cell = allDBS[3]
-
-
-diseaseObo = GeneOntology(miRExploreBase + "/doid.obo")
-
-if allDBS == None:
-    pmid2go = None
-    pmid2disease = None
-    pmid2fma = None
-    pmid2cell = None
-
-    #print(datetime.datetime.now(), "Loading GO")
-    #pmid2go = PMID2XDB.loadFromFile(pmidBase + "/go.pmid")
-    print(datetime.datetime.now(), "Loading Disease")
-    pmid2disease = PMID2XDB.loadFromFile(pmidBase + "/disease.pmid", diseaseObo, requiredPMIDs)
-    #print(datetime.datetime.now(), "Loading FMA")
-    #pmid2fma = PMID2XDB.loadFromFile(pmidBase + "/model_anatomy.pmid")
-    #print(datetime.datetime.now(), "Loading cellline")
-    #pmid2cell = PMID2XDB.loadFromFile(pmidBase + "/cellline.pmid")
-    print(datetime.datetime.now(), "Loading mirna")
-
-
-    allDBS = (pmid2go, pmid2disease, pmid2fma, pmid2cell)
-
-    print(datetime.datetime.now(), "Writing Pickle")
-
-    with open(pmidBase + "/dbs.pickle", 'wb') as fout:
-        pickle.dump(allDBS, fout)
-
-print(datetime.datetime.now(), "Loading finished")
-
 
 
 # For a given file, return whether it's an allowed type or not
@@ -478,6 +388,95 @@ def rel_feedback():
 
 if __name__ == '__main__':
 
-   print([rule.rule for rule in app.url_map.iter_rules() if rule.endpoint !='static'])
 
-   app.run(threaded=True)
+    parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
+    parser.add_argument('-t', '--textmine', type=str, help='Base for Textmining. Includes aggregated_ and results folder', required=True)
+    parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
+    parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
+    parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
+
+    args = parser.parse_args()
+
+    pmidBase = args.textmine + '/aggregated_pmid/'
+    pmcBase = args.textmine + '/aggregated_pmc/'
+
+    print("Loading Interactions")
+
+    # allInteractions = defaultdict(list)
+
+    recordsDB = miRecordDB.loadFromFile(filelocation=args.obodir + "/mirecords_v4.xlsx")
+    mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=args.obodir + "/miRTarBase.csv")
+
+    # for elem in mirecords.elems:
+    #    allInteractions[(elem[0].upper(), elem[1])].append(('MIRECORD', elem[2]))
+
+    allDBS = None
+
+    print(datetime.datetime.now(), "Loading PMID2PMC")
+    pmid2pmcDB = PMID2PMCDB.loadFromFile(args.textmine + '/pmid2pmc')
+    print(datetime.datetime.now(), "Loading mirel")
+
+    mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna")
+    lncMirPMID = MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")
+    geneLncPMID = MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
+
+    relDBs = [recordsDB, mirtarbaseDB, mirelPMID, lncMirPMID, geneLncPMID]
+
+    print(datetime.datetime.now(), "Finished mirel")
+
+    mirFeedback = feedbackDB(args.feedback)
+
+    print(datetime.datetime.now(), "Loading sents")
+    sentDB = SentenceDB.loadFromFile("/home/mjoppich/dev/data/pubmed/",
+                                     "/home/mjoppich/ownCloud/data/miRExplore/textmine/aggregated_pmid/pmid2sent")
+    print(datetime.datetime.now(), "Finished sents")
+
+    requiredPMIDs = set()
+    for rdb in relDBs:
+
+        assert (isinstance(rdb, DataBaseDescriptor))
+
+        for rpmid in rdb.get_evidence_docids():
+            requiredPMIDs.add(rpmid)
+
+    if os.path.isfile(pmidBase + "/dbs.pickle"):
+        print(datetime.datetime.now(), "Loading pickle")
+        with open(pmidBase + "/dbs.pickle", 'rb') as fin:
+            allDBS = pickle.load(fin)
+
+        pmid2go = allDBS[0]
+        pmid2disease = allDBS[1]
+        pmid2fma = allDBS[2]
+        pmid2cell = allDBS[3]
+
+    diseaseObo = GeneOntology(args.obodir + "/doid.obo")
+
+    if allDBS == None:
+        pmid2go = None
+        pmid2disease = None
+        pmid2fma = None
+        pmid2cell = None
+
+        # print(datetime.datetime.now(), "Loading GO")
+        # pmid2go = PMID2XDB.loadFromFile(pmidBase + "/go.pmid")
+        print(datetime.datetime.now(), "Loading Disease")
+        pmid2disease = PMID2XDB.loadFromFile(pmidBase + "/disease.pmid", diseaseObo, requiredPMIDs)
+        # print(datetime.datetime.now(), "Loading FMA")
+        # pmid2fma = PMID2XDB.loadFromFile(pmidBase + "/model_anatomy.pmid")
+        # print(datetime.datetime.now(), "Loading cellline")
+        # pmid2cell = PMID2XDB.loadFromFile(pmidBase + "/cellline.pmid")
+        print(datetime.datetime.now(), "Loading mirna")
+
+        allDBS = (pmid2go, pmid2disease, pmid2fma, pmid2cell)
+
+        print(datetime.datetime.now(), "Writing Pickle")
+
+        with open(pmidBase + "/dbs.pickle", 'wb') as fout:
+            pickle.dump(allDBS, fout)
+
+    print(datetime.datetime.now(), "Loading finished")
+
+
+
+    print([rule.rule for rule in app.url_map.iter_rules() if rule.endpoint != 'static'])
+    app.run(threaded=True)

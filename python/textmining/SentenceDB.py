@@ -83,6 +83,9 @@ class SentenceDB:
 
                 aline = line.split("\t")
 
+                if len(aline) != 2:
+                    continue
+
                 sentID = SentenceID.fromStr(aline[0])
                 sentText = aline[1]
 

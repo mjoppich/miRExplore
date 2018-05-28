@@ -71,7 +71,7 @@ class miRecordDB(DataBaseDescriptor):
 
 
     @classmethod
-    def loadFromFile(cls, filelocation="/mnt/c/ownCloud/data/miRExplore/miRecords/mirecords_v4.xlsx", ltype='gene', rtype='mirna'):
+    def loadFromFile(cls, filelocation=None, ltype='gene', rtype='mirna'):
 
         ret = miRecordDB(ltype, rtype)
 

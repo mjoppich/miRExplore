@@ -359,13 +359,18 @@ def analyseFile(splitFileIDs, env):
 
         relHits = SyngrepHitFile(relFile, relSyns)
 
-        sentDB = SentenceDB(sentFile)
+        # only load sentences if there's a hit ...
+        sentDB = None
 
         sys.stderr.write("Found something in: " + str(splitFileID) + "\n")
 
         for docID in mirnaHits:
 
             if docID in hgncHits:
+
+                if sentDB == None:
+                    sentDB = SentenceDB(sentFile)
+
                 mirnaSynHits = mirnaHits.getHitsForDocument(docID)
                 hgncSynHits = hgncHits.getHitsForDocument(docID)
 
