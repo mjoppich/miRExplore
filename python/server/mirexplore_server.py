@@ -7,8 +7,7 @@ import os
 
 import time
 
-from nertoolkit.geneontology.GeneOntology import GeneOntology
-
+from synonymes.GeneOntology import GeneOntology
 from textdb.AbstractDBClasses import DataBaseDescriptor
 from textdb.MiGenRelDB import MiGenRelDB
 from textdb.MirTarBaseDB import MirTarBaseDB
