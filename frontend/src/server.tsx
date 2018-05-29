@@ -24,7 +24,7 @@ import * as d3 from 'd3';
 // load list of genes and list of mirnas
 
 // start the server
-const port = +process.env.PORT || 65520;
+const port = +process.env.PORT || 65525;
 const env = process.env.NODE_ENV || 'production';
 const SERVER_RENDER = toBool(process.env.UNIVERSAL) || false;
 
