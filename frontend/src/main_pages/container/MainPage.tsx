@@ -1,6 +1,7 @@
 import * as React from "react"; 
 import { Card, CardTitle, CardText } from 'material-ui/Card';
 
+import D3ParallelLinesGraph from '../components/D3ForceParallelLineViewer';
 
 
 export class MainStatus extends React.Component<{},{}> {
@@ -25,25 +26,38 @@ export class MainStatus extends React.Component<{},{}> {
      */
     render() {
 
+        var graphData = {
+            nodes: [
+                {id: 'CXCR4', label: 'CXCR4'},
+                {id: 'CCL5', label: 'CCL5'}
+            ],
+            links: [
+                {source: 0, target: 1, evidence: 20, predicted: 20}
+            ]
+        }
+
 
         return (
             <div>
-                <p>
+                <span>
                     <h4>General Information</h4>
                     <ul>
                         <li>Number of Genes</li>
                         <li>Number of miRNA</li>
-                        <li>Number of Interactions</li>
+                        <li>Number of lncRNAs</li>
+                        <li>Number if Gene/miRNA Interactions</li>
+                        <li>Number of lncRNA/miRNA Interactions</li>
                     </ul>
-                </p>
-                <p>
+                </span>
+                <span>
                     <h4>Included Databases</h4>
                     <ul>
-                        <li>miRWalk</li>
+                        <li>mirTarBase</li>
                         <li>miRecords</li>
-                        <li>miDIP</li>
+                        <li>PubMeds</li>
                     </ul>
-                </p>
+                </span>
+                <D3ParallelLinesGraph graph={graphData} id="d3front"/>
             </div>
         );
     }

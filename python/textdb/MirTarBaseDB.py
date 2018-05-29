@@ -1,10 +1,8 @@
 from collections import defaultdict
 
 import os
-
-from porestat.utils.DataFrame import DataFrame
-
 from textdb.AbstractDBClasses import DataBaseRel, DataBaseDescriptor
+from utils.DataFrame import DataFrame
 
 
 class MirTarBaseRel(DataBaseRel):
