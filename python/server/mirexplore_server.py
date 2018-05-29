@@ -5,6 +5,9 @@ import regex
 import sys
 import os
 
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
+
 import time
 
 from synonymes.GeneOntology import GeneOntology
@@ -16,7 +19,6 @@ from textdb.PMID2XDB import PMID2XDB
 from textdb.SentenceDB import SentenceDB
 from textdb.feedback_db import feedbackDB
 
-sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../../")
 
 from io import StringIO
 
@@ -393,6 +395,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
     parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
     parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
+    parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
 
     args = parser.parse_args()
 
@@ -426,8 +429,8 @@ if __name__ == '__main__':
     mirFeedback = feedbackDB(args.feedback)
 
     print(datetime.datetime.now(), "Loading sents")
-    sentDB = SentenceDB.loadFromFile("/home/mjoppich/dev/data/pubmed/",
-                                     "/home/mjoppich/ownCloud/data/miRExplore/textmine/aggregated_pmid/pmid2sent")
+    sentDB = SentenceDB.loadFromFile(args.sentdir,
+                                    args.textmine+ "aggregated_pmid/pmid2sent")
     print(datetime.datetime.now(), "Finished sents")
 
     requiredPMIDs = set()
@@ -476,6 +479,7 @@ if __name__ == '__main__':
     print(datetime.datetime.now(), "Loading finished")
 
 
+    print("Starting Flask on port", args.port)
 
     print([rule.rule for rule in app.url_map.iter_rules() if rule.endpoint != 'static'])
-    app.run(threaded=True)
+    app.run(threaded=True, host="0.0.0.0", port=args.port)

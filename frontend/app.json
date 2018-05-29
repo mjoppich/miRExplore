@@ -7,7 +7,7 @@
   "env": {
     "PORT": {
       "description": "port for webserver",
-      "value": "3000"
+      "value": "65544"
     }
   },
   "buildpacks": [

@@ -8,7 +8,6 @@ import DisagreeIcon from 'material-ui/svg-icons/action/thumb-down';
 import Paper from 'material-ui/Paper';
 import SelectedElements from '../components/SelectedElements';
 import ACInput from '../components/AutoComplete';
-import MSATableViewer from '../components/MSATableViewer';
 import axios from 'axios';
 import config from '../config';
 import D3GraphViewer from '../components/D3GraphViewer';
