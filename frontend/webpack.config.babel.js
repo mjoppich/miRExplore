@@ -17,6 +17,17 @@ const client = {
         test: /\.css$/,
         use: [ 'style-loader', 'css-loader' ]
       },
+      {
+        test: /jquery.+\.js$/,
+        use: [{
+            loader: 'expose-loader',
+            options: 'jQuery'
+        },{
+            loader: 'expose-loader',
+            options: '$'
+        }]
+      },
+      { test: /bootstrap.+\.(jsx|js)$/, loader: 'imports?jQuery=jquery,$=jquery,this=>window' },
       // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
       { test: /\.tsx?$/, loader: 'awesome-typescript-loader' },
 
@@ -30,6 +41,17 @@ const client = {
       path.join(__dirname, 'src'),
       'node_modules',
     ],
+    alias: {
+      jquery: "jquery/src/jquery"
+  }
+  },
+  plugins: [
+    new webpack.ProvidePlugin({
+       $: "jquery",
+       jQuery: "jquery"
+   })
+],
+  externals: {
   }
 };
 

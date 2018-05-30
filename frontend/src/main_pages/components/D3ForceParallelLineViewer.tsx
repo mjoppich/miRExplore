@@ -130,7 +130,6 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
           dy,
           mindist = 100;
 
-        console.log("get subject with " + this.props.graph.nodes.length);
     
       for (i = this.props.graph.nodes.length - 1; i >= 0; --i) {
         var point = this.props.graph.nodes[i];
@@ -166,7 +165,7 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
     
     canvasRender() {
 
-        console.log("canvas render");
+        //console.log("canvas render");
 
         if ((this.context == null) ||(this.context == {}))
         {
@@ -194,13 +193,15 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
         this.context.scale(this.canvasTransform.k, this.canvasTransform.k);
         
         this.context.beginPath();
+        this.context.lineWidth = 20;
         this.context.strokeStyle = "red";
-        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, -1));
+        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, -1, d.predicted));
         this.context.stroke();   
 
         this.context.beginPath();
-        this.context.strokeStyle = "blue";
-        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, 1));
+        this.context.lineWidth = 20;
+        this.context.strokeStyle = "green";
+        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, 1, d.evidence));
         this.context.stroke();
       
       
@@ -223,6 +224,7 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
               var dx = p2.x - p1.x;
               var dy = p2.y - p1.y;
               var p, pad;
+
               if (alignment=='center'){
                 p = p1;
                 pad = 1/2;
@@ -244,16 +246,14 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
               ctx.translate(p.x+dx*pad,p.y+dy*pad);
               ctx.rotate(Math.atan2(dy,dx)+addRotate);
               ctx.fillStyle = "black";
-              ctx.fillText("EDGE",0,-2);
+              ctx.fillText(text, 0,-2);
               ctx.restore();
             }
     
 
     
-        drawLink(d, ctx, shiftFactor) {
+        drawLink(d, ctx, shiftFactor, lineWidth) {
     
-            ctx.lineWidth = 10;
-
             // evidence
             var sourceShift = this.line_shift(d, shiftFactor);
 
@@ -268,6 +268,13 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
 
             if (shiftFactor == 1)
             {
+
+                var lpos = d.source;
+                var rpos = d.target;
+
+                lpos.y += 10;
+                rpos.y += 10;
+
                 this.drawLabel(ctx, "Hallo", d.source, d.target, null, null);
             }
     
@@ -275,7 +282,8 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
 
           total_width(d)
           {
-              return d.evidence + d.predicted;
+              // or add d.evidence+d.predicted
+              return 40;
           }
     
           line_shift(d, direction) {
@@ -300,17 +308,19 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
           drawNode(d, ctx) {
     
           
-            ctx.moveTo(d.x + this.nodeRadius, d.y);
-            ctx.fillStyle = "black";
-            ctx.arc(d.x, d.y, this.nodeRadius, 0, 2 * Math.PI);
+            //ctx.moveTo(d.x - 0.5*this.nodeRadius, d.y-0.5*this.nodeRadius);
+            ctx.moveTo(d.x, d.y);
+            ctx.fillStyle = "gray";
+            ctx.arc(d.x, d.y, this.nodeRadius, 0*Math.PI,2*Math.PI);
+            ctx.fill();
             
           }
           
           drawNodeLabel(d, ctx) {
                   ctx.save();
             ctx.textAlign = "center";
-            ctx.font = "10px Arial";
-            ctx.fillStyle="#aaa";
+            ctx.font = "20px Arial";
+            ctx.fillStyle="blue";
             ctx.fillText(d.id, d.x, d.y); 
             ctx.restore();
             }

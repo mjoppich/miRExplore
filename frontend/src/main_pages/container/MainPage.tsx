@@ -2,7 +2,7 @@ import * as React from "react";
 import { Card, CardTitle, CardText } from 'material-ui/Card';
 
 import D3ParallelLinesGraph from '../components/D3ForceParallelLineViewer';
-
+import MEFeatureViewer from '../components/MEFeatureViewer';
 
 export class MainStatus extends React.Component<{},{}> {
 
@@ -29,10 +29,13 @@ export class MainStatus extends React.Component<{},{}> {
         var graphData = {
             nodes: [
                 {id: 'CXCR4', label: 'CXCR4'},
-                {id: 'CCL5', label: 'CCL5'}
+                {id: 'CX3CL1', label: 'CX3CL1'}/*,
+                {id: 'CCL5', label: 'CCL5'}*/
             ],
             links: [
-                {source: 0, target: 1, evidence: 20, predicted: 20}
+                {source: 0, target: 1, evidence: 20, predicted: 20} /*,
+                {source: 1, target: 2, evidence: 20, predicted: 20},
+                {source: 0, target: 2, evidence: 20, predicted: 20}*/
             ]
         }
 
@@ -57,6 +60,7 @@ export class MainStatus extends React.Component<{},{}> {
                         <li>PubMeds</li>
                     </ul>
                 </span>
+                <MEFeatureViewer features={[]} location={{}}/>
                 <D3ParallelLinesGraph graph={graphData} id="d3front"/>
             </div>
         );
