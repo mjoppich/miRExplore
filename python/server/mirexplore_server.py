@@ -14,6 +14,7 @@ from synonymes.GeneOntology import GeneOntology
 from textdb.AbstractDBClasses import DataBaseDescriptor
 from textdb.MiGenRelDB import MiGenRelDB
 from textdb.MirTarBaseDB import MirTarBaseDB
+from textdb.MirandaRelDB import MirandaRelDB
 from textdb.PMID2PMCDB import PMID2PMCDB
 from textdb.PMID2XDB import PMID2XDB
 from textdb.SentenceDB import SentenceDB
@@ -133,9 +134,6 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestriction
 
 
     allRels = []
-
-
-
     for etype in allRelsByType:
 
         allRels += allRelsByType[etype]
@@ -144,10 +142,11 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestriction
     allRels = sorted(allRels, key=lambda x: x.docid)
 
     for rel in allRels:
-        allDocIDs.add(rel.docid)
+
+        if rel.docid != -1:
+            allDocIDs.add(rel.docid)
 
         evJSON = rel.toJSON()
-
         evSent = evJSON.get('rel_sentence', None)
 
         if evSent != None:
@@ -251,78 +250,27 @@ def findID():
 
     reMatch = regex.compile(searchWord+'{e<=3}')
 
-    jsonResultGene = set()
-    jsonResultMIRNA = set()
-    jsonResultLNCRNA = set()
+    jsonResultByType = defaultdict(set)
 
+    for relDB in relDBs:
 
-    """
-    
-    gene-mirna db
-    
-    """
-    for geneName in mirelPMID.all_ltypes:
+        ltype = relDB.ltype
+        rtype = relDB.rtype
 
-        if reMatch.match(geneName):
-            jsonResultGene.add(geneName)
+        for entName in relDB.all_ltypes:
+            if len(jsonResultByType[ltype]) <= 100 and reMatch.match(entName):
+                jsonResultByType[ltype].add(entName)
 
-        if len(jsonResultGene) > 100:
-            break
+        for entName in relDB.all_rtypes:
+            if len(jsonResultByType[rtype]) <= 100 and reMatch.match(entName):
+                jsonResultByType[rtype].add(entName)
 
-    for mirnaName in mirelPMID.all_rtypes:
+    jsonResult = []
+    for type in jsonResultByType:
 
-        if reMatch.match(mirnaName):
-            jsonResultMIRNA.add(mirnaName)
-
-        if len(jsonResultMIRNA) > 100:
-            break
-
-
-    """
-    
-    gene-lncrna
-    
-    """
-    for lid in geneLncPMID.all_ltypes:
-
-        if reMatch.match(lid):
-            jsonResultGene.add(lid)
-
-        if len(jsonResultGene) > 100:
-            break
-
-    for rid in geneLncPMID.all_rtypes:
-
-        if reMatch.match(rid):
-            jsonResultLNCRNA.add(rid)
-
-        if len(jsonResultLNCRNA) > 100:
-            break
-
-    """
-
-    lncrna-mirna
-
-    """
-    for lid in lncMirPMID.all_ltypes:
-
-        if reMatch.match(lid):
-            jsonResultLNCRNA.add(lid)
-
-        if len(jsonResultLNCRNA) > 100:
-            break
-
-    for rid in lncMirPMID.all_rtypes:
-
-        if reMatch.match(rid):
-            jsonResultMIRNA.add(rid)
-
-        if len(jsonResultMIRNA) > 100:
-            break
-
-    jsonResult = list([{'name': interact, 'group': 'gene'} for interact in jsonResultGene])
-    jsonResult += list([{'name': interact, 'group': 'mirna'} for interact in jsonResultMIRNA])
-    jsonResult += list([{'name': interact, 'group': 'lncrna'} for interact in jsonResultLNCRNA])
+        jsonResult += list(
+            [{'name': interact, 'group': type} for interact in jsonResultByType[type]]
+        )
 
     return app.make_response((jsonify( jsonResult ), 200, None))
 
@@ -406,8 +354,11 @@ if __name__ == '__main__':
 
     # allInteractions = defaultdict(list)
 
-    recordsDB = miRecordDB.loadFromFile(filelocation=args.obodir + "/mirecords_v4.xlsx")
-    mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=args.obodir + "/miRTarBase.csv")
+    mirandaDB = MirandaRelDB.loadFromFile(filepath=args.obodir + "/miranda_test.tsv")
+
+
+    recordsDB = None#miRecordDB.loadFromFile(filelocation=args.obodir + "/mirecords_v4.xlsx")
+    mirtarbaseDB = None#MirTarBaseDB.loadFromFile(filepath=args.obodir + "/miRTarBase.csv")
 
     # for elem in mirecords.elems:
     #    allInteractions[(elem[0].upper(), elem[1])].append(('MIRECORD', elem[2]))
@@ -418,11 +369,13 @@ if __name__ == '__main__':
     pmid2pmcDB = PMID2PMCDB.loadFromFile(args.textmine + '/pmid2pmc')
     print(datetime.datetime.now(), "Loading mirel")
 
-    mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna")
-    lncMirPMID = MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")
-    geneLncPMID = MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
+    mirelPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna")
+    lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")
+    geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
 
-    relDBs = [recordsDB, mirtarbaseDB, mirelPMID, lncMirPMID, geneLncPMID]
+    relDBs = [recordsDB, mirtarbaseDB, mirelPMID, lncMirPMID, geneLncPMID, mirandaDB]
+
+    relDBs = [x for x in relDBs if x != None]
 
     print(datetime.datetime.now(), "Finished mirel")
 
