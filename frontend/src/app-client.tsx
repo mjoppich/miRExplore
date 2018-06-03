@@ -5,8 +5,9 @@ import { render } from 'react-dom';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { MainApp } from './pages/App';
 
-import $ from 'jquery'
-import boostrap from 'bootstrap'
+import "jquery";
+import "bootstrap";
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 
 const AppClient = () => 

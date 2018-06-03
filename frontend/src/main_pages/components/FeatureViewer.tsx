@@ -1,5 +1,6 @@
 import * as d3 from 'd3';
 
+
 class ToolTip
 {
 
@@ -26,6 +27,8 @@ class ToolTip
         var self = this;
 
         selection.on('mouseover.tooltip', function (pD, pI) {
+
+            console.log("tooltip mouseover")
             // Clean up lost tooltips
             d3.select('body').selectAll('div.tooltip').remove();
             // Append tooltip
@@ -39,11 +42,22 @@ class ToolTip
                 self.tooltipDiv = d3.select(self.superThis.div)
                     .append('div')
                     .attr('class', 'tooltip2');
-                self.tooltipDiv.style({
-                    left: (absoluteMousePos[0] - 15) + 'px'
-                });
-            }
-            self.tooltipDiv.style({
+                self.tooltipDiv.style("left", absoluteMousePos[0] - 15 + 'px');
+           }
+            self.tooltipDiv
+                .style("bottom", (self.bodyNode.offsetHeight - absoluteMousePos[1] + 16) + 'px')
+                .style("background-color", "#eeeeee")
+                .style("width", "auto")
+                .style("max-width", "170px")
+                .style("height", "auto")
+                .style("max-height", "68px")
+                .style("padding", "5px")
+                .style("font", "10px sans-serif")
+                .style("text-align", "center")
+                .style("position", "absolute")
+                .style("z-index", "45")
+                .style("box-shadow", "0 1px 2px 0 #656565")
+            /*.style({
                 bottom: (self.bodyNode.offsetHeight - absoluteMousePos[1] + 16) + 'px',
                 'background-color': '#eee',
                 width: 'auto',
@@ -56,7 +70,7 @@ class ToolTip
                 position: 'absolute',
                 'z-index': 45,
                 'box-shadow': '0 1px 2px 0 #656565' 
-            });
+            });*/
             if (self.obj.type === "path") {
                 var first_line = '<p style="margin:2px;font-weight:700;color:' + self.tooltipColor +'">' + pD[0].x + '&#x256d;&#x256e;' + pD[1].x + '</p>';
                 if (pD.description) var second_line = '<p style="margin:2px;color:' + self.tooltipColor +';font-size:9px">' + pD.description + '</p>';
@@ -84,9 +98,7 @@ class ToolTip
 
             self.tooltipDiv.html(first_line + second_line);
             if (rightside) {
-                self.tooltipDiv.style({
-                    left: (absoluteMousePos[0] + 10 - (self.tooltipDiv.node().getBoundingClientRect().width)) + 'px'
-                })
+                self.tooltipDiv.style("left", (absoluteMousePos[0] + 10 - (self.tooltipDiv.node().getBoundingClientRect().width)) + 'px');
             }
         })
             .on('mousemove.tooltip', function (pD, pI) {
@@ -113,16 +125,12 @@ class ToolTip
                 var rightside = (absoluteMousePos[0] > self.superThis.width);
                 if (rightside) {
                     self.tooltipDiv.attr("class", "tooltip3");
-                    self.tooltipDiv.style({
-                        left: (absoluteMousePos[0] + 10 - (self.tooltipDiv.node().getBoundingClientRect().width)) + 'px',
-                        bottom: (self.bodyNode.offsetHeight - absoluteMousePos[1] + 16) + 'px'
-                    });
+                    self.tooltipDiv.style("left", (absoluteMousePos[0] + 10 - (self.tooltipDiv.node().getBoundingClientRect().width)) + 'px')
+                                    .style("bottom",(self.bodyNode.offsetHeight - absoluteMousePos[1] + 16) + 'px');
                 } else {
                     self.tooltipDiv.attr("class", "tooltip2");
-                    self.tooltipDiv.style({
-                        left: (absoluteMousePos[0] - 15) + 'px',
-                        bottom: (self.bodyNode.offsetHeight - absoluteMousePos[1] + 16) + 'px'
-                    })
+                    self.tooltipDiv.style("left", (absoluteMousePos[0] - 15) + 'px')
+                        .style("bottom", (self.bodyNode.offsetHeight - absoluteMousePos[1] + 16) + 'px');
                 }
             })
             .on('mouseout.tooltip', function (pD, pI) {
@@ -142,7 +150,6 @@ class ToolTip
                 }
                 else self.colorSelectedFeat(this, self.obj);
 
-                var svgWidth = self.superThis.SVGOptions.brushActive ? d3.select(".selection").attr("width") : self.superThis.svgContainer.node().getBBox().width;
                 d3.select('body').selectAll('div.selectedRect').remove();
                 // Append tooltip
                 self.selectedRect = d3.select(self.superThis.div)
@@ -164,20 +171,60 @@ class ToolTip
                     yTemp = pD.y;
                 }
 
+                console.log("svgwidth");
+                console.log(self.superThis.SVGOptions.brushActive);
+                console.log( d3.select(".brush .overlay").attr("width"));
+                console.log( self.superThis.svgContainer.node().getBBox().width);
+
+                var svgWidth = self.superThis.SVGOptions.brushActive ? d3.select(".brush .overlay").attr("width") : self.superThis.svgContainer.node().getBBox().width;
+
+                console.log("elem mose click");
+                console.log("determining width");
+                console.log(xTemp);
+                console.log(yTemp);
+                console.log(svgWidth);
+
                 if (self.superThis.scaling(xTemp) < 0 && self.superThis.scaling(yTemp) > svgWidth) {
                     xRect = self.superThis.margin.left;
                     widthRect = parseInt(svgWidth) + 5;
+
+                    console.log("determining width1");
+                    console.log(widthRect);
+
+
                 } else if (self.superThis.scaling(xTemp) < 0) {
                     xRect = self.superThis.margin.left;
                     widthRect = (self.superThis.scaling(yTemp));
+
+                    console.log("determining width2");
+                    console.log(widthRect);
+
                 } else if (self.superThis.scaling(yTemp) > svgWidth) {
                     xRect = self.superThis.scaling(xTemp) + self.superThis.margin.left;
                     widthRect = parseInt(svgWidth) - self.superThis.scaling(xTemp);
                     widthRect =  widthRect + 5;
+
+                    console.log("determining width3");
+                    console.log(widthRect);
+
                 } else {
                     xRect = self.superThis.scaling(xTemp) + self.superThis.margin.left;
                     widthRect = (self.superThis.scaling(yTemp) - self.superThis.scaling(xTemp));
+
+                    console.log("determining width4");
+                    console.log(widthRect);
                 }
+                self.selectedRect
+                    .style("left", xRect + "px")
+                    .style("top", ($(self.superThis.div + " .svgHeader").length) ? 60 + 'px' : 10 + 'px')
+                    .style('background-color', 'rgba(0, 0, 0, 0.2)')
+                    .style("width", widthRect + "px")
+                    .style("height", (self.superThis.Yposition + 50) + 'px')
+                    .style("position", "absolute")
+                    .style("z-index", "-1")
+                    .style("box-shadow", "0 1px 2px 0 #656565");
+
+                /*
                 self.selectedRect.style({
                     left: xRect + 'px',
                     top: ($(self.superThis.div + " .svgHeader").length) ? 60 + 'px' : 10 + 'px',
@@ -187,7 +234,7 @@ class ToolTip
                     position: 'absolute',
                     'z-index': -1,
                     'box-shadow': '0 1px 2px 0 #656565'
-                });
+                });*/
 
                 if (CustomEvent) {
                     var event = new CustomEvent(self.superThis.events.FEATURE_SELECTED_EVENT, {
@@ -1724,6 +1771,7 @@ export default class FeatureViewer {
 
         addRectSelection(svgId) {
             var self=this;
+            var div = self.div;
 
             var featSelection = d3.select(svgId);
             var elemSelected: Array<any> = featSelection.data();
@@ -1951,6 +1999,12 @@ export default class FeatureViewer {
 //                            .text("0");
 //                    }
 //                }
+
+                var headerZoom = d3.select(div + ' .header-zoom');
+                console.log("Header Zoom Element");
+                console.log(headerZoom);
+                console.log(headerOptions);
+
                 var headerZoom = $(div + ' .header-zoom').length ? d3.select(div + ' .header-zoom') : headerOptions;
                 if (options.bubbleHelp === true) {
                     if (!$(div + ' .header-help').length) {
@@ -1975,7 +2029,7 @@ export default class FeatureViewer {
                             .attr("data-toggle", "popover")
                             .attr("data-placement", "auto left")
                             .attr("title", "Help")
-                            .attr("data-content", helpContent)
+                            //.attr("data-content", helpContent)
                             .style("font-size", "14px");
 //                            .style("margin-bottom", "2px");
                         buttonHelp
@@ -1989,17 +2043,29 @@ export default class FeatureViewer {
 //                            .style("border","1px solid #ddd")
 //                            .style("border","1px solid #0C6B78")
 //                            .style("color","#777")
+                            .style("color", "#000000")
                             .style("box-shadow","inset 0px 0px 4px rgba(0,0,0,0.10)")
-                            .style("color","#fff")
+                            //.style("color","#fff")
 //                            .style("padding","2px 6px")
                             .html("<span class='state'>Show</span> help");
                         $(function () {
-                            $('[data-toggle="popover"]').popover({html: true});
+                            //$('[data-toggle="popover"]').popover({html: true});
+                            var baseContID = self.div.substring(1);
+                            console.log("base div id: " + baseContID);
+                            $(div + ' .header-help').popover({
+                                container: "body",
+                                html: true,
+                                placement: 'right',
+                                content: function () {
+                                  return helpContent;
+                                }
+                              });
+
                             $(div + ' .header-help').on('hide.bs.popover', function () {
-                              $(this).find(".state").text("Show");
+                              $(buttonHelp).find(".state").text("Show");
                             });
                             $(div + ' .header-help').on('show.bs.popover', function () {
-                              $(this).find(".state").text("Hide");
+                              $(buttonHelp).find(".state").text("Hide");
                             });
                         })
                     }
@@ -2056,10 +2122,10 @@ export default class FeatureViewer {
                 var bgnodes = d3.selectAll(".selection").nodes();
                 var elem: HTMLElement = bgnodes[0] as HTMLElement;
 
-                console.log("initSVG");
-                console.log(bgnodes);
-                console.log(elem);
-                console.log(self.SVGOptions);
+                //console.log("initSVG");
+                //console.log(bgnodes);
+                //console.log(elem);
+                //console.log(self.SVGOptions);
 
                 var absoluteMousePos = self.SVGOptions.brushActive ? d3.mouse(elem) : d3.mouse(self.svgContainer);       
                 var pos = Math.round(self.scalingPosition(absoluteMousePos[0]));
