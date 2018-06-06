@@ -23,11 +23,11 @@ interface Graph {
     links: Array<SimLink>;
 }
 
-export interface D3ParallelLinesProps { id: string, graph: {nodes: any, links: any} }
-export interface D3ParallelLinesState { }
+export interface D3SVGParallelLinesProps { id: string, graph: {nodes: any, links: any} }
+export interface D3SVGParallelLinesState { }
 
 
-export default class D3ParallelLinesGraph extends React.Component<D3ParallelLinesProps, D3ParallelLinesState> {
+export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParallelLinesProps, D3SVGParallelLinesState> {
 
     canvas: any = null;
 
@@ -48,6 +48,9 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
 
     }
 
+    svg = null;
+    force = null;
+
     drawChart() {
 
         var self = this;
@@ -63,6 +66,171 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
         var margin = {top:0, left:0, bottom:0, right:0 };      
         var width = domNode.clientWidth;
         var height = domNode.clientHeight;
+
+
+        this.svg = d3.select(domNode).append("svg")
+        .attr("width", width)
+        .attr("height", height); 
+
+        this.force = d3.forceSimulation<SimNode, SimLink>() 
+            .force("charge", d3.forceManyBody().strength(-700).distanceMin(200).distanceMax(1000)) 
+            .force("link", d3.forceLink().id(function(d:any) { return d.index })) 
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("y", d3.forceY(0.001))
+            .force("x", d3.forceX(0.001))
+
+        var color = function (group) {
+            if (group == 1) {
+                return "#aaaaaa"
+            } else if (group == 2) {
+                return "#fbc280"
+            } else {
+                return "#405275"
+            }
+        }
+        
+        this.force
+        .nodes(this.props.graph.nodes) 
+        .force("link").links(this.props.graph.links)
+
+    var predictionLink = this.svg.selectAll(".pred-link")
+        .data(this.props.graph.links)
+        .enter()
+        .append("line")
+        .attr("class", "link");
+
+    var evidenceLink = this.svg.selectAll(".ev-link")
+        .data(this.props.graph.links)
+        .enter()
+        .append("line")
+        .attr("class", "link");
+
+    var node = this.svg.selectAll(".node")
+        .data(this.props.graph.nodes)
+        .enter().append("g")
+        .attr("class", "node")
+        .call(d3.drag()
+        .on("start", this.dragstarted.bind(this))
+        .on("drag", this.dragged.bind(this))
+        .on("end", this.dragended.bind(this)));  
+
+    node.append('circle')
+        .attr('r', 13)
+        .attr('fill', function (d) {
+            return color(d.group);
+        });
+
+    node.append("text")
+        .attr("dx", -18)
+        .attr("dy", 8)
+        .style("font-family", "overwatch")
+        .style("font-size", "18px")
+
+        .text(function (d) {
+            return d.label
+        });
+
+    var self=this;
+
+    predictionLink
+    .style("stroke-width", function stroke(d)  {return self.prediction_link_width(d) })
+    .style("stroke", "#70C05A")
+    //.style("stroke-width", "3.5px")
+    .style("stroke-opacity", "1.0")
+  
+   evidenceLink
+    .style("stroke-width", function stroke(d)  {return self.evidence_link_width(d) })
+    .style("stroke", "#438DCA")
+    //.style("stroke-width", "3.5px")
+    .style("stroke-opacity", "1.0")
+
+    this.force.on("tick", function () {
+
+        predictionLink
+        .attr("x1", function(d) { return d.source.x-self.line_shift(d,1)[0]; })
+        .attr("y1", function(d) { return d.source.y-self.line_shift(d,1)[1]; })
+        .attr("x2", function(d) { return d.target.x-self.line_shift(d,1)[0]; })
+        .attr("y2", function(d) { return d.target.y-self.line_shift(d,1)[1]; });
+        evidenceLink
+            .attr("x1", function(d) { return d.source.x-self.line_shift(d,-1)[0]; })
+            .attr("y1", function(d) { return d.source.y-self.line_shift(d,-1)[1]; })
+            .attr("x2", function(d) { return d.target.x-self.line_shift(d,-1)[0]; })
+            .attr("y2", function(d) { return d.target.y-self.line_shift(d,-1)[1]; });
+
+        node.attr("transform", function (d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
+    });
+        
+    }
+
+    total_width(d)
+    {
+        // or add d.evidence+d.predicted
+        return 30;
+    }
+
+    line_shift(d, direction) {
+      var rel_x = d.target.x-d.source.x;
+      var rel_y = d.target.y-d.source.y;
+      var theta = Math.atan2(rel_y, rel_x);
+  
+      var theta_perpendicular = theta + (Math.PI / 2)*direction;
+  
+    /*console.log("Theta:" + theta);
+      console.log("Theta Per:" + theta_perpendicular);
+      console.log("Sin:" + Math.sin(theta_perpendicular));
+      console.log("Cos:" + Math.cos(theta_perpendicular));
+      console.log("Width:" + width);*/
+  
+      var width = this.total_width(d)
+      var delta_x = width / 4 * Math.cos(theta_perpendicular) // Both lines are pushed 1/4, making it 1/2 away from each other.
+      var delta_y = width / 4 * Math.sin(theta_perpendicular) // Both lines are pushed 1/4, making it 1/2 away from each other.
+      return [delta_x, delta_y]
+    }
+
+    evidence_link_width(d)
+    {
+        return 5.0 + Math.min(100.0, d.evidence) / 10.0;
+    }
+
+    prediction_link_width(d)
+    {
+        return 5.0 + Math.min(100.0, d.predicted) / 10.0;
+    }
+
+    dragstarted(d) {
+        if (!d3.event.active) this.force.alphaTarget(0.5).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    dragended(d) {
+        if (!d3.event.active) this.force.alphaTarget(0.5);
+        //d.fx = null;
+        //d.fy = null;
+    } 
+
+    dragged(d) {
+        d.fx = d3.event.x;
+        d.fy = d3.event.y;
+    }
+
+    oldDraw()
+    {
+
+
+        /**
+         * 
+         * 
+         * 
+         * 
+         * OLD
+         * 
+         * 
+         */
+        var width = 0;
+        var height = 0;
         
         if (this.canvasSimulation == null)
         {
@@ -99,6 +267,8 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
 
         }
 
+        var self=this;
+        var domNode = null;
        
         var graphDiv = d3.select( domNode );
 
@@ -289,30 +459,7 @@ export default class D3ParallelLinesGraph extends React.Component<D3ParallelLine
     
           }
 
-          total_width(d)
-          {
-              // or add d.evidence+d.predicted
-              return 40;
-          }
-    
-          line_shift(d, direction) {
-            var rel_x = d.target.x-d.source.x;
-            var rel_y = d.target.y-d.source.y;
-            var theta = Math.atan2(rel_y, rel_x);
-        
-            var theta_perpendicular = theta + (Math.PI / 2)*direction;
-        
-          /*console.log("Theta:" + theta);
-            console.log("Theta Per:" + theta_perpendicular);
-            console.log("Sin:" + Math.sin(theta_perpendicular));
-            console.log("Cos:" + Math.cos(theta_perpendicular));
-            console.log("Width:" + width);*/
-        
-            var width = this.total_width(d)
-            var delta_x = width / 4 * Math.cos(theta_perpendicular) // Both lines are pushed 1/4, making it 1/2 away from each other.
-            var delta_y = width / 4 * Math.sin(theta_perpendicular) // Both lines are pushed 1/4, making it 1/2 away from each other.
-            return [delta_x, delta_y]
-          }
+
     
           drawNode(d, ctx) {
     

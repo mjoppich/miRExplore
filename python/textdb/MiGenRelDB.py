@@ -1,3 +1,8 @@
+import os, sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
+
+import random
 from collections import defaultdict
 
 import os
@@ -104,6 +109,20 @@ class MiGenRelDB(DataBaseDescriptor):
     def rtype(self):
         return self.rtyped
 
+    @classmethod
+    def choices(cls, elems, k=1, excluded = []):
+
+        resvec = []
+
+        while len(resvec) < k:
+
+            relem = random.choice(elems)
+
+            if not relem in resvec and not relem in excluded:
+                resvec.append(relem)
+
+        return resvec
+
 
     @classmethod
     def loadFromFile(cls, filepath, ltype='gene', rtype='mirna'):
@@ -112,6 +131,8 @@ class MiGenRelDB(DataBaseDescriptor):
         ret = MiGenRelDB(ltype, rtype)
 
         file_base = os.path.basename(filepath)
+
+        rel2did = {}
 
         with open(filepath, 'r') as fin:
 
@@ -141,15 +162,21 @@ class MiGenRelDB(DataBaseDescriptor):
                     allrels = set()
 
                     for relIdx, rel in enumerate(tmRelations):
-                        newrel = MiRGeneRel(rel, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), 'pmid', file_base+"_"+str(lineIdx)+"_"+str(relIdx))
+                        newrel = MiRGeneRel(rel, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), 'pmid', None)
+
+                        dataID = file_base + "_" + str(lineIdx) + "_" + str(relIdx)
+                        rel2did[newrel] = dataID
 
                         allrels.add(newrel)
 
                     relations = allrels
                 else:
-                    relations = set([MiRGeneRel(None, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), 'pmid', file_base+"_"+str(lineIdx)+"_0")])
+                    relations = set([MiRGeneRel(None, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), 'pmid', None)])
 
-                for rel in relations:
+                for relIdx, rel in enumerate(relations):
+
+
+                    #rel.data_id = dataID
 
                     ret.ltype2rel[lid].add(rel)
                     ret.rtype2rel[rid].add(rel)
@@ -157,5 +184,43 @@ class MiGenRelDB(DataBaseDescriptor):
                 ret.all_ltypes.add(lid)
                 ret.all_rtypes.add(rid)
 
+        for x in ret.ltype2rel:
+            for elem in ret.ltype2rel[x]:
+                if elem in rel2did:
+                    elem.data_id = rel2did[elem]
+
+        for x in ret.rtype2rel:
+            for elem in ret.rtype2rel[x]:
+                if elem in rel2did:
+                    elem.data_id = rel2did[elem]
+
+        if __name__ == '__main__':
+            allRelations = list()
+
+            for lid in ret.ltype2rel:
+                allLidRels = ret.ltype2rel[lid]
+
+                allLidRels = [x for x in allLidRels if x.assocSent != None]
+
+                allRelations += allLidRels
+
+
+            allSeen = []
+
+            for tester in ['Tester1', 'Tester2', 'Tester3', 'all']:
+
+                relems = cls.choices(allRelations, 200, allSeen)
+
+                allSeen += relems
+
+                for relem in relems:
+                    print(tester + "\t"+ relem.lid + "\t" + relem.rid + "\t" + relem.assocSent)
+
+
         return ret
 
+
+if __name__ == '__main__':
+
+    pmidBase = "/home/mjoppich/ownCloud/data/miRExplore/textmine/aggregated_pmid"
+    MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna")

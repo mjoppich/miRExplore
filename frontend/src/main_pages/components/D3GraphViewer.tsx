@@ -158,7 +158,7 @@ export default class D3Neo4JViewer extends React.Component<D3Neo4JViewerProps, D
         
         if (dist < mindist)
         {
-        mindist = dist;
+            mindist = dist;
         }
         
         if (dist < this.nodeRadius * this.nodeRadius) {

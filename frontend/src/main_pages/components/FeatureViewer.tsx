@@ -13,7 +13,7 @@ class ToolTip
 
     constructor(obj: any, public superThis: FeatureViewer)
     {
-        this.bodyNode = d3.select(this.superThis.div).node();
+        this.bodyNode = this.superThis.d3div.node();
         this.tooltipColor = this.superThis.options.tooltipColor ? this.superThis.options.tooltipColor : "orangered";
 
         this.obj = obj;
@@ -35,12 +35,10 @@ class ToolTip
             var absoluteMousePos = d3.mouse(self.bodyNode);
             var rightside = (absoluteMousePos[0] > self.superThis.width);
             if (rightside) {
-                this.superThis.tooltipDiv = d3.select(self.superThis.div)
-                    .append('div')
+                self.tooltipDiv = self.superThis.d3div.append('div')
                     .attr('class', 'tooltip3');
             } else {
-                self.tooltipDiv = d3.select(self.superThis.div)
-                    .append('div')
+                self.tooltipDiv = self.superThis.d3div.append('div')
                     .attr('class', 'tooltip2');
                 self.tooltipDiv.style("left", absoluteMousePos[0] - 15 + 'px');
            }
@@ -152,8 +150,7 @@ class ToolTip
 
                 d3.select('body').selectAll('div.selectedRect').remove();
                 // Append tooltip
-                self.selectedRect = d3.select(self.superThis.div)
-                    .append('div')
+                self.selectedRect = self.superThis.d3div.append('div')
                     .attr('class', 'selectedRect');
                 if (self.obj.type === "path") {
                     xTemp = pD[0].x;
@@ -216,7 +213,7 @@ class ToolTip
                 }
                 self.selectedRect
                     .style("left", xRect + "px")
-                    .style("top", ($(self.superThis.div + " .svgHeader").length) ? 60 + 'px' : 10 + 'px')
+                    .style("top", ($(self.superThis.viewerDiv).find(".svgHeader").length) ? 60 + 'px' : 10 + 'px')
                     .style('background-color', 'rgba(0, 0, 0, 0.2)')
                     .style("width", widthRect + "px")
                     .style("height", (self.superThis.Yposition + 50) + 'px')
@@ -979,8 +976,8 @@ export default class FeatureViewer {
     transitionObj = new Transition(this);
 
     events: any;
-    div = null;
-    el = null;
+    //div = null;
+    //el = null;
     svgElement;
     sequence = null;
     intLength = 0;
@@ -1065,6 +1062,9 @@ export default class FeatureViewer {
     fillSVG: FillSVG = null;
     tooltip: ToolTip = null;
 
+    viewerDiv: Element = null;
+    d3div = null;
+
 
     constructor(sequence, div, options) {
 //        var nxSeq = sequence.startsWith('NX_') ? true : false;
@@ -1073,8 +1073,10 @@ export default class FeatureViewer {
         this.fillSVG = new FillSVG(this);
 
 
-        this.div = div;
-        this.el = document.getElementById(div.substring(1));
+        this.viewerDiv = div;
+        this.d3div = d3.select(div);
+        //this.el = document.getElementById(div.substring(1));
+        //this.el = div;
 
         this.sequence = sequence;
         this.intLength =  this.isInt(sequence) ? sequence : null;
@@ -1211,7 +1213,7 @@ export default class FeatureViewer {
 
             $(window).on("resize", this.resizeCallback.bind(this));
 
-            this.initSVG(div, options);
+            this.initSVG(this.viewerDiv, options);
 
         }
 
@@ -1542,7 +1544,7 @@ export default class FeatureViewer {
 
             console.log("After safety check");
 
-            d3.select(self.div).selectAll('div.selectedRect').remove();
+            self.d3div.selectAll('div.selectedRect').remove();
             if (Object.keys(self.featureSelected).length !== 0 && self.featureSelected.constructor === Object) {
                 d3.select(self.featureSelected.id).style("fill", self.featureSelected.originalColor);
                 self.featureSelected = {};
@@ -1585,7 +1587,7 @@ export default class FeatureViewer {
 
                 self.current_extend.length = extentLength;
                 var zoomScale = (self.fvLength / extentLength).toFixed(1);
-                $(self.div + " .zoomUnit").text(zoomScale.toString());
+                $(self.viewerDiv).find(".zoomUnit").text(zoomScale.toString());
                 
 //                scaling.range([5,width-5]); 
                 if (self.SVGOptions.showSequence && !(self.intLength) && seq && self.svgContainer.selectAll(".AA").empty()) {
@@ -1657,14 +1659,14 @@ export default class FeatureViewer {
 //            var width_larger = (width < new_width);
             var self=this;            
 
-            self.width = $(self.div).width() - self.margin.left - self.margin.right - 17;
-            d3.select(self.div+" svg")
+            self.width = $(self.viewerDiv).width() - self.margin.left - self.margin.right - 17;
+            self.d3div.select("svg")
                 .attr("width", self.width + self.margin.left + self.margin.right);
-            d3.select(self.div+" #clip>rect").attr("width", self.width);
+            self.d3div.select("#clip>rect").attr("width", self.width);
             if (self.SVGOptions.brushActive) {
-                d3.select(self.div+" .selection").attr("width", self.width);
+                self.d3div.select(".selection").attr("width", self.width);
             }
-            d3.select(self.div).selectAll(".brush").call(() => this.clearBrush());
+            self.d3div.selectAll(".brush").call(() => this.clearBrush());
             
             //var currentSeqLength = svgContainer.selectAll(".AA").size();
             var seq = self.displaySequence(self.current_extend.length);
@@ -1731,7 +1733,7 @@ export default class FeatureViewer {
                             zoom: 1
                         });
 
-            d3.select(self.div).selectAll(".brush").call(() => this.clearBrush());
+            self.d3div.selectAll(".brush").call(() => this.clearBrush());
         }
 
         /** export to new axis file? */
@@ -1771,7 +1773,7 @@ export default class FeatureViewer {
 
         addRectSelection(svgId) {
             var self=this;
-            var div = self.div;
+            var div = self.d3div;
 
             var featSelection = d3.select(svgId);
             var elemSelected: Array<any> = featSelection.data();
@@ -1780,15 +1782,17 @@ export default class FeatureViewer {
             var xRect;
             var widthRect;
             var svgWidth = self.SVGOptions.brushActive ? d3.select(".selection").attr("width") : self.svgContainer.node().getBBox().width;
-            d3.select('body').selectAll('div.selectedRect').remove();
+
+            // ATTENTION TODO THIS MIGHT INTERFERE WITH OTHER FV!
+            //d3.select('body').selectAll('div.selectedRect').remove();
+            self.d3div.selectAll('div.selectedRect').remove();
 
         
             var objectSelected = {type:featSelection[0][0].tagName, color:featSelection.style("fill")};
             self.tooltip.colorSelectedFeat(svgId, objectSelected);
 
             // Append tooltip
-            var selectedRect = d3.select(self.div)
-                .append('div')
+            var selectedRect = div.append('div')
                 .attr('class', 'selectedRect');
 
             if (elemSelected[0].length === 3) {
@@ -1872,11 +1876,11 @@ export default class FeatureViewer {
 
             if (options.toolbar === true) {
                 
-                var headerOptions = $(div + " .svgHeader").length ? d3.select(div + " .svgHeader") : d3.select(div).append("div").attr("class", "svgHeader");
+                var headerOptions = $(div).find(".svgHeader").length ? d3.select(div).select(".svgHeader") : d3.select(div).append("div").attr("class", "svgHeader");
                 
 //                if (options.toolbarTemplate && options.toolbarTemplate === 2) {
 
-                    if (!$(div + ' .header-position').length) {
+                    if (!$(div).find('.header-position').length) {
                         var headerPosition = headerOptions
                             .append("div")
                             .attr("class", "header-position")
@@ -1902,7 +1906,7 @@ export default class FeatureViewer {
                             .attr("id", "zoomPosition")
                             .text("0");
                     }
-                    if (!$(div + ' .header-zoom').length) {
+                    if (!$(div).find(' .header-zoom').length) {
                         var headerZoom = headerOptions
                             .append("div")
                             .attr("class", "header-zoom")
@@ -2000,14 +2004,14 @@ export default class FeatureViewer {
 //                    }
 //                }
 
-                var headerZoom = d3.select(div + ' .header-zoom');
+                var headerZoom = d3.select(div).select(' .header-zoom');
                 console.log("Header Zoom Element");
                 console.log(headerZoom);
                 console.log(headerOptions);
 
-                var headerZoom = $(div + ' .header-zoom').length ? d3.select(div + ' .header-zoom') : headerOptions;
+                var headerZoom = $(div).find('.header-zoom').length ? d3.select(div).select('.header-zoom') : headerOptions;
                 if (options.bubbleHelp === true) {
-                    if (!$(div + ' .header-help').length) {
+                    if (!$(div).find('.header-help').length) {
                         var helpContent = "<div><strong>To zoom in :</strong> Left click to select area of interest</div>" +
                             "<div><strong>To zoom out :</strong> Right click to reset the scale</div>" +
                             "<div><strong>Zoom max  :</strong> Limited to <strong>" + self.zoomMax.toString() + " " + options.unit +"</strong></div>";
@@ -2050,9 +2054,12 @@ export default class FeatureViewer {
                             .html("<span class='state'>Show</span> help");
                         $(function () {
                             //$('[data-toggle="popover"]').popover({html: true});
-                            var baseContID = self.div.substring(1);
-                            console.log("base div id: " + baseContID);
-                            $(div + ' .header-help').popover({
+                            //var baseContID = self.div.substring(1);
+                            //console.log("base div id: " + baseContID);
+
+                            var helpButton = $(div).find('.header-help');
+
+                            helpButton.popover({
                                 container: "body",
                                 html: true,
                                 placement: 'right',
@@ -2061,11 +2068,11 @@ export default class FeatureViewer {
                                 }
                               });
 
-                            $(div + ' .header-help').on('hide.bs.popover', function () {
-                              $(buttonHelp).find(".state").text("Show");
+                              helpButton.on('hide.bs.popover', function () {
+                                helpButton.find(".state").text("Show");
                             });
-                            $(div + ' .header-help').on('show.bs.popover', function () {
-                              $(buttonHelp).find(".state").text("Hide");
+                            helpButton.on('show.bs.popover', function () {
+                                helpButton.find(".state").text("Hide");
                             });
                         })
                     }
@@ -2081,7 +2088,7 @@ export default class FeatureViewer {
                     self.resetAll();
                     // react on right-clicking
                 });
-            self.svgElement = self.el.getElementsByTagName("svg")[0];
+            self.svgElement = self.viewerDiv.getElementsByTagName("svg")[0];
 
             self.svgContainer = self.svg
                 .append("g")
@@ -2132,7 +2139,7 @@ export default class FeatureViewer {
                 if (!options.positionWithoutLetter) {
                     pos += self.sequence[pos-1] || "";
                 }
-                $(div + " #zoomPosition").text(pos);
+                $(div).find("#zoomPosition").text(pos);
             });
             
             if (typeof options.dottedSequence !== "undefined"){

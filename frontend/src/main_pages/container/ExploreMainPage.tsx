@@ -14,45 +14,18 @@ import D3GraphViewer from '../components/D3GraphViewer';
 import Toggle from 'material-ui/Toggle';
 import OrganismChipAC from '../components/OrganismChipAC';
 import EntityChipAC from '../components/EntityChipAC';
-import * as Collections from 'typescript-collections';
-
+import LinearProgress from 'material-ui/LinearProgress';
 import matchSorter from 'match-sorter';
 import ReactTable from 'react-table';
 
+import EvidenceReportButton from '../components/EvidenceReportButton';
+
 import OboChipAC from '../components/OBOChipAC';
-
-
-
-export interface D3ParentProps { graphData: any};
-export interface D3ParentState { graph: any };
-class D3GraphComponent extends React.Component<D3ParentProps, D3ParentState>{
-
-    neo4jd3: any = null;
-
-    constructor(props)
-    {
-        super(props);
-
-    }
-
-    componentWillMount()
-    {
-    }
-
-    componentDidMount(){
-
-    }
- 
-    render(){
-      return (
-          <D3GraphViewer id="bla" />
-      )
-    }
-}
 
 export interface QueryResultProps { 
     foundRelations: any,
-    docInfos: any
+    docInfos: any,
+    searchWords: any
 };
 export interface QueryResultState { 
 
@@ -560,6 +533,8 @@ export interface QueryResultState {
 
         var self=this;
 
+
+
         var infoRow = <tr key={idx}>
                         <td>{tev['lid']}, {tev['ltype']}</td>
                         <td>{tev['rid']}, {tev['rtype']}</td>
@@ -567,7 +542,7 @@ export interface QueryResultState {
                         <td>{tev['docid']}</td>
                         <td>
                         <FlatButton label="Accept Entry" onClick={() => self.reportEvidence(tev, true)} icon={<CheckIcon/>}/>
-                         <FlatButton label="Disagree Entry" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/>
+                        <FlatButton label="Disagree Entry" backgroundColor="secondary" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/>
                         </td>
                       </tr>;
 
@@ -609,6 +584,8 @@ export interface QueryResultState {
             }
         }
 
+        let acceptColor = ""; // -> #D0E2BF
+        let disagreeColor = ""; // -> #e2bfbf
 
         var infoRow = <tr key={idx}>
                         <td>{tev['rel_verb']}, {tev['rel_category']}</td>
@@ -616,8 +593,8 @@ export interface QueryResultState {
                         <td>{relLocation}</td>
                         <td>{}</td>
                         <td rowSpan={2}>
-                        <FlatButton label="Accept REL" onClick={() => self.reportEvidence(tev, true)} icon={<CheckIcon/>}/>
-                        <FlatButton label="Disagree REL" onClick={() => self.reportEvidence(tev, false)} icon={<DisagreeIcon/>}/>
+
+                        <EvidenceReportButton dataID={tev['data_id']} onAccept={() => self.reportEvidence(tev, true)} onDisagree={() => self.reportEvidence(tev, false)} />
 
                         </td>
                         </tr>;
@@ -661,6 +638,29 @@ export interface QueryResultState {
 
 }
 
+    makeSearchTerms(searchWords)
+    {
+        var searchData = {};
+        for (var i = 0; i <searchWords.length; ++i)
+        {
+            let elem = searchWords[i];
+
+            let elemGroup = elem['group'];
+            let elemName = elem['name'];
+            
+            if (elemGroup in searchData)
+            {
+                searchData[elemGroup].push(elemName);
+            } else {
+                searchData[elemGroup] = [elemName];
+            }
+
+        }
+
+        return searchData;
+            
+    }
+
     reportEvidence(ev, accept)
     {
         console.log("Evidence Reported");
@@ -669,6 +669,7 @@ export interface QueryResultState {
 
         var sendData = ev;
         sendData['approve'] = accept;
+        sendData['search_terms'] = this.makeSearchTerms(this.props.searchWords)
 
         axios.post(config.getRestAddress() + "/relation_feedback",sendData, config.axiosConfig)
         .then(function (response) {
@@ -690,7 +691,8 @@ export interface QueryComponentState {
     selectedCells: Array<any>,
     interactions: any,
     matureMIRNA: boolean,
-    restrictOrganism: boolean
+    restrictOrganism: boolean,
+    queryStarted: boolean
  };
 
 class QueryComponent extends React.Component<QueryComponentProps, QueryComponentState> {
@@ -744,9 +746,6 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
             let elemGroup = elem['group'];
             let elemName = elem['name'];
 
-            console.log(elemGroup)
-            console.log(elemName)
-
             if (elemGroup in sendData)
             {
                 sendData[elemGroup].push(elemName);
@@ -759,16 +758,18 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
 
         console.log(sendData);
 
+        this.setState({queryStarted: true});
+
         axios.post(config.getRestAddress() + "/find_interactions",sendData, config.axiosConfig)
         .then(function (response) {
           console.log(response.data)
 
-          self.setState({interactions: response.data})
+          self.setState({interactions: response.data, queryStarted: false})
 
         })
         .catch(function (error) {
           console.log(error);
-          self.setState({interactions: {}});
+          self.setState({interactions: {}, queryStarted: false});
         });
     }
 
@@ -780,12 +781,18 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
         var alignResults = [];
         if ((this.state.interactions == null) || (this.state.interactions.length == 0))
         {
-            alignResults.push(<p key={0}>No Result Available yet</p>)   ;
-            alignResults.push(<pre key={1}>{JSON.stringify(this.state.selectedOrganisms, null, 2)}</pre>)   ;
+
+            if (this.state.queryStarted)
+            {
+                alignResults.push(<LinearProgress key={0}/>);
+            } else {
+                alignResults.push(<p key={0}>No Result Available for your query.</p>)   ;
+            }
+            //alignResults.push(<pre key={1}>{JSON.stringify(this.state.selectedOrganisms, null, 2)}</pre>)   ;
 
         } else {
 
-            alignResults.push(<QueryResult key={0} foundRelations={this.state.interactions["rels"]} docInfos={this.state.interactions["pmidinfo"]}/>)
+            alignResults.push(<QueryResult key={0} searchWords={this.state.selectedElements} foundRelations={this.state.interactions["rels"]} docInfos={this.state.interactions["pmidinfo"]}/>)
 
             //alignResults.push(<pre key={0}>{JSON.stringify(this.state.interactions, null, 2)}</pre>)   ;
             //alignResults.push(<pre key={1}>{JSON.stringify(this.state.selectedOrganisms, null, 2)}</pre>)   ;
@@ -840,7 +847,10 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
                     </div>
 
                     <div>
-                        {alignResults}
+                        {
+                            alignResults
+                        }
+                        
                     </div>
 
                 </CardText>

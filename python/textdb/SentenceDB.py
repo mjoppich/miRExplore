@@ -52,7 +52,7 @@ class SentenceDB:
 
                 self.recent_elements.append( sent )
 
-                if len(self.recent_elements) > 1000:
+                if len(self.recent_elements) > 10000:
                     self.recent_elements.popleft() # if too large, pop
 
                 return sent

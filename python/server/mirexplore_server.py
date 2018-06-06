@@ -20,6 +20,8 @@ from textdb.PMID2XDB import PMID2XDB
 from textdb.SentenceDB import SentenceDB
 from textdb.feedback_db import feedbackDB
 
+from textdb.TestRelLoader import TestRelLoader
+
 
 from io import StringIO
 
@@ -99,47 +101,89 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestriction
     foundRels = defaultdict(list)
 
     allDocIDs = set()
-
-
-    allRelsByType = defaultdict(list)
-
-    for relDB in relDBs:
-
-        for gene in genes:
-
-            dbrels = relDB.get_rels('gene', gene)
-
-            if dbrels == None:
-                continue
-
-            allRelsByType['gene'] += dbrels
-
-        for mirna in mirnas:
-
-            dbrels = relDB.get_rels('mirna', mirna)
-
-            if dbrels == None:
-                continue
-
-            allRelsByType['mirna'] += dbrels
-
-        for lncrna in lncrnas:
-
-            dbrels = relDB.get_rels('lncrna', lncrna)
-
-            if dbrels == None:
-                continue
-
-            allRelsByType['lncrna'] += dbrels
-
-
     allRels = []
-    for etype in allRelsByType:
 
-        allRels += allRelsByType[etype]
+    if any([x.startswith("Tester") for x in genes]):
+
+        testerID = [x for x in genes if x.startswith("Tester")][0]
+
+        print("Retrieving testing Interactions for tester", testerID)
+
+        testerRels = testRels.tester2rels[testerID]
+
+        if "all" in testRels.tester2rels:
+            testerRels += testRels.tester2rels["all"]
+
+        print(testerID, len(testerRels), testerRels)
+
+        targetsByLid = defaultdict(set)
+
+        for (lid, rid, sid) in testerRels:
+            targetsByLid[lid].add( (rid, sid) )
+
+
+        if mirelPMID != None:
+
+            for lid in targetsByLid:
+
+                dbrels = mirelPMID.get_rels('gene', lid)
+
+                if dbrels == None:
+                    continue
+
+                takenRels = []
+                allrids = targetsByLid[lid]
+
+                for rel in dbrels:
+                    if (rel.rid, rel.assocSent) in allrids:
+                        takenRels.append(rel)
+
+                allRels += takenRels
+
+    else:
+        #proceed as usual
+
+        allRelsByType = defaultdict(list)
+
+        for relDB in relDBs:
+
+            for gene in genes:
+
+                dbrels = relDB.get_rels('gene', gene)
+
+                if dbrels == None:
+                    continue
+
+                allRelsByType['gene'] += dbrels
+
+            for mirna in mirnas:
+
+                dbrels = relDB.get_rels('mirna', mirna)
+
+                if dbrels == None:
+                    continue
+
+                allRelsByType['mirna'] += dbrels
+
+            for lncrna in lncrnas:
+
+                dbrels = relDB.get_rels('lncrna', lncrna)
+
+                if dbrels == None:
+                    continue
+
+                allRelsByType['lncrna'] += dbrels
+
+
+        for etype in allRelsByType:
+
+            allRels += allRelsByType[etype]
 
 
     allRels = sorted(allRels, key=lambda x: x.docid)
+    print("Loading", len(allRels), "relations")
+
+    loadedSents = 0
 
     for rel in allRels:
 
@@ -147,15 +191,20 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestriction
             allDocIDs.add(rel.docid)
 
         evJSON = rel.toJSON()
+
         evSent = evJSON.get('rel_sentence', None)
 
         if evSent != None:
             evSentTxt = sentDB.get_sentence(evSent)
 
             if evSentTxt != None:
+
+                loadedSents += 1
                 evJSON['sentence'] = evSentTxt[1]
 
         foundRels[(rel.lid, rel.rid)].append(evJSON)
+
+    print("Loaded Sentences", loadedSents)
 
     addInfo = {}
 
@@ -232,6 +281,41 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestriction
 
     return app.make_response((jsonify(returnObj), 200, None))
 
+@app.route("/feedback_info", methods=['GET', 'POST'])
+def getFeedbackInfo():
+
+    sendJSON = request.get_json(force=True, silent=True)
+    dataID = sendJSON['data_id']
+
+    print(sendJSON)
+
+    dbRes = mirFeedback.get_feedback(dataID)
+
+    print(dbRes)
+
+    if dbRes == None or len(dbRes) == 0:
+        dbRes = []
+
+
+    feedbackPos = 0
+    feedbackNeg = 0
+
+    for fback in dbRes:
+        if fback[4] == True:
+            feedbackPos += 1
+        else:
+            feedbackNeg -= 1
+
+    feedbackCum = feedbackPos+feedbackNeg
+
+    return app.make_response((jsonify({
+        'data_id': dataID,
+        'feedbacks': len(dbRes),
+        'feedback_pos': feedbackPos,
+        'feedback_neg': feedbackNeg,
+        'feedback_cum': feedbackCum
+    }), 200, None))
+
 
 @app.route('/organisms')
 def getOrganisms():
@@ -271,6 +355,14 @@ def findID():
         jsonResult += list(
             [{'name': interact, 'group': type} for interact in jsonResultByType[type]]
         )
+
+
+    if reMatch.match("Tester"):
+
+        for testerID in testRels.tester2rels:
+            if not testerID.startswith("Tester"):
+                continue
+            jsonResult.append({'name': testerID, 'group': 'gene'})
 
     return app.make_response((jsonify( jsonResult ), 200, None))
 
@@ -329,7 +421,11 @@ def rel_feedback():
 
     approve = feedbackInfo['approve']
 
-    mirFeedback.add_feedback( (dataSource, dataID, docID, relSentID, approve, lid, rid, ltype, rtype, ltypePOS, rtypePOS) )
+    searchTermGenes = tuple(feedbackInfo['search_terms'].get('gene', []))
+
+    print(dataID, approve)
+
+    mirFeedback.add_feedback( (dataSource, dataID, docID, relSentID, approve, lid, rid, ltype, rtype, ltypePOS, rtypePOS, searchTermGenes) )
 
     return app.make_response((jsonify({}), 200, None))
 
@@ -354,7 +450,7 @@ if __name__ == '__main__':
 
     # allInteractions = defaultdict(list)
 
-    mirandaDB = MirandaRelDB.loadFromFile(filepath=args.obodir + "/miranda_test.tsv")
+    mirandaDB = None#MirandaRelDB.loadFromFile(filepath=args.obodir + "/miranda_test.tsv")
 
 
     recordsDB = None#miRecordDB.loadFromFile(filelocation=args.obodir + "/mirecords_v4.xlsx")
@@ -369,7 +465,9 @@ if __name__ == '__main__':
     pmid2pmcDB = PMID2PMCDB.loadFromFile(args.textmine + '/pmid2pmc')
     print(datetime.datetime.now(), "Loading mirel")
 
-    mirelPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna")
+    testRels = TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
+
+    mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna")
     lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")
     geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
 
@@ -383,7 +481,7 @@ if __name__ == '__main__':
 
     print(datetime.datetime.now(), "Loading sents")
     sentDB = SentenceDB.loadFromFile(args.sentdir,
-                                    args.textmine+ "aggregated_pmid/pmid2sent")
+                                    args.textmine+ "/aggregated_pmid/pmid2sent")
     print(datetime.datetime.now(), "Finished sents")
 
     requiredPMIDs = set()
