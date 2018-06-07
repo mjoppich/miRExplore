@@ -40,6 +40,21 @@ CORS(app)
 app.config['DEBUG'] = False
 app.config['UPLOAD_FOLDER'] = ""
 
+allOrgInfos = [{
+        "name": "Homo sapiens",
+        "group": "organism",
+        "termid": "Homo sapiens",
+        "syns": ['human', 'hsa']
+    },
+    {
+        "name": "Mus musculus",
+        "group": "organism",
+        "termid": "Mus musculus",
+        "syns": ['mouse', 'mmu']
+    }
+
+]
+
 
 # For a given file, return whether it's an allowed type or not
 def allowed_file(filename):
@@ -85,14 +100,14 @@ def findInteractions():
 
     print(interactReq)
 
-    return returnInteractions(interactReq.get('gene', None), interactReq.get('mirna', None), diseaseRestrictions=interactReq.get('disease', None))
+    return returnInteractions(interactReq.get('gene', None), interactReq.get('mirna', None), interactReq.get('lncrna', None), organisms=interactReq.get('organisms', None), diseaseRestrictions=interactReq.get('disease', None))
 
 @app.route('/status')
 def getStatus():
     return app.make_response((jsonify({'error': 'must include homid'}), 400, None))
 
 
-def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None):
+def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None):
 
     genes = genes if genes!=None else []
     mirnas = mirnas if mirnas!=None else []
@@ -185,7 +200,31 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestriction
 
     loadedSents = 0
 
+    if organisms != None:
+
+        organisms = [x['termid'] for x in organisms]
+
+        neworgs = set()
+
+        if 'Homo sapiens' in organisms:
+            neworgs.add("hsa")
+
+        if 'Mus musculus' in organisms:
+            neworgs.add("mmu")
+
+        organisms = neworgs
+
+        print("Must include any organism", organisms)
+
     for rel in allRels:
+
+        if organisms != None:
+
+            if rel.orgs == None:
+                continue
+
+            if not any([x in rel.orgs for x in organisms]):
+                continue
 
         if rel.docid != -1:
             allDocIDs.add(rel.docid)
@@ -202,7 +241,7 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestriction
                 loadedSents += 1
                 evJSON['sentence'] = evSentTxt[1]
 
-        foundRels[(rel.lid, rel.rid)].append(evJSON)
+        foundRels[(rel.l_id_type, rel.r_id_type)].append(evJSON)
 
     print("Loaded Sentences", loadedSents)
 
@@ -241,9 +280,9 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestriction
 
 
     allrels = []
-    for lid, rid in foundRels:
+    for lent, rent in foundRels:
 
-        lrEvs = foundRels[(lid, rid)]
+        lrEvs = foundRels[(lent, rent)]
 
         okEvs = []
 
@@ -269,8 +308,10 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, diseaseRestriction
 
         if len(okEvs) > 0:
 
-            allrels.append({'lid':lid,
-                            'rid': rid,
+            allrels.append({'lid':lent[0],
+                            'rid': rent[0],
+                            'ltype': lent[1],
+                            'rtype': rent[1],
                             'evidences': okEvs
                             })
 
@@ -317,9 +358,41 @@ def getFeedbackInfo():
     }), 200, None))
 
 
-@app.route('/organisms')
+@app.route('/organisms', methods=['GET', 'POST'])
 def getOrganisms():
-    return app.make_response((jsonify(['human', 'mouse', 'Homo sapiens', 'Mus musculus']), 200, None))
+    #return app.make_response((jsonify(['Homo sapiens', 'Mus musculus']), 200, None))
+
+    searchWords = request.get_json(force=True, silent=True)
+    searchWord = searchWords['search']
+
+    if searchWord == None or len(searchWord) <= 2:
+        return app.make_response((jsonify([]), 200, None))
+
+    reMatch = regex.compile(searchWord + '{e<=3}')
+
+    jsonResult = list()
+
+    for orgInfo in allOrgInfos:
+
+        termName = orgInfo['name']
+        termGroup = orgInfo['group']
+        termID = orgInfo['termid']
+        syns = orgInfo['syns']
+
+        for word in [termName]+syns:
+            if reMatch.match(word):
+                jsonResult.append(
+                    {
+                        'name': word,
+                        'termid': termID,
+                        'group': 'organism'
+                    }
+                )
+
+        if len(jsonResult) > 100:
+            break
+
+    return app.make_response((jsonify(jsonResult), 200, None))
 
 @app.route('/autocomplete', methods=['GET', 'POST'])
 def findID():

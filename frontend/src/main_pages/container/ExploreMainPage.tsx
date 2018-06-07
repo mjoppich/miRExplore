@@ -19,18 +19,28 @@ import matchSorter from 'match-sorter';
 import ReactTable from 'react-table';
 
 import EvidenceReportButton from '../components/EvidenceReportButton';
+import MEEvidenceGraph from '../components/MEEvidenceGraph';
+import MEFeatureViewer from '../components/MEFeatureViewer';
+
 
 import OboChipAC from '../components/OBOChipAC';
 
 export interface QueryResultProps { 
     foundRelations: any,
     docInfos: any,
-    searchWords: any
+    searchWords: any,
+    showGeneStructure: boolean,
+    showInteractionGraph: boolean
 };
 export interface QueryResultState { 
 
  };
  class QueryResult extends React.Component<QueryResultProps, QueryResultState> {
+
+    orgTLC2Long = {
+        'hsa': 'Homo sapiens',
+        'mmu': 'Mus musculus'
+    };
 
     constructor(props) {
         super(props);
@@ -54,9 +64,16 @@ export interface QueryResultState {
             var rowData = {};
             rowData['rid'] = foundRel['rid'];
             rowData['lid'] = foundRel['lid'];
+
+            rowData['ltype'] = foundRel['ltype'];
+            rowData['rtype'] = foundRel['rtype'];
+
             rowData['evidences'] = foundRel['evidences'];
 
             var docIDs = [];
+            var orgInfo = {};
+            var allorgs = [];
+
             for (var e=0; e < foundRel['evidences'].length; ++e)
             {
                 var ev = foundRel['evidences'][e];
@@ -65,9 +82,36 @@ export interface QueryResultState {
                 {
                     docIDs.push(ev['docid']);
                 }
+
+                if ('orgs' in ev)
+                {
+                    ev['orgs'].forEach(element => {
+
+                        console.log("org element");
+
+                        var longOrg = this.orgTLC2Long[element] || element;
+                        
+                        if (allorgs.indexOf(longOrg) == -1)
+                        {
+                            allorgs.push(longOrg);
+                        }
+
+                        if (ev['docid'] in orgInfo)
+                        {
+                            if (orgInfo[ev['docid']].indexOf(element) == -1)
+                            {
+                                orgInfo[ev['docid']].push(element);
+                            }
+                        } else {
+                            orgInfo[ev['docid']] = [element];
+                        }
+                    });
+                }
             }
 
             rowData['docids'] = docIDs;
+            rowData['orgs'] = orgInfo;
+            rowData['allorgs'] = allorgs;
 
 
             if ('disease' in this.props.docInfos)
@@ -106,6 +150,14 @@ export interface QueryResultState {
 
             data.push(rowData);   
         }
+
+        var evidenceGraph = <div></div>;
+
+        if (this.props.showInteractionGraph)
+        {
+            evidenceGraph = <MEEvidenceGraph data={data}/>;
+        }
+
         
         return (
             <div>
@@ -123,6 +175,19 @@ export interface QueryResultState {
                         id: "lid",
                         accessor: d => d.lid,
                         filterMethod: (filter, rows) => matchSorter(rows, filter.value, { keys: ["lid"] }),
+                        Cell: (row) => {
+
+                            //https://www.genecards.org/cgi-bin/carddisp.pl?gene=RUNX3
+
+                            if (row.original.ltype == "gene")
+                            {
+                               return (<span style={{display: "block"}}>
+                               <a href={"/https://www.genecards.org/cgi-bin/carddisp.pl?gene="+row.value}>{row.value}</a>
+                            </span>); 
+                            }
+
+                            return <span>{row.value}</span>
+                        }
                       },
                       {
                         Header: "miRNA/lncRNA",
@@ -152,6 +217,33 @@ export interface QueryResultState {
                                 );
                             }
                             return <div>{rows}</div>;
+                        }
+                      },
+                      {
+                        Header: "Organisms",
+                        accessor: "allorgs",
+                        Cell: (row) => {
+
+                            var rows = [];
+                            for (var i = 0; i < row.value.length; i++) {
+                                // note: we add a key prop here to allow react to uniquely identify each
+                                // element in this array. see: https://reactjs.org/docs/lists-and-keys.html
+                                rows.push(
+                                    <span key={i} style={{display: "block"}}>
+                                         {row.value[i]}
+                                    </span>
+                                );
+                            }
+                            return <div>{rows}</div>;
+                        },
+                        filterMethod: (filter, row) => {
+                            var filterID = filter.id;
+                            var rowData = row[filterID];
+
+                            var retval = matchSorter(rowData, filter.value);
+                            console.log(retval);
+
+                            return retval.length > 0;
                         }
                       }
                     ]
@@ -258,16 +350,32 @@ export interface QueryResultState {
                 className="-striped -highlight"
                 SubComponent={row => {
                     console.log(row);
+
+                    var geneStructure = <span></span>;
+
+                    if (self.props.showGeneStructure)
+                    {
+                        geneStructure = <MEFeatureViewer features={[]} location={[]}/>;
+                    }
+
                     return (
-                      <div style={{ padding: "20px" }}>
+                        <div>
+                            <div>
+                                {geneStructure}
+                            </div>
+                            <div style={{ padding: "20px" }}>
 
-                        {self.prepareEvidences(row['original'])}
+                                {self.prepareEvidences(row['original'])}
 
+                                </div>
                         </div>
                         )
                         }
                         }
               />
+                {
+                    evidenceGraph
+                }
             </div>
           );
 
@@ -401,7 +509,7 @@ export interface QueryResultState {
                         <th>Found Relation</th>
                         <th>Verb-Model</th>
                         <th>Evidence Location</th>
-                        <th></th>
+                        <th>Organisms</th>
                         <th>DB Interaction</th>
                     </tr>;
             
@@ -587,11 +695,18 @@ export interface QueryResultState {
         let acceptColor = ""; // -> #D0E2BF
         let disagreeColor = ""; // -> #e2bfbf
 
+        var orgInfo = "";
+        
+        if ('orgs' in tev)
+        {
+            orgInfo = tev['orgs'].map((d) => self.orgTLC2Long[d] || d).join(", ");
+        }
+
         var infoRow = <tr key={idx}>
                         <td>{tev['rel_verb']}, {tev['rel_category']}</td>
                         <td>{relDirection + relNegated}</td>
                         <td>{relLocation}</td>
-                        <td>{}</td>
+                        <td>{orgInfo}</td>
                         <td rowSpan={2}>
 
                         <EvidenceReportButton dataID={tev['data_id']} onAccept={() => self.reportEvidence(tev, true)} onDisagree={() => self.reportEvidence(tev, false)} />
@@ -690,8 +805,9 @@ export interface QueryComponentState {
     selectedGOs: Array<any>,
     selectedCells: Array<any>,
     interactions: any,
-    matureMIRNA: boolean,
-    restrictOrganism: boolean,
+    showGeneStructure: boolean,
+    showInteractionGraph:boolean,
+    predictiveInteractions: boolean,
     queryStarted: boolean
  };
 
@@ -703,7 +819,7 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
 
     componentWillMount()
     {
-        this.setState({selectedElements: [], matureMIRNA:true, restrictOrganism: false});
+        this.setState({selectedElements: [], predictiveInteractions:true,showInteractionGraph: false, showGeneStructure: false, selectedOrganisms: [], selectedDiseases: []});
     }
 
     newElementSelected( newElement )
@@ -737,7 +853,13 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
 
         console.log("Selected Elements in Explore")
         console.log(this.state.selectedElements);
-        console.log(sendData)
+        console.log(this.state);
+        console.log(sendData);
+
+        if (!(this.state.selectedElements))
+        {
+            return;
+        }
 
         for (var i = 0; i < this.state.selectedElements.length; ++i)
         {
@@ -754,7 +876,15 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
             }
         }
 
-        sendData['disease'] = this.state.selectedDiseases;
+        if ((this.state.selectedDiseases) && (this.state.selectedDiseases.length > 0))
+        {
+            sendData['disease'] = this.state.selectedDiseases;
+        }
+
+        if ((this.state.selectedOrganisms)&&(this.state.selectedOrganisms.length > 0))
+        {
+            sendData['organisms'] = this.state.selectedOrganisms;
+        }
 
         console.log(sendData);
 
@@ -779,20 +909,24 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
     {
 
         var alignResults = [];
+
+        if (this.state.queryStarted)
+        {
+            alignResults.push(<LinearProgress key={0}/>);
+        }
+
         if ((this.state.interactions == null) || (this.state.interactions.length == 0))
         {
 
-            if (this.state.queryStarted)
+            if (!this.state.queryStarted)
             {
-                alignResults.push(<LinearProgress key={0}/>);
-            } else {
                 alignResults.push(<p key={0}>No Result Available for your query.</p>)   ;
             }
             //alignResults.push(<pre key={1}>{JSON.stringify(this.state.selectedOrganisms, null, 2)}</pre>)   ;
 
         } else {
 
-            alignResults.push(<QueryResult key={0} searchWords={this.state.selectedElements} foundRelations={this.state.interactions["rels"]} docInfos={this.state.interactions["pmidinfo"]}/>)
+            alignResults.push(<QueryResult key={0} showInteractionGraph={this.state.showInteractionGraph} showGeneStructure={this.state.showGeneStructure} searchWords={this.state.selectedElements} foundRelations={this.state.interactions["rels"]} docInfos={this.state.interactions["pmidinfo"]}/>)
 
             //alignResults.push(<pre key={0}>{JSON.stringify(this.state.interactions, null, 2)}</pre>)   ;
             //alignResults.push(<pre key={1}>{JSON.stringify(this.state.selectedOrganisms, null, 2)}</pre>)   ;
@@ -808,7 +942,14 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
 
                     <div>
                         <EntityChipAC onValueChange={(newvalues) => {console.log("onVC called"); this.setState({selectedElements: newvalues})}} />
-                        <OrganismChipAC onValueChange={(newvalues) => this.setState({selectedOrganisms: newvalues})}/>
+
+                        <OboChipAC
+                            url="organisms"
+                            floatText="Organism"
+                            hintText="Enter organism name"
+                            onValueChange={(newvalues) => this.setState({selectedOrganisms: newvalues})
+                        }/>
+
 
                         <OboChipAC
                             url="disease_ac"
@@ -832,16 +973,22 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
                         }/>
 
                 <Toggle
-                label="Use mature miRNA (instead of pre-miRNA)"
+                label="Include Predictive Interactions"
                 defaultToggled={true}
-                toggled={this.state.matureMIRNA}
-                onToggle={(event, newValue) => this.setState({matureMIRNA: !this.state.matureMIRNA})}
+                toggled={this.state.predictiveInteractions}
+                onToggle={(event, newValue) => this.setState({predictiveInteractions: !this.state.predictiveInteractions})}
                 />
                 <Toggle
-                label="Restrict to specified organisms"
+                label="Show Gene Structure"
                 defaultToggled={false}
-                toggled={this.state.restrictOrganism}
-                onToggle={(event, newValue) => this.setState({restrictOrganism: !this.state.restrictOrganism})}
+                toggled={this.state.showGeneStructure}
+                onToggle={(event, newValue) => this.setState({showGeneStructure: !this.state.showGeneStructure})}
+                />
+                <Toggle
+                label="Show Interaction Graph"
+                defaultToggled={false}
+                toggled={this.state.showInteractionGraph}
+                onToggle={(event, newValue) => this.setState({showInteractionGraph: !this.state.showInteractionGraph})}
                 />
                         <FlatButton label="Query specified Elements" onClick={() => this.prepareResults()}/>
                     </div>
