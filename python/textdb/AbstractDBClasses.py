@@ -29,6 +29,14 @@ class DataBaseRel(ABC):
     def rid(self):
         pass
 
+    @property
+    def l_id_type(self):
+        return (self.lid, self.ltype)
+
+    @property
+    def r_id_type(self):
+        return (self.rid, self.rtype)
+
     @abstractmethod
     def toJSON(self):
         pass

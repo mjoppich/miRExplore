@@ -35,7 +35,6 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
     canvasTransform: any = null;
     context: any = null;
     nodeRadius: number = 20;
-    graph: {nodes: any, links: any} = {nodes:[], links:[]};
 
     constructor(props) {
         super(props);
@@ -48,10 +47,15 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
     }
 
+    componentWillReceiveProps(newprops)
+    {
+        this.drawChart(newprops);
+    }
+
     svg = null;
     force = null;
 
-    drawChart() {
+    drawChart(theprops) {
 
         var self = this;
 
@@ -90,23 +94,23 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         }
         
         this.force
-        .nodes(this.props.graph.nodes) 
-        .force("link").links(this.props.graph.links)
+        .nodes(theprops.graph.nodes) 
+        .force("link").links(theprops.graph.links)
 
     var predictionLink = this.svg.selectAll(".pred-link")
-        .data(this.props.graph.links)
+        .data(theprops.graph.links)
         .enter()
         .append("line")
         .attr("class", "link");
 
     var evidenceLink = this.svg.selectAll(".ev-link")
-        .data(this.props.graph.links)
+        .data(theprops.graph.links)
         .enter()
         .append("line")
         .attr("class", "link");
 
     var node = this.svg.selectAll(".node")
-        .data(this.props.graph.nodes)
+        .data(theprops.graph.nodes)
         .enter().append("g")
         .attr("class", "node")
         .call(d3.drag()
@@ -508,13 +512,14 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
     updateGraph()
     {
-        console.log("D3 n4j viewer updateGraph()");
-
-        //var d3graph = this.neo4jgraph2d3(this.props.graph);
-
+        console.log("D3 SVG Force parallel updateGraph()");
         console.log(this.props.graph);
     
-        this.drawChart();
+        if (this.props.graph)
+        {
+            this.drawChart(this.props);
+
+        }
     }
 
     willUnmount:boolean = false;

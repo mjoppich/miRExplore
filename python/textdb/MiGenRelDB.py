@@ -1,4 +1,8 @@
+import copy
 import os, sys
+
+from textdb.DocOrganismDB import DocOrganismDB
+
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 
@@ -46,6 +50,8 @@ class MiRGeneRel(DataBaseRel):
         self.same_sentence = sameSentence
         self.same_paragraph = sameParagraph
 
+        self.orgs = None
+
     @property
     def lid(self):
         return self.lent[0]
@@ -69,7 +75,7 @@ class MiRGeneRel(DataBaseRel):
 
     def toJSON(self):
 
-        return {
+        retJSON =  {
             'rel_direction': self.assocDir,
             'rel_direction_verb': self.assocDirV,
             'rel_category': self.assocCat,
@@ -90,6 +96,11 @@ class MiRGeneRel(DataBaseRel):
             'data_source': self.data_source,
             'data_id': self.data_id
         }
+
+        if self.orgs != None:
+            retJSON['orgs'] = tuple(self.orgs)
+
+        return retJSON
 
 class MiGenRelDB(DataBaseDescriptor):
 
@@ -125,14 +136,17 @@ class MiGenRelDB(DataBaseDescriptor):
 
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna'):
+    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna', dbtype='pmid'):
 
 
         ret = MiGenRelDB(ltype, rtype)
 
         file_base = os.path.basename(filepath)
+        fileDir = os.path.dirname(filepath)
 
-        rel2did = {}
+        docOrgDB = DocOrganismDB.loadFromFile(fileDir + "/organism."+dbtype)
+
+        seenRels = set()
 
         with open(filepath, 'r') as fin:
 
@@ -148,7 +162,16 @@ class MiGenRelDB(DataBaseDescriptor):
                 rid = aline[1]
                 (org, rid) = cls.harmonizeMIRNA(rid)
 
+                docOrgs = set()
+                if org != None:
+                    docOrgs.add(org)
+
                 docid = aline[3]
+
+                docOrgRes = docOrgDB.getDocOrgs(docid)
+
+                if docOrgRes != None:
+                    docOrgs = docOrgs.union(docOrgRes)
 
                 sameParagraph = aline[4] == 'True'
                 sameSentence = aline[5] == 'True'
@@ -162,19 +185,28 @@ class MiGenRelDB(DataBaseDescriptor):
                     allrels = set()
 
                     for relIdx, rel in enumerate(tmRelations):
-                        newrel = MiRGeneRel(rel, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), 'pmid', None)
+                        newrel = MiRGeneRel(rel, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), dbtype, None)
+
+                        relCopy = copy.deepcopy(newrel)
 
                         dataID = file_base + "_" + str(lineIdx) + "_" + str(relIdx)
-                        rel2did[newrel] = dataID
 
+                        if relCopy in seenRels:
+                            continue
+
+                        seenRels.add(relCopy)
+
+                        newrel.data_id = dataID
                         allrels.add(newrel)
 
                     relations = allrels
                 else:
-                    relations = set([MiRGeneRel(None, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), 'pmid', None)])
+                    relations = set([MiRGeneRel(None, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), dbtype, None)])
 
                 for relIdx, rel in enumerate(relations):
 
+                    if len(docOrgs) > 0:
+                        rel.orgs = tuple(docOrgs)
 
                     #rel.data_id = dataID
 
@@ -186,35 +218,38 @@ class MiGenRelDB(DataBaseDescriptor):
 
         for x in ret.ltype2rel:
             for elem in ret.ltype2rel[x]:
-                if elem in rel2did:
-                    elem.data_id = rel2did[elem]
-
-        for x in ret.rtype2rel:
-            for elem in ret.rtype2rel[x]:
-                if elem in rel2did:
-                    elem.data_id = rel2did[elem]
+                if elem.data_id == None:
+                    print("Elem with no data id!")
 
         if __name__ == '__main__':
-            allRelations = list()
-
-            for lid in ret.ltype2rel:
-                allLidRels = ret.ltype2rel[lid]
-
-                allLidRels = [x for x in allLidRels if x.assocSent != None]
-
-                allRelations += allLidRels
 
 
-            allSeen = []
+            prepareTMAnalysis = False
+            prepareVerbAnalysis = True
 
-            for tester in ['Tester1', 'Tester2', 'Tester3', 'all']:
+            if prepareTMAnalysis:
+                allRelations = list()
 
-                relems = cls.choices(allRelations, 200, allSeen)
+                for lid in ret.ltype2rel:
+                    allLidRels = ret.ltype2rel[lid]
 
-                allSeen += relems
+                    allLidRels = [x for x in allLidRels if x.assocSent != None]
 
-                for relem in relems:
-                    print(tester + "\t"+ relem.lid + "\t" + relem.rid + "\t" + relem.assocSent)
+                    allRelations += allLidRels
+
+
+                allSeen = []
+
+                for tester in ['Tester1', 'Tester2', 'Tester3', 'all']:
+
+                    relems = cls.choices(allRelations, 200, allSeen)
+
+                    allSeen += relems
+
+                    for relem in relems:
+                        print(tester + "\t"+ relem.lid + "\t" + relem.rid + "\t" + relem.assocSent)
+
+
 
 
         return ret
