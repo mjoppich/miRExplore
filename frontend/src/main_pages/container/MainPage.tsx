@@ -45,17 +45,19 @@ export class MainStatus extends React.Component<{},{}> {
             <div>
                 <span>
                     <h4>General Information</h4>
-                    <ul>
-                        <li>Number of Genes</li>
-                        <li>Number of miRNA</li>
-                        <li>Number of lncRNAs</li>
-                        <li>Number if Gene/miRNA Interactions</li>
-                        <li>Number of lncRNA/miRNA Interactions</li>
-                    </ul>
+                    <p>
+                        mingleRNA is an interactive web tool, which allows the user to browse miRNA - lncRNA - mRNA interactions in human and mouse. 
+                    </p>
                 </span>
                 <span>
                     <h4>Included Databases</h4>
                     <ul>
+                        <li>miRBase</li>
+                        <li>GENCODE</li>
+                        <li>NONCODE</li>
+                        <li>Lncipedia</li>
+                        <li>lncRNAdb</li>
+                        <li>miRanda</li>
                         <li>mirTarBase</li>
                         <li>miRecords</li>
                         <li>PubMeds</li>
@@ -99,21 +101,15 @@ export class WelcomePage extends React.Component<{},{}> {
             <div>
             <Card style={{marginBottom: "20px"}}>
                 <CardTitle
-                    title="Welcome!"
-                    subtitle="miRExplore v0.1"
+                    title="mingleRNA"
+                    subtitle="v0.1"
                 />
                 <CardText >
-                    <p>miRExplore v.01 online.</p>
+                    <p>Welcome!</p>
                     <p>Explore the database in the explore tab</p>
-                    <p>Provide some statistics of the project here</p>
-
                 </CardText>
             </Card>
-                        <Card>
-                        <CardTitle
-                            title="miRExplore"
-                            subtitle="Statistics"
-                        />
+                    <Card>
                         <CardText >
                             <MainStatus/>
                         </CardText>

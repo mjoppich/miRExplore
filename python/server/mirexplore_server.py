@@ -465,7 +465,7 @@ if __name__ == '__main__':
     pmid2pmcDB = PMID2PMCDB.loadFromFile(args.textmine + '/pmid2pmc')
     print(datetime.datetime.now(), "Loading mirel")
 
-    testRels = TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
+    testRels = None#TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
 
     mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna")
     lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")

@@ -44,14 +44,14 @@ export default class MainPage extends React.Component<MainPageProps, MainPageSta
     componentWillMount() {
 
         var mainLocLinks = [];
-        mainLocLinks.push( {href: '#welcome', text: 'Hallo :)'} );
+        mainLocLinks.push( {href: '#welcome', text: 'Welcome to mingleRNA! :)'} );
 
         var exampleLocLinks = [];
-        exampleLocLinks.push( {href: '#explore', text: 'Hallo :)'} );
+        exampleLocLinks.push( {href: '#explore', text: 'Welcome to mingleRNA! :)'} );
 
 
         var rightsLocLinks = [];
-        rightsLocLinks.push( {href: '#welcome', text: 'Hallo :)'} );
+        rightsLocLinks.push( {href: '#welcome', text: 'Welcome to mingleRNA! :)'} );
 
 
         const mainPage = (
