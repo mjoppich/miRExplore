@@ -147,6 +147,72 @@ export interface QueryResultState {
                 rowData['disease_info'] = relInfo;
             }
 
+            if ('go' in this.props.docInfos)
+            {
+                var catInfos = this.props.docInfos['go'];
+                var relInfo = {};
+
+                for (var d=0; d < docIDs.length; ++d)
+                {
+                    var docid = docIDs[d];
+
+                    var catInfos = this.props.docInfos['go'];
+                    if (!(docid in catInfos))
+                    {
+                        continue;
+                    }
+
+                    var docinfo = catInfos[docid];
+
+                    for (var c=0; c < docinfo.length; ++c)
+                    {
+                        var di = docinfo[c];
+
+                        if (di.termid in relInfo)
+                        {
+                            relInfo[di.termid].push( [docid, di] );
+                        } else {
+                            relInfo[di.termid] =  [[docid, di]];
+                        }
+                    }
+                }
+
+                rowData['go_info'] = relInfo;
+            }
+
+            if ('cells' in this.props.docInfos)
+            {
+                var catInfos = this.props.docInfos['cells'];
+                var relInfo = {};
+
+                for (var d=0; d < docIDs.length; ++d)
+                {
+                    var docid = docIDs[d];
+
+                    var catInfos = this.props.docInfos['cells'];
+                    if (!(docid in catInfos))
+                    {
+                        continue;
+                    }
+
+                    var docinfo = catInfos[docid];
+
+                    for (var c=0; c < docinfo.length; ++c)
+                    {
+                        var di = docinfo[c];
+
+                        if (di.termid in relInfo)
+                        {
+                            relInfo[di.termid].push( [docid, di] );
+                        } else {
+                            relInfo[di.termid] =  [[docid, di]];
+                        }
+                    }
+                }
+
+                rowData['cells_info'] = relInfo;
+            }
+
 
             data.push(rowData);   
         }
@@ -182,7 +248,7 @@ export interface QueryResultState {
                             if (row.original.ltype == "gene")
                             {
                                return (<span style={{display: "block"}}>
-                               <a href={"/https://www.genecards.org/cgi-bin/carddisp.pl?gene="+row.value}>{row.value}</a>
+                               <a href={"https://www.genecards.org/cgi-bin/carddisp.pl?gene="+row.value}>{row.value}</a>
                             </span>); 
                             }
 
@@ -336,12 +402,172 @@ export interface QueryResultState {
                         }
                       },
                       {
-                        Header: "GO",
-                        accessor: "docids"
+                        Header: "Gene Ontology",
+                        id: "go_info",
+                        accessor: (d) => {
+                            if ('go_info' in d)
+                            {
+                                return d['go_info'];
+                            } else {
+                                return null;
+                            }
+                        },
+                        Cell: (row) => {
+
+                            if (row.value == null)
+                            {
+                                return <div>N/A</div>
+                            } else {
+
+                                var allDisInfo = [];
+                                
+                                var relInfo = row.value;
+
+                                console.log(relInfo);
+                                var relKeys = Object.keys(relInfo);
+
+                                for (var i = 0; i < relKeys.length; ++i)
+                                {
+                                    var termID = relKeys[i];
+                                    var tinfos = relInfo[termID];
+
+                                    var docIDs = [];
+                                    
+                                    for (var j=0; j < tinfos.length; ++j)
+                                    {
+                                        docIDs.push(tinfos[j][0]);
+                                    }
+                                    var tentry = tinfos[0][1];
+
+                                    var linkID = tentry.termid.replace(":", "_");
+
+                                    allDisInfo.push(
+                                    <span key={i} style={{display: "block"}}>                                        
+                                        <a href={"http://purl.obolibrary.org/obo/"+linkID}>{tentry.termname} ({docIDs.join(", ")})</a>
+                                    </span>
+                                    );
+                                }
+
+                                return <div>{allDisInfo}</div>;
+
+                            }
+                        },
+                        filterMethod: (filter, row) => {
+                            var filterID = filter.id;
+                            var rowData = row[filterID];
+
+                            var doids = Object.keys(rowData);
+
+                            var allTerms = [];
+
+                            for (var i=0; i < doids.length; ++i)
+                            {
+                                var doidentries = rowData[doids[i]];
+
+                                for (var j=0; j < doidentries.length; ++j)
+                                {
+                                    var termname = doidentries[j][1]['termname'];
+
+                                    if (allTerms.indexOf(termname) < 0)
+                                    {
+                                        allTerms.push(termname);
+                                    }
+                                }
+                            }
+                            
+                            console.log("go filter");
+                            console.log(allTerms);
+                            console.log(filter);
+
+                            var retval = matchSorter(allTerms, filter.value);
+                            console.log(retval);
+
+                            return retval.length > 0;
+                        }
                       },
                       {
-                        Header: "Cellline/Body part",
-                        accessor: "docids"
+                        Header: "Cellline/FMA",
+                        id: "cells_info",
+                        accessor: (d) => {
+                            if ('cells_info' in d)
+                            {
+                                return d['cells_info'];
+                            } else {
+                                return null;
+                            }
+                        },
+                        Cell: (row) => {
+
+                            if (row.value == null)
+                            {
+                                return <div>N/A</div>
+                            } else {
+
+                                var allDisInfo = [];
+                                
+                                var relInfo = row.value;
+
+                                console.log(relInfo);
+                                var relKeys = Object.keys(relInfo);
+
+                                for (var i = 0; i < relKeys.length; ++i)
+                                {
+                                    var termID = relKeys[i];
+                                    var tinfos = relInfo[termID];
+
+                                    var docIDs = [];
+                                    
+                                    for (var j=0; j < tinfos.length; ++j)
+                                    {
+                                        docIDs.push(tinfos[j][0]);
+                                    }
+                                    var tentry = tinfos[0][1];
+
+                                    var linkID = tentry.termid.replace(":", "_");
+
+                                    allDisInfo.push(
+                                    <span key={i} style={{display: "block"}}>                                        
+                                        <a href={"http://purl.obolibrary.org/obo/"+linkID}>{tentry.termname} ({docIDs.join(", ")})</a>
+                                    </span>
+                                    );
+                                }
+
+                                return <div>{allDisInfo}</div>;
+
+                            }
+                        },
+                        filterMethod: (filter, row) => {
+                            var filterID = filter.id;
+                            var rowData = row[filterID];
+
+                            var doids = Object.keys(rowData);
+
+                            var allTerms = [];
+
+                            for (var i=0; i < doids.length; ++i)
+                            {
+                                var doidentries = rowData[doids[i]];
+
+                                for (var j=0; j < doidentries.length; ++j)
+                                {
+                                    var termname = doidentries[j][1]['termname'];
+
+                                    if (allTerms.indexOf(termname) < 0)
+                                    {
+                                        allTerms.push(termname);
+                                    }
+                                }
+                            }
+                            
+                            console.log("cell filter");
+                            console.log(allTerms);
+                            console.log(filter);
+
+                            var retval = matchSorter(allTerms, filter.value);
+                            console.log(retval);
+
+                            return retval.length > 0;
+                        }
                       }
                     ]
                   }
@@ -881,6 +1107,16 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
             sendData['disease'] = this.state.selectedDiseases;
         }
 
+        if ((this.state.selectedGOs) && (this.state.selectedGOs.length > 0))
+        {
+            sendData['go'] = this.state.selectedGOs;
+        }
+
+        if ((this.state.selectedCells) && (this.state.selectedCells.length > 0))
+        {
+            sendData['cells'] = this.state.selectedCells;
+        }
+
         if ((this.state.selectedOrganisms)&&(this.state.selectedOrganisms.length > 0))
         {
             sendData['organisms'] = this.state.selectedOrganisms;
@@ -966,7 +1202,7 @@ class QueryComponent extends React.Component<QueryComponentProps, QueryComponent
                         }/>
 
                         <OboChipAC
-                            url="cell_ac"
+                            url="cells_ac"
                             floatText="Cellline/Body Part"
                             hintText="Enter Cellline-name/body part-name here"
                             onValueChange={(newvalues) => this.setState({selectedCells: newvalues})

@@ -32,7 +32,7 @@ class Synonym:
         id = id.replace(':', '_')
         self.id = id
         self.currentIdx = 0
-        self.syns = []
+        self.syns = [self.id]
 
     def get(self, synIdx):
 

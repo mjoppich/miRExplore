@@ -47,6 +47,15 @@ class DataBaseRel(ABC):
     def __hash__(self):
         return hash(tuple([(x, self.__dict__[x]) for x in sorted(self.__dict__)]))
 
+    def get_interactor(self, type):
+
+        if self.ltype == type:
+            return self.lid
+        elif self.rtype == type:
+            return self.rid
+
+        return None
+
 class DataBaseDescriptor(ABC):
 
     def __init__(self):

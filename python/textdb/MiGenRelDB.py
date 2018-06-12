@@ -1,6 +1,7 @@
 import copy
 import os, sys
 
+from synonymes.SynonymFile import Synfile
 from textdb.DocOrganismDB import DocOrganismDB
 
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
@@ -136,7 +137,7 @@ class MiGenRelDB(DataBaseDescriptor):
 
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna', dbtype='pmid'):
+    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna', dbtype='pmid', normGeneSymbols=None):
 
 
         ret = MiGenRelDB(ltype, rtype)
@@ -147,6 +148,8 @@ class MiGenRelDB(DataBaseDescriptor):
         docOrgDB = DocOrganismDB.loadFromFile(fileDir + "/organism."+dbtype)
 
         seenRels = set()
+
+        geneSymbolsNormalized = 0
 
         with open(filepath, 'r') as fin:
 
@@ -159,27 +162,48 @@ class MiGenRelDB(DataBaseDescriptor):
                 aline = line.split('\t')
 
                 lid = aline[0]
-                rid = aline[1]
-                (org, rid) = cls.harmonizeMIRNA(rid)
+                rid = aline[3]
+
+
+                sameParagraph = aline[7] == 'True'
+                sameSentence = aline[8] == 'True'
+
+                if not sameSentence:
+                    continue
+
+
+                if normGeneSymbols!= None:
+
+                    if ltype == 'gene':
+                        lid = lid.upper()
+                        if lid in normGeneSymbols:
+                            lid = normGeneSymbols[lid]
+                            geneSymbolsNormalized += 1
+
+                    elif rtype == 'gene':
+                        rid == rid.upper()
+                        if rid in normGeneSymbols:
+                            rid = normGeneSymbols[rid]
+                            geneSymbolsNormalized += 1
+
+                if ltype == 'mirna':
+                    (org, lid) = cls.harmonizeMIRNA(lid)
+                elif rtype == 'mirna':
+                    (org, rid) = cls.harmonizeMIRNA(rid)
 
                 docOrgs = set()
                 if org != None:
                     docOrgs.add(org)
 
-                docid = aline[3]
+                docid = aline[6]
 
                 docOrgRes = docOrgDB.getDocOrgs(docid)
 
                 if docOrgRes != None:
                     docOrgs = docOrgs.union(docOrgRes)
 
-                sameParagraph = aline[4] == 'True'
-                sameSentence = aline[5] == 'True'
 
-                if not sameSentence:
-                    continue
-
-                tmRelations = None if aline[6] == 'None' else eval(aline[6])
+                tmRelations = None if aline[9] == 'None' else eval(aline[9  ])
 
                 if tmRelations != None:
                     allrels = set()
@@ -220,6 +244,8 @@ class MiGenRelDB(DataBaseDescriptor):
             for elem in ret.ltype2rel[x]:
                 if elem.data_id == None:
                     print("Elem with no data id!")
+
+        print("Gene Symbols Normalized", geneSymbolsNormalized)
 
         if __name__ == '__main__':
 

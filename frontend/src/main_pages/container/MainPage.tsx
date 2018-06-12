@@ -103,7 +103,7 @@ export class WelcomePage extends React.Component<{},{}> {
                     subtitle="miRExplore v0.1"
                 />
                 <CardText >
-                    <p>miRExplore v.01 online.</p>
+                    <p>miRExplore v.5 online.</p>
                     <p>Explore the database in the explore tab</p>
                     <p>Provide some statistics of the project here</p>
 

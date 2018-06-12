@@ -35,10 +35,13 @@ class Cooccurrence:
 
     def __init__(self):
         self.pubmed = None
-        self.idtype = None
-        self.gene = None
-        self.mirna = None
-        self.mirnadesc = None
+
+        self.ent1 = None
+        self.ent2 = None
+        self.ent1type = None
+        self.ent2type = None
+        self.ent1found = None
+        self.ent2found = None
 
         self.sameSentence = False
         self.sameParagraph = False
@@ -46,15 +49,13 @@ class Cooccurrence:
         self.mirnaFound = None
 
     def __str__(self):
-        return "{pub}\t{type}\t{geneid}\t{mirnaid}\t{mirnaname}".format(pub=self.pubmed, type=self.idtype,
-                                                                        geneid=self.gene, mirnaid=self.mirna,
-                                                                        mirnaname=self.mirnadesc)
+        return "{pub}\t{type}\t{ent1}\t{ent2}\t{ent1type}\t{ent2type}".format(pub=self.pubmed, ent1=self.ent1, ent2=self.ent2, ent1type=self.ent1type, ent2type=self.ent2type)
 
     def __repr__(self):
         return self.__str__()
 
     def getIdTuple(self):
-        return (self.gene, self.mirna, self.idtype)
+        return (self.gene, self.mirna)
 
 
 def findAssocs(assocs, text, textLoc):
@@ -72,11 +73,11 @@ def findAssocs(assocs, text, textLoc):
     return res
 
 
-def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
+def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
 
-    sentHits = relHits[str(mirnaHit.documentID)]
+    sentHits = relHits[str(ent1Hit.documentID)]
 
-    sentence = sentDB.get_sentence(mirnaHit.documentID)
+    sentence = sentDB.get_sentence(ent1Hit.documentID)
     #(textBefore, textBetween, textAfter, hitOrder) = sentence.extract_text(mirnaHit.position, hgncHit.position)
 
     negatedSentence = any([x in sentence.text for x in ['not', 'n\'t', 'nega']])
@@ -114,7 +115,7 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
             curRel = None
             for reldep in assocRelDeps:
 
-                relDist = abs(reldep[0].position[0] - mirnaHit.position[0])
+                relDist = abs(reldep[0].position[0] - ent1Hit.position[0])
                 if relDist < curDist:
                     curDist = relDist
                     curRel = reldep
@@ -130,7 +131,7 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
             curRel = None
             for rel in sentHits:
 
-                relDist = abs(rel.position[0]-mirnaHit.position[0])
+                relDist = abs(rel.position[0]-ent1Hit.position[0])
                 if relDist < curDist:
                     curDist = relDist
                     curRel = rel
@@ -147,27 +148,27 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
             assocSent = None
             assocDirRel = None
 
-            if mirnaHit.position[0] < hgncHit.position[0]:
-                assocDir = 'MG'
+            if ent1Hit.position[0] < ent2Hit.position[0]:
+                assocDir = '12'
 
-                if rel.position[0] < mirnaHit.position[0]:
+                if rel.position[0] < ent1Hit.position[0]:
                     assocDirRel = 'V' + assocDir
-                elif hgncHit.position[0] < rel.position[0]:
+                elif ent2Hit.position[0] < rel.position[0]:
                     assocDirRel = assocDir + 'V'
                 else:
-                    assocDirRel = 'MVG'
+                    assocDirRel = '1V2'
 
             else:
-                assocDir = 'GM'
+                assocDir = '21'
 
-                if rel.position[0] < hgncHit.position[0]:
+                if rel.position[0] < ent2Hit.position[0]:
                     assocDirRel = 'V' + assocDir
-                elif mirnaHit.position[0] < rel.position[0]:
+                elif ent1Hit.position[0] < rel.position[0]:
                     assocDirRel = assocDir + 'V'
                 else:
-                    assocDirRel = 'GVM'
+                    assocDirRel = '2V1'
 
-            assocSent = str(mirnaHit.documentID)
+            assocSent = str(ent1Hit.documentID)
             assocWord = rel.synonym.id
 
             assocType = relationSyns.synid2class[rel.synonym.id]
@@ -180,8 +181,8 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
                     assocWord,
                     assocSent,
                     negatedSentence,
-                    mirnaHit.position,
-                    hgncHit.position,
+                    ent1Hit.position,
+                    ent2Hit.position,
                     rel.position,
                     discoveredBy
                 )
@@ -190,10 +191,10 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
     else:
         assocDir = None
 
-        if mirnaHit.position[0] < hgncHit.position[0]:
-            assocDir = 'MG'
+        if ent1Hit.position[0] < ent2Hit.position[0]:
+            assocDir = '12'
         else:
-            assocDir = 'GM'
+            assocDir = '21'
 
         allRelations.append(
             (
@@ -203,8 +204,8 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
                 None,
                 None,
                 negatedSentence,
-                mirnaHit.position,
-                hgncHit.position,
+                ent1Hit.position,
+                ent2Hit.position,
                 None,
                 None
             )
@@ -212,8 +213,58 @@ def findRelationBySyns(mirnaHit, hgncHit, sentDB, relHits):
 
     return allRelations
 
+def getMirnaType(mirnaSyn):
+    if re.match('MIPF[0-9]+', mirnaSyn.synonym.id) != None:
+        return "MIRNA_FAMILY"
+    elif re.match('MIMAT[0-9]+', mirnaSyn.synonym.id) != None:
+        return "MIRNA"
+    elif re.match('MI[0-9]+', mirnaSyn.synonym.id) != None:
+        return  'MIRNA_PRE'
+    elif re.match('ORGMIR[0-9]+', mirnaSyn.synonym.id) != None:
+        return 'MIRNA_ORGMIR'
+    elif re.match('ORGMI[0-9]+', mirnaSyn.synonym.id) != None:
+        return 'MIRNA_ORGMIR'
+    else:
+        return 'UNKNOWN'
 
-def findCooccurrences(pubmed, hgncHits, mirnaHits, sentDB, relHits):
+def handleHarmonizedNameMirna(x):
+    idx = x.synonym.syns.index(x.hitSyn)
+
+    if idx >= 0:
+
+        try:
+            test = miRNA(x.synonym.syns[idx])
+            outstr = test.getStringFromParts(
+                [miRNAPART.ORGANISM, miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR,
+                 miRNAPART.MATURE_SEQS,
+                 miRNAPART.ARM], normalized=True)
+
+            return outstr
+
+        except:
+
+            # sys.stderr.write("cannot parse mirna: " + x.synonym.syns[idx])
+
+            if __debug__:
+                pass
+                # miRNA(x.synonym.syns[idx])
+                # exit(-1)
+
+    for mirnaSyn in x.synonym.syns:
+
+        if mirnaSyn.startswith("miR-") and not 'mediated' in mirnaSyn:
+            test = miRNA(mirnaSyn)
+            outstr = test.getStringFromParts(
+                [miRNAPART.ORGANISM, miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR,
+                 miRNAPART.MATURE_SEQS, miRNAPART.ARM], normalized=True)
+
+            return outstr
+
+    if __debug__:
+        print("Could not match", x.hitSyn)
+    return None
+
+def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
     def checkSynHit(synhit):
         if len(synhit.foundSyn) <= 5:
             return synhit.perfectHit == True
@@ -228,26 +279,35 @@ def findCooccurrences(pubmed, hgncHits, mirnaHits, sentDB, relHits):
 
         return True
 
-    setAllGenes = set([x for x in hgncHits if checkSynHit(x)])
-    setAllMirnas = set([x for x in mirnaHits if chekSynHitMirna(x)])
 
-    hgncBySent = defaultdict(list)
-    mirnaBySent = defaultdict(list)
+    setAllEnt1 = set()
+    if args.folderType1.upper() == 'MIRNA':
+        setAllEnt1 = set([x for x in ent1Hits if chekSynHitMirna(x)])
+    else:
+        setAllEnt1 = set([x for x in ent1Hits if checkSynHit(x)])
 
-    hgncToSent = {}
-    mirnaToSent = {}
+    setAllEnt2 = set()
+    if args.folderType2.upper() == 'MIRNA':
+        setAllEnt2 = set([x for x in ent2Hits if chekSynHitMirna(x)])
+    else:
+        setAllEnt2 = set([x for x in ent2Hits if checkSynHit(x)])
 
-    for hit in hgncHits:
+
+    ent1BySent = defaultdict(list)
+    ent2BySent = defaultdict(list)
+
+    ent1ToSent = {}
+    ent2ToSent = {}
+
+    for hit in ent1Hits:
         parSenID = (hit.documentID.parID, hit.documentID.senID)
-        hgncBySent[parSenID].append(hit)
+        ent1BySent[parSenID].append(hit)
+        ent1ToSent[hit] = parSenID
 
-        hgncToSent[hit] = parSenID
-
-    for hit in mirnaHits:
+    for hit in ent2Hits:
         parSenID = (hit.documentID.parID, hit.documentID.senID)
-        mirnaBySent[parSenID].append(hit)
-
-        mirnaToSent[hit] = parSenID
+        ent2BySent[parSenID].append(hit)
+        ent2ToSent[hit] = parSenID
 
     allCoocs = []
 
@@ -260,76 +320,57 @@ def findCooccurrences(pubmed, hgncHits, mirnaHits, sentDB, relHits):
         for rel in pmidRels:
             pmidRelBySent[str(rel.documentID)].append(rel)
 
+    ftype1 = args.folderType1.upper()
+    ftype2 = args.folderType2.upper()
 
-    for x in setAllMirnas:
-        for y in setAllGenes:
+
+    for x in setAllEnt1:
+        for y in setAllEnt2:
 
             foundCooc = Cooccurrence()
             foundCooc.pubmed = pubmed
 
-            if re.match('MIPF[0-9]+', x.synonym.id) != None:
-                foundCooc.idtype = "MIRNA_FAMILY"
-            elif re.match('MIMAT[0-9]+', x.synonym.id) != None:
-                foundCooc.idtype = "MIRNA"
-            elif re.match('MI[0-9]+', x.synonym.id) != None:
-                foundCooc.idtype = 'MIRNA_PRE'
-            elif re.match('ORGMIR[0-9]+', x.synonym.id) != None:
-                foundCooc.idtype = 'MIRNA_ORGMIR'
-            elif re.match('ORGMI[0-9]+', x.synonym.id) != None:
-                foundCooc.idtype = 'MIRNA_ORGMIR'
+            foundCooc.ent1type = ftype1
+            foundCooc.ent2type = ftype2
+
+            foundCooc.ent1 = x.synonym.id
+            foundCooc.ent2 = y.synonym.id
+
+            foundCooc.ent1found = None
+            foundCooc.ent2found = None
+
+            if foundCooc.ent1type == 'MIRNA':
+
+                foundEnt = handleHarmonizedNameMirna(x)
+                foundCooc.ent1found = foundEnt if foundEnt != None else x.hitSyn
+
             else:
-                foundCooc.idtype = 'UNKNOWN'
+                foundCooc.ent1found = x.hitSyn
 
-            foundCooc.mirna = x.synonym.id
-            foundCooc.gene = y.synonym.id
+            if foundCooc.ent2type == 'MIRNA':
 
-            foundCooc.mirnadesc = str(x.synonym)
+                foundEnt = handleHarmonizedNameMirna(y)
+                foundCooc.ent2found = foundEnt if foundEnt != None else y.hitSyn
+            else:
+                foundCooc.ent2found = y.hitSyn
 
-            foundCooc.mirnaFound = x.hitSyn
 
-            idx = x.synonym.syns.index(x.hitSyn)
-            foundCooc.mirnaFound = None
+            if foundCooc.ent1type == 'MIRNA':
+                foundCooc.ent1 = foundCooc.ent1found
+                foundCooc.ent1found = x.hitSyn
 
-            if idx >= 0:
+            if foundCooc.ent2type == 'MIRNA':
+                foundCooc.ent2 = foundCooc.ent2found
+                foundCooc.ent2found = y.hitSyn
 
-                try:
-                    test = miRNA(x.synonym.syns[idx])
-                    outstr = test.getStringFromParts(
-                        [miRNAPART.ORGANISM, miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR,
-                         miRNAPART.MATURE_SEQS,
-                         miRNAPART.ARM], normalized=True)
-                    foundCooc.mirnaFound = outstr
 
-                except:
+            ent1Loc = ent1ToSent[x]
+            ent2Loc = ent2ToSent[y]
 
-                    # sys.stderr.write("cannot parse mirna: " + x.synonym.syns[idx])
-
-                    if __debug__:
-                        pass
-                        # miRNA(x.synonym.syns[idx])
-                        # exit(-1)
-
-                    foundCooc.mirnaFound = None
-
-            if idx < 0 or foundCooc.mirnaFound == None:
-
-                for mirnaSyn in x.synonym.syns:
-
-                    if mirnaSyn.startswith("miR-") and not 'mediated' in mirnaSyn:
-                        test = miRNA(mirnaSyn)
-                        outstr = test.getStringFromParts(
-                            [miRNAPART.ORGANISM, miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR,
-                             miRNAPART.MATURE_SEQS, miRNAPART.ARM])
-                        foundCooc.mirnaFound = outstr
-                        break
-
-            miRNALoc = mirnaToSent[x]
-            hgncLoc = hgncToSent[y]
-
-            if miRNALoc[0] == hgncLoc[0]:
+            if ent1Loc[0] == ent2Loc[0]:
                 foundCooc.sameParagraph = True
 
-                if miRNALoc[1] == hgncLoc[1]:
+                if ent1Loc[1] == ent2Loc[1]:
                     foundCooc.sameSentence = True
 
                     foundCooc.relation = findRelationBySyns(x, y, sentDB, pmidRelBySent)
@@ -344,18 +385,18 @@ def analyseFile(splitFileIDs, env):
 
     for splitFileID in splitFileIDs:
 
-        hgncFile = resultBase + "/"+args.folderG+"/" + splitFileID + ".index"
-        mirnaFile = resultBase + "/"+args.folderM+"/" + splitFileID + ".index"
+        ent1File = resultBase + "/"+args.folder1+"/" + splitFileID + ".index"
+        ent2File = resultBase + "/"+args.folder2+"/" + splitFileID + ".index"
         relFile = resultBase + "/relations/" + splitFileID + ".index"
 
         sentFile = args.sentdir + "/" + splitFileID + ".sent"
 
-        mirnaHits = SyngrepHitFile(mirnaFile, mirnaSyns)
-        if len(mirnaHits) == 0:
+        ent1Hits = SyngrepHitFile(ent1File, ent1Syns)
+        if len(ent1Hits) == 0:
             continue
 
-        hgncHits = SyngrepHitFile(hgncFile, hgncSyns)
-        if len(hgncHits) == 0:
+        ent2Hits = SyngrepHitFile(ent2File, ent2Syns)
+        if len(ent2Hits) == 0:
             continue
 
         relHits = SyngrepHitFile(relFile, relSyns)
@@ -365,21 +406,21 @@ def analyseFile(splitFileIDs, env):
 
         sys.stderr.write("Found something in: " + str(splitFileID) + "\n")
 
-        for docID in mirnaHits:
+        for docID in ent1Hits:
 
-            if docID in hgncHits:
+            if docID in ent2Hits:
 
                 if sentDB == None:
                     sentDB = SentenceDB(sentFile)
 
-                mirnaSynHits = mirnaHits.getHitsForDocument(docID)
-                hgncSynHits = hgncHits.getHitsForDocument(docID)
+                ent1SynHits = ent1Hits.getHitsForDocument(docID)
+                ent2SynHits = ent2Hits.getHitsForDocument(docID)
 
                 # if docID == 'a27229723':
                 #    [print(x.synonyme) for x in hgncSynHits]
                 #    [print(x.synonyme) for x in mirnaSynHits]
 
-                foundCoocs = findCooccurrences(str(docID), hgncSynHits, mirnaSynHits, sentDB, relHits)
+                foundCoocs = findCooccurrences(str(docID), ent1SynHits, ent2SynHits, sentDB, relHits)
 
                 fileCoocs += foundCoocs
 
@@ -404,8 +445,11 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--resultdir', type=str, help='where are all the index-files?', required=True)
     parser.add_argument('-d', '--datadir', type=str, help='where is te miRExplore bsae?', required=True)
 
-    parser.add_argument('-f1', '--folderM', type=str, help='where is te miRExplore bsae?', default="mirna", required=False)
-    parser.add_argument('-f2', '--folderG', type=str, help='where is te miRExplore bsae?', default="hgnc", required=False)
+    parser.add_argument('-f1', '--folder1', type=str, help='entity 1: hgnc, mirna', default="hgnc", required=False)
+    parser.add_argument('-f2', '--folder2', type=str, help='entity 2: mgi, mirna', default="mirna", required=False)
+
+    parser.add_argument('-ft1', '--folderType1', type=str, help='entity type 1: entity: mirna, gene, lncrna, ...', default="gene", required=False)
+    parser.add_argument('-ft2', '--folderType2', type=str, help='entity type 2: entity: mirna', default="mirna", required=False)
 
 
     args = parser.parse_args()
@@ -414,11 +458,11 @@ if __name__ == '__main__':
     resultBase = args.resultdir
     dataDir = args.datadir
 
-    mirnaSyns = SynfileMap(resultBase + "/"+args.folderM+"/synfile.map")
-    mirnaSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent1Syns = SynfileMap(resultBase + "/"+args.folder1+"/synfile.map")
+    ent1Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
 
-    hgncSyns = SynfileMap(resultBase + "/"+args.folderG+"/synfile.map")
-    hgncSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent2Syns = SynfileMap(resultBase + "/"+args.folder2+"/synfile.map")
+    ent2Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
 
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
     relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
@@ -429,7 +473,7 @@ if __name__ == '__main__':
     idTuple2Pubmed = defaultdict(set)
     orgmirDB = ORGMIRDB(dataDir + "/miRExplore/orgmir.tsv")
 
-    allfiles = glob.glob(resultBase + "/"+args.folderG+"/*.index")
+    allfiles = glob.glob(resultBase + "/"+args.folder1+"/*.index")
     allfileIDs = [os.path.basename(x).replace(".index", "") for x in allfiles]
     allfileIDs = sorted(allfileIDs, reverse=True)
 
@@ -467,7 +511,7 @@ if __name__ == '__main__':
 
             coocRel = None if cooc.relation == None else tuple(cooc.relation)
             thisCooc = (
-                cooc.gene, cooc.mirnaFound, cooc.mirna, cooc.pubmed, cooc.sameParagraph, cooc.sameSentence, coocRel
+                cooc.ent1, cooc.ent1type, cooc.ent1found, cooc.ent2, cooc.ent2type, cooc.ent2found, cooc.pubmed, cooc.sameParagraph, cooc.sameSentence, coocRel
             )
 
             if thisCooc in setSeenRels:
@@ -475,10 +519,13 @@ if __name__ == '__main__':
 
             setSeenRels.add(thisCooc)
 
-            print("{gene}\t{mirna}\t{mirnaid}\t{pubmed}\t{sapar}\t{sase}\t{relation}\n".format(
-                gene=cooc.gene,
-                mirna=cooc.mirnaFound,
-                mirnaid=cooc.mirna,
+            print("{ent1}\t{ent1found}\t{ent1type}\t{ent2}\t{ent2found}\t{ent2type}\t{pubmed}\t{sapar}\t{sase}\t{relation}\n".format(
+                ent1=cooc.ent1,
+                ent2=cooc.ent2,
+                ent1found=cooc.ent1found,
+                ent2found=cooc.ent2found,
+                ent1type=cooc.ent1type,
+                ent2type=cooc.ent2type,
                 pubmed=cooc.pubmed,
                 sapar=cooc.sameParagraph,
                 sase=cooc.sameSentence,

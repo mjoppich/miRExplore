@@ -74,19 +74,28 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
         this.svg = d3.select(domNode).append("svg")
         .attr("width", width)
-        .attr("height", height); 
+        .attr("height", height)
+        .call(d3.zoom().on("zoom", function () {
+            self.svg.attr("transform", d3.event.transform)
+        }))
+        .append("g");
+
+        var attractForce = d3.forceManyBody().strength(100).distanceMax(500).distanceMin(300);
+        var repelForce = d3.forceManyBody().strength(-200).distanceMax(250).distanceMin(20);
 
         this.force = d3.forceSimulation<SimNode, SimLink>() 
-            .force("charge", d3.forceManyBody().strength(-700).distanceMin(200).distanceMax(1000)) 
+            //.force("charge", d3.forceManyBody().strength(-700).distanceMin(200).distanceMax(500)) 
+            .alphaDecay(0.03)
+            .force("attractForce",attractForce).force("repelForce",repelForce)
             .force("link", d3.forceLink().id(function(d:any) { return d.index })) 
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("y", d3.forceY(0.001))
             .force("x", d3.forceX(0.001))
 
         var color = function (group) {
-            if (group == 1) {
+            if (group == 'gene') {
                 return "#aaaaaa"
-            } else if (group == 2) {
+            } else if (group == 'lncrna') {
                 return "#fbc280"
             } else {
                 return "#405275"
@@ -129,7 +138,6 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         .attr("dy", 8)
         .style("font-family", "overwatch")
         .style("font-size", "18px")
-
         .text(function (d) {
             return d.label
         });
@@ -148,7 +156,8 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
     //.style("stroke-width", "3.5px")
     .style("stroke-opacity", "1.0")
 
-    this.force.on("tick", function () {
+
+    var tickFunction = function () {
 
         predictionLink
         .attr("x1", function(d) { return d.source.x-self.line_shift(d,1)[0]; })
@@ -164,9 +173,46 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         node.attr("transform", function (d) {
             return "translate(" + d.x + "," + d.y + ")";
         });
-    });
-        
+    };
+
+    this.force.on("tick", tickFunction);
+
+    var     padding = 1.5, // separation between same-color circles
+    clusterPadding = 6, // separation between different-color circles
+    maxRadius = 12;
+
+    // Resolves collisions between d and all other circles.
+    function collide(alpha) {
+        var quadtree = d3.quadtree(node);
+        return function(d) {
+        var r = d.radius + maxRadius + Math.max(padding, clusterPadding),
+            nx1 = d.x - r,
+            nx2 = d.x + r,
+            ny1 = d.y - r,
+            ny2 = d.y + r;
+        quadtree.visit(function(quad: any, x1, y1, x2, y2) {
+            if (quad.point && (quad.point !== d)) {
+            var x = d.x - quad.point.x,
+                y = d.y - quad.point.y,
+                l = Math.sqrt(x * x + y * y),
+                r = d.radius + quad.point.radius + (d.cluster === quad.point.cluster ? padding : clusterPadding);
+            if (l < r) {
+                l = (l - r) / l * alpha;
+                d.x -= x *= l;
+                d.y -= y *= l;
+                quad.point.x += x;
+                quad.point.y += y;
+            }
+            }
+            return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+        });
+        };
     }
+
+
+    }
+
+
 
     total_width(d)
     {
@@ -562,6 +608,6 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         console.log("d3 n4j did render");
 
         //{width: '800px', height:'400px'}
-            return (<div><p>graph</p><div ref="graph" style={{height: "500px", width: "1000px"}}></div></div>);
+            return (<div><p>graph</p><div ref="graph" style={{height: "800px", width: "1200px"}}></div></div>);
     }
 }

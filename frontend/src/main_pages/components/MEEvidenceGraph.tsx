@@ -97,7 +97,7 @@ export default class MEEvidenceGraph extends React.Component<MEEvidenceGraphProp
             if (foundSrcElems.length == 0)
             {
                 // add node
-                let nodeElem = {id: dataElem.lid, type: dataElem.ltype, label: dataElem.lid};
+                let nodeElem = {id: dataElem.lid, group: dataElem.ltype, label: dataElem.lid};
                 graphData.nodes.push(nodeElem);
                 foundSrcElems.push(nodeElem);
             }
@@ -114,7 +114,7 @@ export default class MEEvidenceGraph extends React.Component<MEEvidenceGraphProp
             if (foundTgtElems.length == 0)
             {
                 // add node
-                let nodeElem = {id: dataElem.rid, type: dataElem.rtype, label: dataElem.rid};
+                let nodeElem = {id: dataElem.rid, group: dataElem.rtype, label: dataElem.rid};
                 graphData.nodes.push(nodeElem);
                 foundTgtElems.push(nodeElem);
             }
