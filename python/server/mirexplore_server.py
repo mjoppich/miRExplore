@@ -82,13 +82,24 @@ def help():
     return res, 200, None
 
 
-@app.route('/get_interactions/gene/<geneID>')
-def getHomCluster(geneID):
+
+@app.route('/get_features/<geneID>')
+def getGeneFeatures(geneID):
 
     if geneID == None:
-        return app.make_response((jsonify( {'error': 'invalid homID'} ), 400, None))
+        return app.make_response((jsonify( {'error': 'invalid geneid'} ), 400, None))
 
-    return returnInteractions([geneID])
+    return getGeneMirnaFeatures(geneID, None)
+
+@app.route('/get_features/<geneID>/<mirnaID>')
+def getGeneMirnaFeatures(geneID, mirnaID):
+
+    if geneID == None:
+        return app.make_response((jsonify( {'error': 'invalid geneid'} ), 400, None))
+
+    return app.make_response((jsonify({'gene_id': geneID, 'mirna_id': mirnaID }), 200, None))
+
+
 
 
 @app.route('/find_interactions', methods=['GET', 'POST'])
@@ -684,9 +695,9 @@ if __name__ == '__main__':
     pmid2pmcDB = PMID2PMCDB.loadFromFile(args.textmine + '/pmid2pmc')
     print(datetime.datetime.now(), "Loading mirel")
 
-    testRels = TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
+    testRels = None#TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
 
-    mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna", normGeneSymbols=normGeneSymbols)
+    mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="gene", rtype="mirna", normGeneSymbols=normGeneSymbols)
     lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")
     geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
 

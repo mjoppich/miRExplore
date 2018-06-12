@@ -82,6 +82,7 @@ class miRecordDB(DataBaseDescriptor):
     def loadFromFile(cls, filelocation=None, ltype='gene', rtype='mirna', normGeneSymbols=None):
 
         ret = miRecordDB(ltype, rtype)
+        print(filelocation)
 
         wb = load_workbook(filelocation)
         ws = wb.active
