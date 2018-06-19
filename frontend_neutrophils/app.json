@@ -1,0 +1,17 @@
+{
+  "name": "miRExplore",
+  "description": "Do you know your miRNAs?",
+  "repository": "https://github.com/mjoppich/miRExplore",
+  "logo": "",
+  "keywords": [],
+  "env": {
+    "PORT": {
+      "description": "port for webserver",
+      "value": "65544"
+    }
+  },
+  "buildpacks": [
+    { "url": "heroku/nodejs" },
+    { "url": "https://github.com/romeovs/heroku-buildpack-npm-build" }
+  ]
+}
