@@ -3,6 +3,7 @@ import { Card, CardTitle, CardText } from 'material-ui/Card';
 
 import D3SVGParallelLinesGraph from '../components/D3SVGForceParallelLines';
 import MEFeatureViewer from '../components/MEFeatureViewer';
+import SankeyChart from '../components/SankeyChart';
 
 export class MainStatus extends React.Component<{},{}> {
 
@@ -62,6 +63,8 @@ export class MainStatus extends React.Component<{},{}> {
                         <li><b>PMC</b>: fulltexts and TM by section</li>
                     </ul>
                 </span>
+
+                <SankeyChart graph={graphData} id="d3front"/>
                 
 
             </div>

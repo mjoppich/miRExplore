@@ -2,9 +2,6 @@ import * as React from "react";
 import * as d3 from 'd3';
 import * as ReactDOM from "react-dom";
 
-import axios from 'axios';
-
-
 
 interface SimNode extends d3.SimulationNodeDatum {
     id: string;
