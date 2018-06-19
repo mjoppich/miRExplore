@@ -32,6 +32,9 @@ class MiRGeneRel(DataBaseRel):
         self.lent=lent
         self.rent=rent
 
+        self.lontent = lent
+        self.rontent = rent
+
         self.data_source=datasource
         self.data_id = dataID
 
@@ -93,7 +96,8 @@ class MiRGeneRel(DataBaseRel):
             'rtype': self.rtype,
             'rid': self.rid,
             'lid': self.lid,
-
+            'lontid': self.lontent[0],
+            'rontid': self.rontent[0],
             'data_source': self.data_source,
             'data_id': self.data_id
         }
@@ -136,11 +140,81 @@ class MiGenRelDB(DataBaseDescriptor):
         return resvec
 
 
+    def get_lid_rels(self, geneID):
+
+        if not self.l_ont_based:
+            return self.ltype2rel.get(geneID, None)
+        else:
+            allRels = self.ltype2rel.get(geneID, None)
+
+            if allRels == None:
+                return None
+
+            rootObo = self.lontology.dTerms.get(geneID, None)
+
+            if rootObo != None:
+
+                allChildren = rootObo.getAllChildren()
+
+                lenBefore = len(allRels)
+                for child in allChildren:
+                    allRels = allRels.union(self.ltype2rel.get(child.term.id, []))
+
+                print("Added", len(allRels)-lenBefore, "for ontology")
+
+
+            return self.undoOntID(allRels)
+
+    def get_rid_rels(self, geneID):
+
+        if not self.r_ont_based:
+            return self.rtype2rel.get(geneID, None)
+        else:
+            allRels = self.rtype2rel.get(geneID, None)
+
+            if allRels == None:
+                return None
+
+            rootObo = self.rontology.dTerms.get(geneID, None)
+
+            if rootObo != None:
+
+                allChildren = rootObo.getAllChildren()
+
+                lenBefore = len(allRels)
+                for child in allChildren:
+                    allRels = allRels.union(self.rtype2rel.get(child.term.id, []))
+
+                print("Added", len(allRels) - lenBefore, "for ontology")
+
+            return self.undoOntID(allRels)
+
+
+    def undoOntID(self, rels):
+
+        for rel in rels:
+
+            lid = rel.lid
+            rid = rel.rid
+
+            if self.l_ont_based:
+                if lid in self.lontology.dTerms:
+                    rel.lent = (self.lontology.dTerms[lid].name, rel.lent[1])
+
+            if self.r_ont_based:
+                if rid in self.rontology.dTerms:
+                    rel.rent = (self.rontology.dTerms[rid].name, rel.rent[1])
+
+        return rels
+
+
     @classmethod
-    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna', dbtype='pmid', normGeneSymbols=None):
+    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna', dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None):
 
 
         ret = MiGenRelDB(ltype, rtype)
+        ret.lontology = lontology
+        ret.rontology = rontology
 
         file_base = os.path.basename(filepath)
         fileDir = os.path.dirname(filepath)
@@ -164,6 +238,12 @@ class MiGenRelDB(DataBaseDescriptor):
                 lid = aline[0]
                 rid = aline[3]
 
+                if ret.l_ont_based:
+                    lid = lid.replace('_', ':', 1)
+
+                if ret.r_ont_based:
+                    rid = rid.replace('_', ':', 1)
+
 
                 sameParagraph = aline[7] == 'True'
                 sameSentence = aline[8] == 'True'
@@ -186,6 +266,8 @@ class MiGenRelDB(DataBaseDescriptor):
                             rid = normGeneSymbols[rid]
                             geneSymbolsNormalized += 1
 
+
+                org = None
                 if ltype == 'mirna':
                     (org, lid) = cls.harmonizeMIRNA(lid)
                 elif rtype == 'mirna':

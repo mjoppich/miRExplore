@@ -742,6 +742,23 @@ class GeneOntology:
 
         self.linkChildren()
 
+    def addterm(self, other):
+
+        return self.addterms([other])
+
+    def addterms(self, others):
+
+        assert(isinstance(others, (list, set)))
+
+        for x in others:
+            assert(isinstance(x, GOTerm))
+
+        for x in others:
+            self.dTerms[x.id] = x
+
+        self.linkChildren()
+
+
     def linkChildren(self):
 
         for x in self.dTerms:

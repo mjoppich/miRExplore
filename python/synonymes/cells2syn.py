@@ -1,6 +1,5 @@
 from collections import defaultdict
 from nertoolkit.geneontology.GeneOntology import GeneOntology
-from owlready2 import namespace
 
 from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
@@ -17,6 +16,8 @@ from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2Tax
 celloObo = GeneOntology(dataDir + "miRExplore/cell_ontology/cl.obo")
 vAllSyns = []
 
+allOboNames = defaultdict(set)
+
 for cellID in celloObo.dTerms:
 
     oboNode = celloObo.dTerms[cellID]
@@ -28,6 +29,22 @@ for cellID in celloObo.dTerms:
 
     oboName = oboNode.name
 
+    allOboNames[oboName].add(oboID)
+
+for cellID in celloObo.dTerms:
+
+    oboNode = celloObo.dTerms[cellID]
+
+    oboID = oboNode.id
+
+    if not oboID.startswith("CL"):
+        continue
+
+    if oboID == 'CL:1000413':
+        print(oboID)
+        print(oboNode.name)
+
+    oboName = oboNode.name
     oboSyns = oboNode.synonym
     oboRels = oboNode.is_a
 
@@ -40,6 +57,9 @@ for cellID in celloObo.dTerms:
             if x == None:
                 continue
 
+            if x.syn in allOboNames:
+                continue
+
             newSyn.addSyn(x.syn)
 
     for x in newSyn.syns:
@@ -48,7 +68,16 @@ for cellID in celloObo.dTerms:
             coidx = x.index('cell of')
 
             newval = x[:coidx]
-            newval += 'cell'
+            suffix = x[coidx+8:]
+
+            newval = suffix + " " + newval + "cell"
+
+            if newval in allOboNames:
+                print(x, newval, oboID, allOboNames[newval])
+
+                if not oboID in allOboNames[newval]:
+                    continue
+
 
             newSyn.addSyn(newval)
 

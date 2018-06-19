@@ -66,6 +66,17 @@ class DataBaseDescriptor(ABC):
         self.all_ltypes = set()
         self.all_rtypes = set()
 
+        self.lontology = None
+        self.rontology = None
+
+    @property
+    def l_ont_based(self):
+        return self.lontology != None
+
+    @property
+    def r_ont_based(self):
+        return self.lontology != None
+
     def get_evidence_docids(self):
 
         docIDs = set()
@@ -141,10 +152,32 @@ class DataBaseDescriptor(ABC):
 
 
     def get_lid_rels(self, geneID):
-        return self.ltype2rel.get(geneID, None)
 
-    def get_rid_rels(self, mirnaID):
-        return self.rtype2rel.get(mirnaID, None)
+        if not self.l_ont_based:
+            return self.ltype2rel.get(geneID, None)
+        else:
+            allRels = self.ltype2rel.get(geneID, None)
+
+            if allRels == None:
+                return None
+
+            return self.undoOntID(allRels)
+
+    def get_rid_rels(self, geneID):
+
+        if not self.l_ont_based:
+            return self.rtype2rel.get(geneID, None)
+        else:
+            allRels = self.rtype2rel.get(geneID, None)
+
+            if allRels == None:
+                return None
+
+            return self.undoOntID(allRels)
+
+
+    def undoOntID(self, rels):
+        return rels
 
     @classmethod
     @abstractmethod

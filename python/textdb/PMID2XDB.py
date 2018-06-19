@@ -63,8 +63,8 @@ class PMID2XDB:
                 termid = aline[1]
                 termname = aline[2]
 
-                #loc = eval(aline[3])
-                loc = aline[3]
+                loc = eval(aline[3])
+                #loc = aline[3]
 
 
                 info = {
