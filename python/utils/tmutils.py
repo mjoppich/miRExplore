@@ -1,8 +1,8 @@
 from synonymes.SynonymFile import Synfile
 
 
-def normalize_gene_names():
-    geneNameSynFile = Synfile("/home/mjoppich/ownCloud/data/miRExplore/textmine/synonyms/hgnc_no_withdrawn.syn")
+def normalize_gene_names(path="/home/mjoppich/ownCloud/data/miRExplore/textmine/synonyms/hgnc_no_withdrawn.syn"):
+    geneNameSynFile = Synfile(path)
     normalizeGeneNames = {}
 
     for sid in geneNameSynFile.mSyns:

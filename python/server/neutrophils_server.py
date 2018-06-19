@@ -8,11 +8,14 @@ import regex
 import sys
 import os
 
+
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
+
 from synonymes.SynonymFile import Synfile
 from utils.HashDict import HashDict
 from utils.tmutils import normalize_gene_names
 
-sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 from natsort import natsorted
 
 
@@ -609,10 +612,18 @@ def natural_keys(text):
 
 def start_app_from_args(args):
 
+    global relDBs
+    global categoriesObo
+    global messengersObo
+    global pmid2Categories
+    global pmid2Messenger
+    global mirFeedback
+    global sentDB
+
 
     pmidBase = args.textmine + '/aggregated/'
 
-    normGeneSymbols = normalize_gene_names()
+    normGeneSymbols = normalize_gene_names(args.obodir + "/hgnc_no_withdrawn.syn")
 
     print("Loading Interactions")
 
@@ -667,10 +678,8 @@ def start_app_from_args(args):
 
 
     if allDBS == None:
-        pmid2go = None
-        pmid2disease = None
-        pmid2fma = None
-        pmid2cell = None
+        pmid2Categories = None
+        pmid2Messenger = None
 
         print(datetime.datetime.now(), "Loading GO")
         pmid2Categories = PMID2XDB.loadFromFile(pmidBase + "/categories.pmid", categoriesObo, requiredPMIDs)
