@@ -13,6 +13,9 @@ from utils.HashDict import HashDict
 from utils.tmutils import normalize_gene_names
 
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
+sys.stdout = sys.stderr
+
 from natsort import natsorted
 
 
@@ -41,8 +44,11 @@ from collections import defaultdict, Counter
 
 from flask_cors import CORS
 
+dataurl = '/home/mjoppich/git/miRExplore/frontend_neutrophils/src/static/'
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=dataurl, static_url_path='/static')
+
+app.debug = True
 CORS(app)
 
 app.config['DEBUG'] = False
@@ -69,6 +75,15 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
 
+
+
+@app.route('/')
+def root():
+
+    retFile = 'index.html'
+
+    return app.send_static_file(retFile)
+
 @app.route('/test', methods=['GET', 'POST'])
 def test():
 
@@ -87,7 +102,7 @@ def help():
     return res, 200, None
 
 @app.route('/sankey', methods=['POST'])
-def sankey_plot():
+def sankey_network():
     interactReq = request.get_json(force=True, silent=True)
 
     global categoriesObo
@@ -101,7 +116,44 @@ def sankey_plot():
 
     print(interactReq)
 
-    elemJSON = makeInteractionObject(interactReq.get('elements', None), interactReq.get('categories', None), interactReq.get('messengers', None), organisms=interactReq.get('organisms', None), fetchSentences=False)
+    obolevel = interactReq.get('obolevel', 3)
+
+
+    graphObj = make_plot_info(interactReq.get('elements', None), interactReq.get('categories', None),
+                              interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
+                              majorParents=True, onlyCells=False, obolevel=obolevel )
+
+    return app.make_response((jsonify(graphObj), 200, None))
+
+
+@app.route('/interaction_network', methods=['POST'])
+def interaction_network():
+    interactReq = request.get_json(force=True, silent=True)
+
+    global categoriesObo
+    global messengersObo
+
+    if interactReq == None:
+        return app.make_response((jsonify({'error': 'invalid json'}), 400, None))
+
+    if not 'elements' in interactReq:
+        return app.make_response((jsonify({'error': 'must include CELLS'}), 400, None))
+
+    print(interactReq)
+    obolevel = interactReq.get('obolevel', 3)
+
+
+    graphObj = make_plot_info(interactReq.get('elements', None), interactReq.get('categories', None),
+                              interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
+                              majorParents=True, onlyCells=True, obolevel=obolevel)
+
+    return app.make_response((jsonify(graphObj), 200, None))
+
+
+
+def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2):
+
+    elemJSON = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=False)
 
     rels = elemJSON['rels']
     addinfo = elemJSON['pmidinfo']
@@ -118,19 +170,95 @@ def sankey_plot():
                 docInfos[x][pmid].add(termid)
 
 
+    """
+    
+    In order to avoid too many single nodes, assign each child to a major parent ....
+    
+    """
+
+    allRoots = cellsObo.getRoots()
+    oboid2majorid = {}
+
+    for root in allRoots:
+
+        oboid2majorid[root.id] = root.id
+
+        allchildren = root.getChildrenAtLevel(obolevel, withLevel=True)
+
+        print("Root node", root.id, root.name, [(x.id, x.name) for x in allchildren])
+
+        for child in allchildren:
+
+            newc = child.getAllChildren()
+
+            for nc in newc:
+                if 'CL:0000893' in nc.term.id or 'CL:0000893' in child.id:
+                    print( nc.term.id, nc.term.name, "=>", child.name, child.id)
+
+                oboid2majorid[nc.term.id] = child.id
+
+
+    oldname2newname = {}
+
     allNodes = set()
 
     for x in rels:
-        allNodes.add(x['lid'])
-        allNodes.add(x['rid'])
+
+        if majorParents:
+
+            for evidence in x['evidences']:
+
+                src = evidence.get('lontid', evidence['lid'])
+                tgt = evidence.get('rontid', evidence['rid'])
+
+                newsrc = oboid2majorid.get(src, src)
+                newtgt = oboid2majorid.get(tgt, tgt)
+
+                if newsrc != None:
+                    srcTerm = cellsObo.dTerms[newsrc]
+                    srcName = srcTerm.name
+
+                    allNodes.add(srcName)
+                else:
+                    print("No oboid2majorid for", src)
+                    srcName = x['lid']
+
+                if newtgt != None:
+                    tgtTerm = cellsObo.dTerms[newtgt]
+                    tgtName = tgtTerm.name
+
+                    allNodes.add(tgtName)
+                else:
+                    print("No oboid2majorid for", tgt)
+                    tgtName = x['rid']
+
+
+                oldname2newname[src] = srcName
+                oldname2newname[tgt] = tgtName
+
+        else:
+            allNodes.add(x['lid'])
+            allNodes.add(x['rid'])
+
+
+    print("Cell obo nodes")
+    for x in allNodes:
+        print("obo node", x)
+
 
     for termid in messengersObo.dTerms:
         obonode = messengersObo.dTerms[termid]
+
+        if obonode.name in allNodes:
+            print("Duplicate messenger term", obonode.name)
 
         allNodes.add(obonode.name)
 
     for termid in categoriesObo.dTerms:
         obonode = categoriesObo.dTerms[termid]
+
+        if obonode.name in allNodes:
+            print("Duplicate category term", obonode.name)
 
         allNodes.add(obonode.name)
 
@@ -143,45 +271,154 @@ def sankey_plot():
     now we need to add edges :)
     """
 
-    mUnknownIdx = allNodes.index('mUnknown')
-    cUnknownIdx = allNodes.index('cUnknown')
-
     allEdges = Counter()
+    messengerEdgesCounter = Counter()
+    categoryEdgesCounter = Counter()
+
+    cellSrc = set()
+    cellTgt = set()
+
 
     for x in rels:
 
-        print(x)
         for evidence in x['evidences']:
 
-            lid = x['lid']
-            rid = x['rid']
+            lid = evidence.get('lontid', evidence['lid'])
+            rid = evidence.get('rontid', evidence['rid'])
+
+            if majorParents:
+
+                lid = oldname2newname.get(lid, evidence['lid'])
+                rid = oldname2newname.get(rid, evidence['rid'])
+
+            if lid == rid:
+                rid = rid + "_r"
+
+                if not rid in allNodes:
+                    allNodes.append(rid)
+
 
             edgeCellCell = (allNodes.index(lid), allNodes.index(rid))
 
-            allEdges[edgeCellCell] += 1
+            if edgeCellCell[1] < edgeCellCell[0]:
+                edgeCellCell = tuple(reversed(edgeCellCell))
 
-            lIndex = allNodes.index(rid)
+
+            ccSrc = edgeCellCell[1] in cellSrc
+            ccTgt = edgeCellCell[0] in cellTgt
+
+            if ccSrc or ccTgt:
+                edgeCellCell = tuple(reversed(edgeCellCell))
+
+            ccSrc = edgeCellCell[1] in cellSrc
+            ccTgt = edgeCellCell[0] in cellTgt
+
+
+            if ccSrc and ccTgt:
+                print("Circular closure", edgeCellCell)
+                print(evidence)
+                continue
+
+            cellSrc.add(edgeCellCell[0])
+            cellTgt.add(edgeCellCell[1])
+
+
             evDocId = evidence['docid']
 
-            for messengerID in docInfos['messengers'].get(evDocId, ['mUnknown']):
+            messengerEdges = docInfos['messengers'].get(evDocId, ['mUnknown'])
+            categoryEdges = docInfos['categories'].get(evDocId, ['cUnknown'])
+
+            assert( len(messengerEdges) > 0 )
+
+            messengerEdgesCounter[edgeCellCell] += len(messengerEdges)
+            categoryEdgesCounter[edgeCellCell] += len(categoryEdges)
+
+            if onlyCells:
+                allEdges[edgeCellCell] += 1
+
+            for messengerID in messengerEdges:
 
                 mNodeIdx = allNodes.index(messengerID)
 
-                allEdges[(lIndex, mNodeIdx)] += 1
+                if not onlyCells:
+                    allEdges[(edgeCellCell[1], mNodeIdx)] += len(categoryEdges)
+                    allEdges[edgeCellCell] += len(categoryEdges)
 
-                for categoryID in docInfos['categories'].get(evDocId, ['cUnknown']):
+                for categoryID in categoryEdges:
 
                     cNodeIdx = allNodes.index(categoryID)
 
-                    allEdges[(mNodeIdx, cNodeIdx)] += 1
+                    if not onlyCells:
+                        allEdges[(mNodeIdx, cNodeIdx)] += 1
+
+
+    """
+    
+    Fetch actually used edges
+    
+    """
+
+    usedNodeIndices = {}
+    usedNodes = []
+    for src, tgt in allEdges:
+
+        nodename = allNodes[src]
+        if not nodename in usedNodes:
+
+            usedNodes.append(nodename)
+            usedNodeIndices[src] = usedNodes.index(nodename)
+
+        nodename = allNodes[tgt]
+        if not nodename in usedNodes:
+            usedNodes.append(nodename)
+            usedNodeIndices[tgt] = usedNodes.index(nodename)
+
+    """
+
+    reindex edges
+
+    """
+
+    usedEdges = {}
+    usedMessengerEdgesCounter = Counter()
+    usedCategoryEdgesCounter = Counter()
+
+    for src, tgt in allEdges:
+
+        newsrc = usedNodeIndices[src]
+        newtgt = usedNodeIndices[tgt]
+
+        assert(newsrc != newtgt)
+
+        usedMessengerEdgesCounter[(newsrc, newtgt)] = messengerEdgesCounter[(src, tgt)]
+        usedCategoryEdgesCounter[(newsrc, newtgt)] = categoryEdgesCounter[(src, tgt)]
+
+        usedEdges[(newsrc, newtgt)] = allEdges[(src, tgt)]
+
+
 
     graphObj = {
-        'nodes': [{'name': x} for x in allNodes],
-        'links': [{'source': x[0], 'target': x[1], 'value': allEdges[x]} for x in allEdges]
+        'nodes': [{'name': x} for x in usedNodes],
+        'links': [{'source': x[0],
+                   'target': x[1],
+                   'value': usedEdges[x],
+                   'messengers': usedMessengerEdgesCounter[x],
+                   'categories': usedCategoryEdgesCounter[x]
+                   }
+                  for x in usedEdges]
     }
 
-    return app.make_response((jsonify(graphObj), 200, None))
+    print("nodes")
 
+    for x in graphObj['nodes']:
+        print(x)
+
+
+    print("links")
+    for x in graphObj['links']:
+        print(x)
+
+    return graphObj
 
 @app.route('/find_interactions', methods=['GET', 'POST'])
 def findInteractions():
@@ -195,7 +432,13 @@ def findInteractions():
 
     print(interactReq)
 
-    return returnInteractions(interactReq.get('elements', None), interactReq.get('categories', None), interactReq.get('messengers', None), organisms=interactReq.get('organisms', None))
+
+    fetchSentences=True
+    if 'sentences' in interactReq:
+        if interactReq['sentences'].upper() == 'FALSE':
+            fetchSentences = False
+
+    return returnInteractions(interactReq.get('elements', None), interactReq.get('categories', None), interactReq.get('messengers', None), organisms=interactReq.get('organisms', None), fetchSentences=fetchSentences)
 
 @app.route('/status')
 def getStatus():
@@ -470,10 +713,10 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
     return returnObj
 
 
-def returnInteractions(cells=None, categories=None, messengers=None, organisms=None):
+def returnInteractions(cells=None, categories=None, messengers=None, organisms=None, fetchSentences=True):
 
 
-    returnObj = makeInteractionObject(cells, categories, messengers, organisms)
+    returnObj = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=fetchSentences)
 
     return app.make_response((jsonify(returnObj), 200, None))
 
@@ -850,8 +1093,7 @@ def start_app_from_args(args):
     print(datetime.datetime.now(), "Loading finished")
 
 
-if __name__ == '__main__':
-
+def getCLParser():
     parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
     parser.add_argument('-t', '--textmine', type=str,
                         help='Base for Textmining. Includes aggregated_ and results folder', required=True)
@@ -859,6 +1101,12 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
     parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
     parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
+
+    return parser
+
+if __name__ == '__main__':
+
+    parser = getCLParser()
 
     args = parser.parse_args()
 
@@ -873,8 +1121,13 @@ if __name__ == '__main__':
 
 
 def gunicorn_start():
+
+    parser = getCLParser()
+
     argstr = "--textmine /home/mjoppich/dev/data/tm_soehnlein/ --obodir /home/mjoppich/dev/data/tm_soehnlein/obos --sentdir /home/mjoppich/dev/data/pubmed/ --feedback /home/mjoppich/dev/data/tm_soehnlein/feedback --port 65522"
 
-    args = parser.parse_args(shlex.shlex.split(argstr))
+    args = parser.parse_args(shlex.split(argstr))
 
     start_app_from_args(args)
+
+    return app

@@ -4,7 +4,7 @@ import * as ReactDOM from "react-dom";
 
 import * as d3sankey from "d3-sankey";
 
-export interface D3SankeyChartProps { id: string, graph: {nodes: any, links: any}, graphtitle?:string }
+export interface D3SankeyChartProps {graph: {nodes: any, links: any}, graphtitle?:string }
 export interface D3SankeyChartState { }
 
 
@@ -13,6 +13,11 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
     constructor(props) {
         super(props);
     }
+
+    public static defaultProps: Partial<D3SankeyChartProps> = {
+        graphtitle: "",
+        graph: {'nodes': [], 'links': []}
+    };
    
     componentWillMount()
     {
@@ -21,13 +26,16 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
 
     componentWillReceiveProps(newprops)
     {
-        this.drawChart(newprops);
     }
 
     force = null;
     svg = null;
 
     drawChart(theprops) {
+
+        console.log("Sankey Chart Props");
+        console.log(theprops);
+
 
         var self = this;
 
@@ -38,10 +46,30 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
             domNode.removeChild(domNode.firstChild);
         }
 
+        if (!theprops.graph)
+        {
+            console.log("Sankey Chart Props Graph Empty - testdata");
+            theprops.graph = this.testdata;
+        }
+
+        console.log("Sankey Chart Graph");
+        console.log(theprops.graph);
+        console.log(domNode);
+
+        if (theprops.graph.nodes.length == 0)
+        {
+            console.log("empty drawChart for empty nodes");
+            return;
+        }
 
         var margin = {top:0, left:0, bottom:0, right:0 };      
         var width = domNode.clientWidth;
         var height = domNode.clientHeight;
+
+        console.log("Sankey width")
+        console.log(width);
+        console.log("Sankey height")
+        console.log(height);
 
         this.svg = d3.select(domNode).append("svg")
         .attr("width", width)
@@ -53,7 +81,7 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
         //.attr("transform","translate("+width/2.0+","+height/2.0+")");
 
         var formatNumber = d3.format(",.0f"),
-            format = function (d: any) { return formatNumber(d) + " TWh"; },
+            format = function (d: any) { return formatNumber(d) + " evidences"; },
             color = d3.scaleOrdinal(d3.schemeCategory10);
 
         var sankey = d3sankey.sankey()
@@ -61,7 +89,7 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
             .nodePadding(10)
             .extent([[1, 1], [width - 1, height - 6]]);
 
-        sankey(this.testdata);
+        sankey(theprops.graph);
 
         var link = this.svg.append("g")
             .attr("class", "links")
@@ -77,7 +105,7 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
             .selectAll("g");
 
             link = link
-            .data(this.testdata.links)
+            .data(theprops.graph.links)
             .enter().append("path")
             .attr("d", d3sankey.sankeyLinkHorizontal())
             .attr("stroke-width", function (d: any) { return Math.max(1, d.width); });
@@ -86,7 +114,7 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
             .text(function (d: any) { return d.source.name + " → " + d.target.name + "\n" + format(d.value); });
 
         node = node
-            .data(this.testdata.nodes)
+            .data(theprops.graph.nodes)
             .enter().append("g");
 
         node.append("rect")
@@ -109,74 +137,11 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
 
         node.append("title")
             .text(function (d: any) { return d.name + "\n" + format(d.value); });
+
+        console.log("Sankey chart drawn.")
     }
 
-    total_width(d)
-    {
-        // or add d.evidence+d.predicted
-        return 20;
-    }
 
-    line_shift(d, direction) {
-      var rel_x = d.target.x-d.source.x;
-      var rel_y = d.target.y-d.source.y;
-      var theta = Math.atan2(rel_y, rel_x);
-  
-      var theta_perpendicular = theta + (Math.PI / 2)*direction;
-  
-    /*console.log("Theta:" + theta);
-      console.log("Theta Per:" + theta_perpendicular);
-      console.log("Sin:" + Math.sin(theta_perpendicular));
-      console.log("Cos:" + Math.cos(theta_perpendicular));
-      console.log("Width:" + width);*/
-  
-      var width = this.total_width(d)
-      var delta_x = width / 4 * Math.cos(theta_perpendicular) // Both lines are pushed 1/4, making it 1/2 away from each other.
-      var delta_y = width / 4 * Math.sin(theta_perpendicular) // Both lines are pushed 1/4, making it 1/2 away from each other.
-      return [delta_x, delta_y]
-    }
-
-    evidence_link_width(d)
-    {
-        var baseWidth = Math.min(20.0, d.evidence) / 20.0;
-        return 5.0 + 5.0*baseWidth;
-    }
-
-    prediction_link_width(d)
-    {
-        var baseWidth = Math.min(20.0, d.predicted) / 20.0;
-        return 5.0 + 5.0*baseWidth;
-    }
-
-    dragstarted(d) {
-        if (!d3.event.active) this.force.alphaTarget(0.5).restart();
-        d.fx = d.x;
-        d.fy = d.y;
-    }
-
-    dragended(d) {
-        if (!d3.event.active) this.force.alphaTarget(0.5);
-        //d.fx = null;
-        //d.fy = null;
-    } 
-
-    dragged(d) {
-        d.fx = d3.event.x;
-        d.fy = d3.event.y;
-    }     
-
-
-    updateGraph()
-    {
-        console.log("D3 SVG Force parallel updateGraph()");
-        console.log(this.props.graph);
-    
-        if (this.props.graph)
-        {
-            this.drawChart(this.props);
-
-        }
-    }
 
     willUnmount:boolean = false;
 
@@ -188,34 +153,31 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
     componentWillUnmount()
     {
         this.willUnmount = true;
-        console.log("Component Will Unmount");
+        console.log("Sankey Chart Component Will Unmount");
     }
 
-    componentWillUpdate()
+    componentWillUpdate(nextProps, nextState)
     {
-        console.log("Component Will Update");
+        console.log("Sankey Chart Component Will Update");
+        console.log(nextProps);
+        console.log(nextState);
     }
 
     componentDidMount()
     {
-        console.log("Component Did Mount");
-        this.updateGraph();
+        console.log("Sankey Chart Component Did Mount");
+        this.drawChart(this.props); 
     }
 
     componentDidUpdate()
     {
-        console.log("D3N4J View DidUpdate")
-        this.updateGraph();
-    }
-
-    componentDidCatch()
-    {
-        console.log("Some error occured");
+        console.log("Sankey Chart Component Did Update");
+        this.drawChart(this.props);
     }
 
     render() {
 
-        console.log("d3 n4j did render");
+        console.log("Sankey Chart render");
 
         var graphtitle = <span></span>;
 
@@ -225,7 +187,8 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
         }
 
         //{width: '800px', height:'400px'}
-            return (<div>{graphtitle}<div ref="graph" style={{height: "800px", width: "1200px"}}></div></div>);
+            
+        return (<div>{graphtitle}<div ref="graph" style={{height: "800px", width: "1200px"}}></div></div>);
     }
 
 

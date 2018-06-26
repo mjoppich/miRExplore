@@ -63,9 +63,7 @@ export class MainStatus extends React.Component<{},{}> {
                         <li><b>PMC</b>: fulltexts and TM by section</li>
                     </ul>
                 </span>
-
-                <SankeyChart graph={graphData} id="d3front"/>
-                
+               
 
             </div>
         );

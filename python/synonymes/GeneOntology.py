@@ -185,6 +185,30 @@ class GOTerm:
 
         return str(self.id) + " " + str(self.name)
 
+
+    def __children_at_level(self, already_seen, level, withLevel=False):
+
+        if self.children == None or level == 0:
+
+            if not withLevel:
+                already_seen.add(self)
+            else:
+                already_seen.add( (self, level) )
+
+            return
+
+        for x in self.children:
+            x.term.__children_at_level(already_seen, level-1, withLevel)
+
+    def getChildrenAtLevel(self, level, withLevel=False):
+
+        allchildren = set()
+
+        self.__children_at_level(allchildren, level, withLevel=withLevel)
+
+        return allchildren
+
+
     def getAllChildren(self, maxLevel = -1):
 
         allchildren = set()
@@ -530,6 +554,10 @@ class GOTerm:
 
         sRefTerm = value.split("!")
         sRefTerm = sRefTerm[0].strip()
+
+        if "{" in sRefTerm:
+            sRefTerm = sRefTerm[0:sRefTerm.index("{")-1]
+
 
         if len(sRefTerm) == 0:
             return None

@@ -143,7 +143,7 @@ export default class MEEvidenceGraph extends React.Component<MEEvidenceGraphProp
         console.log(graphData);
 
         return (<div>
-            <D3SVGParallelLinesGraph graph={graphData} id="d3front"/>
+            <D3SVGParallelLinesGraph graph={graphData} graphtitle="Interaction Network"/>
         </div>);
     }
 

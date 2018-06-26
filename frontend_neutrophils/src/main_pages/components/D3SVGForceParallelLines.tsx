@@ -20,7 +20,7 @@ interface Graph {
     links: Array<SimLink>;
 }
 
-export interface D3SVGParallelLinesProps { id: string, graph: {nodes: any, links: any}, graphtitle?:string }
+export interface D3SVGParallelLinesProps { graph: {nodes: any, links: any}, graphtitle?:string }
 export interface D3SVGParallelLinesState { }
 
 
@@ -151,7 +151,7 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         .attr("dy", ".35em")
         .style("font-size", "18px")
         .text(function (d) {
-            return d.label
+            return d.name
         });
 
     var self=this;
