@@ -3,7 +3,6 @@ import datetime
 import pickle
 import re
 import shlex
-
 import regex
 import sys
 import os
@@ -720,8 +719,18 @@ if __name__ == '__main__':
 
 
 def gunicorn_start():
-    argstr = "--textmine /home/mjoppich/dev/data/tm_soehnlein/ --obodir /home/mjoppich/dev/data/tm_soehnlein/obos --sentdir /home/mjoppich/dev/data/pubmed/ --feedback /home/mjoppich/dev/data/tm_soehnlein/feedback --port 65522"
+    argstr = "--textmine /home/j/joppich/tm_soehnlein/ --obodir /home/j/joppich/tm_soehnlein/obos --sentdir /home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/pmid_sent/ --feedback /home/j/joppich/tm_soehnlein/feedback --port 65522"
 
-    args = parser.parse_args(shlex.shlex.split(argstr))
+    parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
+    parser.add_argument('-t', '--textmine', type=str,
+                         help='Base for Textmining. Includes aggregated_ and results folder', required=True)
+    parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
+    parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
+    parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
+    parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
+
+    args = parser.parse_args(shlex.split(argstr))
 
     start_app_from_args(args)
+
+    return app
