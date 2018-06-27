@@ -1,8 +1,11 @@
-from natsort import natsorted
+from synonymes.GeneOntology import GeneOntology
 
-x = ['99978', '9972982', '9785381', '9753058', 'PMC9743365', 'PMC974267']
+cellsObo = GeneOntology("/home/mjoppich/dev/data/tm_soehnlein/obos/cl.obo")
 
 
-y = natsorted(x)
+ecTerm = cellsObo.dTerms['CL:0000084']
 
-print(y)
+ac = ecTerm.getAllChildren()
+
+for child in ac:
+    print(child.term.id, child.term.name)

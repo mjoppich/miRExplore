@@ -10,7 +10,7 @@
   "scripts": {
     "start": "npm run build && env-cmd env.uni.prod node src/server-es5.js",
     "start:dev": "env-cmd env.browser.dev nodemon",
-    "build": "env-cmd env.uni.prod webpack -p --profile --display-modules --optimize-minimize",
+    "build": "env-cmd env.browser.prod webpack -p --profile --display-modules --optimize-minimize",
     "build:dev": "env-cmd env.browser.dev webpack -d",
     "build:dev:watch": "env-cmd env.browser.dev webpack -d --watch"
   },
@@ -40,6 +40,7 @@
     "cross-env": "^5.1.6",
     "cytoscape": "^3.2.12",
     "d3": "^4.13.0",
+    "d3-sankey": "^0.7.1",
     "ejs": "^2.6.1",
     "exports-loader": "^0.7.0",
     "expose-loader": "^0.7.5",

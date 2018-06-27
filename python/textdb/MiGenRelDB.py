@@ -40,6 +40,7 @@ class MiRGeneRel(DataBaseRel):
 
 
         if intuple != None:
+            #('12', '1V2', 'POS', 'express', '29138420.2.5', False, (26, 34), (0, 5), (6, 16))
             self.assocDir = intuple[0]
             self.assocDirV = intuple[1]
             self.assocCat = intuple[2]
@@ -244,6 +245,14 @@ class MiGenRelDB(DataBaseDescriptor):
                 if ret.r_ont_based:
                     rid = rid.replace('_', ':', 1)
 
+                turnEvs= False
+                if ltype == rtype and lid > rid:
+                    tmp = lid
+                    lid = rid
+                    rid = tmp
+
+                    turnEvs = True
+
 
                 sameParagraph = aline[7] == 'True'
                 sameSentence = aline[8] == 'True'
@@ -287,11 +296,38 @@ class MiGenRelDB(DataBaseDescriptor):
 
                 tmRelations = None if aline[9] == 'None' else eval(aline[9  ])
 
+
+                if ltype == rtype and lid > rid:
+                    tmp = lid
+                    lid = rid
+                    rid = tmp
+
+
                 if tmRelations != None:
                     allrels = set()
 
                     for relIdx, rel in enumerate(tmRelations):
+
+
+
+
                         newrel = MiRGeneRel(rel, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), dbtype, None)
+
+                        if turnEvs:
+
+                            tmp = newrel.lPOS
+                            newrel.lPOS = newrel.rPOS
+                            newrel.rPOS = tmp
+
+                            if newrel.assocDirV != None:
+                                nAssocDirV =""
+                                subs = {'1': '2', '2': '1', 'V': 'V'}
+                                for x in newrel.assocDirV:
+                                    nAssocDirV += subs.get(x, x)
+
+                                newrel.assocDirV = nAssocDirV
+                                newrel.assocDir = nAssocDirV.replace('V', '')
+
 
                         relCopy = copy.deepcopy(newrel)
 

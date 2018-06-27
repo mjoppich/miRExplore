@@ -185,15 +185,46 @@ class GOTerm:
 
         return str(self.id) + " " + str(self.name)
 
-    def getAllChildren(self, maxLevel = -1):
+
+    def __children_at_level(self, already_seen, level, withLevel=False):
+
+        if self.children == None or level == 0:
+
+            if not withLevel:
+                already_seen.add(self)
+            else:
+                already_seen.add( (self, level) )
+
+            return
+
+        for x in self.children:
+            x.term.__children_at_level(already_seen, level-1, withLevel)
+
+    def getChildrenAtLevel(self, level, withLevel=False):
 
         allchildren = set()
 
-        self.__addAllChildrenRec(allchildren, maxLevel)
+        self.__children_at_level(allchildren, level, withLevel=withLevel)
+
+        if withLevel:
+            allchildren = set([(x, level-l) for x,l in allchildren])
+
 
         return allchildren
 
-    def __addAllChildrenRec(self, already_seen, maxLevel):
+
+    def getAllChildren(self, maxLevel=-1, withLevel=False):
+
+        allchildren = set()
+
+        self.__addAllChildrenRec(allchildren, maxLevel, withLevel=withLevel)
+
+        if withLevel:
+            allchildren = set([(x, maxLevel-l) for x,l in allchildren])
+
+        return allchildren
+
+    def __addAllChildrenRec(self, already_seen, maxLevel, withLevel=False):
 
         if self.children == None or maxLevel == 0:
             return
@@ -202,9 +233,12 @@ class GOTerm:
 
             if not x in already_seen:
 
-                already_seen.add(x)
+                if not withLevel:
+                    already_seen.add(x)
+                else:
+                    already_seen.add((x, maxLevel))
 
-                childchildren = x.term.__addAllChildrenRec(already_seen, maxLevel-1)
+                childchildren = x.term.__addAllChildrenRec(already_seen, maxLevel-1, withLevel=withLevel)
 
     def getAllParents(self):
 
@@ -530,6 +564,10 @@ class GOTerm:
 
         sRefTerm = value.split("!")
         sRefTerm = sRefTerm[0].strip()
+
+        if "{" in sRefTerm:
+            sRefTerm = sRefTerm[0:sRefTerm.index("{")-1]
+
 
         if len(sRefTerm) == 0:
             return None

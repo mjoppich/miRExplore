@@ -7,13 +7,13 @@ import regex
 import sys
 import os
 
-
-sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
-
-
 from synonymes.SynonymFile import Synfile
 from utils.HashDict import HashDict
 from utils.tmutils import normalize_gene_names
+
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
+sys.stdout = sys.stderr
 
 from natsort import natsorted
 
@@ -39,12 +39,15 @@ from io import StringIO
 from flask import Flask, jsonify, request, redirect, url_for, send_from_directory
 import json
 import pprint
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from flask_cors import CORS
 
+dataurl = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'frontend_neutrophils/src/static/'
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=dataurl, static_url_path='/static')
+
+app.debug = True
 CORS(app)
 
 app.config['DEBUG'] = False
@@ -71,6 +74,15 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
 
+
+
+@app.route('/')
+def root():
+
+    retFile = 'index.html'
+
+    return app.send_static_file(retFile)
+
 @app.route('/test', methods=['GET', 'POST'])
 def test():
 
@@ -88,6 +100,364 @@ def help():
 
     return res, 200, None
 
+@app.route('/sankey', methods=['POST'])
+def sankey_network():
+    interactReq = request.get_json(force=True, silent=True)
+
+    global categoriesObo
+    global messengersObo
+
+    if interactReq == None:
+        return app.make_response((jsonify( {'error': 'invalid json'} ), 400, None))
+
+    if not 'elements' in interactReq:
+        return app.make_response((jsonify( {'error': 'must include CELLS'} ), 400, None))
+
+    print(interactReq)
+
+    obolevel = interactReq.get('obolevel', 3)
+
+
+    graphObj = make_plot_info(interactReq.get('elements', None), interactReq.get('categories', None),
+                              interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
+                              majorParents=True, onlyCells=False, obolevel=obolevel )
+
+    return app.make_response((jsonify(graphObj), 200, None))
+
+
+@app.route('/interaction_network', methods=['POST'])
+def interaction_network():
+    interactReq = request.get_json(force=True, silent=True)
+
+    global categoriesObo
+    global messengersObo
+
+    if interactReq == None:
+        return app.make_response((jsonify({'error': 'invalid json'}), 400, None))
+
+    if not 'elements' in interactReq:
+        return app.make_response((jsonify({'error': 'must include CELLS'}), 400, None))
+
+    print(interactReq)
+    obolevel = interactReq.get('obolevel', 3)
+
+
+    graphObj = make_plot_info(interactReq.get('elements', None), interactReq.get('categories', None),
+                              interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
+                              majorParents=True, onlyCells=True, obolevel=obolevel)
+
+    return app.make_response((jsonify(graphObj), 200, None))
+
+
+
+def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2):
+
+    elemJSON = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=False)
+
+    rels = elemJSON['rels']
+    addinfo = elemJSON['pmidinfo']
+
+    docInfos = defaultdict(lambda: defaultdict(set))
+
+    for x in addinfo:
+
+        alladdinfo = addinfo[x]
+        for pmid in alladdinfo:
+            for ev in alladdinfo[pmid]:
+                termid = ev['termid']
+
+                docInfos[x][pmid].add(termid)
+
+
+    """
+    
+    In order to avoid too many single nodes, assign each child to a major parent ....
+    
+    """
+
+    allRoots = cellsObo.getRoots()
+    cellRoot = cellsObo.dTerms.get('CL:0000000', None)
+    if cellRoot != None:
+        #allRoots = []
+        allRoots.append( cellRoot )
+
+    oboid2majorid = {}
+    oboid2rootdist = {}
+
+    for root in allRoots:
+
+        oboid2majorid[root.id] = root.id
+        oboid2rootdist[root.id] = -1000
+
+        allchildren = root.getChildrenAtLevel(obolevel, withLevel=True)
+
+        print("Root node", root.id, root.name, [(x.id, x.name, l) for (x,l) in allchildren])
+
+        for child,l in allchildren:
+
+            newc = child.getAllChildren(withLevel=True)
+            oboid2majorid[child.id] = child.id
+            oboid2rootdist[child.id] = -1000
+
+            for nc,cl in newc:
+                if 'CL:0000893' in nc.term.id or 'CL:0000893' in child.id:
+                    print( nc.term.id, nc.term.name, cl, "=>", child.name, child.id, l)
+
+
+                if not nc.term.id in oboid2rootdist or oboid2rootdist[nc.term.id] > cl:
+                    oboid2majorid[nc.term.id] = child.id
+                    oboid2rootdist[nc.term.id] = cl
+
+                    if 'CL:0000893' in nc.term.id or 'CL:0000893' in child.id:
+                        print( nc.term.id, nc.term.name, cl, "==>", child.name, child.id, l)
+
+
+
+    oldname2newname = {}
+
+    allNodes = set()
+
+    for x in rels:
+
+        if majorParents:
+
+            for evidence in x['evidences']:
+
+                src = evidence.get('lontid', evidence['lid'])
+                tgt = evidence.get('rontid', evidence['rid'])
+
+                newsrc = oboid2majorid.get(src, src)
+                newtgt = oboid2majorid.get(tgt, tgt)
+
+                if newsrc != None:
+                    srcTerm = cellsObo.dTerms[newsrc]
+                    srcName = srcTerm.name
+
+                    allNodes.add(srcName)
+                else:
+                    print("No oboid2majorid for", src)
+                    srcName = x['lid']
+
+                if newtgt != None:
+                    tgtTerm = cellsObo.dTerms[newtgt]
+                    tgtName = tgtTerm.name
+
+                    allNodes.add(tgtName)
+                else:
+                    print("No oboid2majorid for", tgt)
+                    tgtName = x['rid']
+
+
+                oldname2newname[src] = srcName
+                oldname2newname[tgt] = tgtName
+
+        else:
+            allNodes.add(x['lid'])
+            allNodes.add(x['rid'])
+
+
+    for termid in messengersObo.dTerms:
+        obonode = messengersObo.dTerms[termid]
+
+        if obonode.name in allNodes:
+            print("Duplicate messenger term", obonode.name)
+
+        allNodes.add(obonode.name)
+
+    for termid in categoriesObo.dTerms:
+        obonode = categoriesObo.dTerms[termid]
+
+        if obonode.name in allNodes:
+            print("Duplicate category term", obonode.name)
+
+        allNodes.add(obonode.name)
+
+    allNodes.add('mUnknown')
+    allNodes.add('cUnknown')
+
+
+    allNodes = list(sorted(allNodes))
+
+    print("allNodes")
+    for x in allNodes:
+        print("obo node", x)
+
+    """
+    now we need to add edges :)
+    """
+
+    allEdges = Counter()
+    messengerEdgesCounter = Counter()
+    categoryEdgesCounter = Counter()
+
+    cellSrc = set()
+    cellTgt = set()
+
+
+    def check_circ(lid, rid):
+
+        edgeCellCell = (allNodes.index(lid), allNodes.index(rid))
+
+        ccSrc = edgeCellCell[1] in cellSrc
+        ccTgt = edgeCellCell[0] in cellTgt
+
+        if ccSrc or ccTgt:
+            edgeCellCell = tuple(reversed(edgeCellCell))
+        else:
+            return edgeCellCell
+
+        ccSrc = edgeCellCell[1] in cellSrc
+        ccTgt = edgeCellCell[0] in cellTgt
+
+        if ccSrc or ccTgt:
+            return None
+
+        return edgeCellCell
+
+
+    for x in rels:
+
+        for evidence in x['evidences']:
+
+            lid = evidence.get('lontid', evidence['lid'])
+            rid = evidence.get('rontid', evidence['rid'])
+
+            if majorParents:
+
+                lid = oldname2newname.get(lid, evidence['lid'])
+                rid = oldname2newname.get(rid, evidence['rid'])
+
+            if (lid == rid):
+                rid = rid + "_c"
+
+                if not rid in allNodes:
+                    allNodes.append(rid)
+
+            edgeCellCell = check_circ(lid, rid)
+
+            if edgeCellCell == None:
+
+
+                addL = lid + "_c" in allNodes
+                addR = rid + "_c" in allNodes
+
+                if addL and not addR:
+                    lid = lid + "_c"
+                elif not addL and addR:
+                    rid = rid + "_c"
+                elif addL and addR:
+                    print("lid and rid modified in allnodes?", lid, rid, allNodes)
+                elif not addL and not addR:
+                    lid = lid + "_c"
+                    allNodes.append(lid)
+
+                edgeCellCell = check_circ(lid, rid)
+
+                if edgeCellCell == None:
+
+                    print("Circular", lid, rid, allNodes)
+                    continue
+
+            cellSrc.add(edgeCellCell[0])
+            cellTgt.add(edgeCellCell[1])
+
+
+            evDocId = evidence['docid']
+
+            messengerEdges = docInfos['messengers'].get(evDocId, ['mUnknown'])
+            categoryEdges = docInfos['categories'].get(evDocId, ['cUnknown'])
+
+            assert( len(messengerEdges) > 0 )
+
+            messengerEdgesCounter[edgeCellCell] += len(messengerEdges)
+            categoryEdgesCounter[edgeCellCell] += len(categoryEdges)
+
+            if onlyCells:
+                allEdges[edgeCellCell] += 1
+
+            for messengerID in messengerEdges:
+
+                mNodeIdx = allNodes.index(messengerID)
+
+                if not onlyCells:
+                    allEdges[(edgeCellCell[1], mNodeIdx)] += len(categoryEdges)
+                    allEdges[edgeCellCell] += len(categoryEdges)
+
+                for categoryID in categoryEdges:
+
+                    cNodeIdx = allNodes.index(categoryID)
+
+                    if not onlyCells:
+                        allEdges[(mNodeIdx, cNodeIdx)] += 1
+
+
+    """
+    
+    Fetch actually used edges
+    
+    """
+
+    usedNodeIndices = {}
+    usedNodes = []
+    for src, tgt in allEdges:
+
+        nodename = allNodes[src]
+        if not nodename in usedNodes:
+
+            usedNodes.append(nodename)
+            usedNodeIndices[src] = usedNodes.index(nodename)
+
+        nodename = allNodes[tgt]
+        if not nodename in usedNodes:
+            usedNodes.append(nodename)
+            usedNodeIndices[tgt] = usedNodes.index(nodename)
+
+    """
+
+    reindex edges
+
+    """
+
+    usedEdges = {}
+    usedMessengerEdgesCounter = Counter()
+    usedCategoryEdgesCounter = Counter()
+
+    for src, tgt in allEdges:
+
+        newsrc = usedNodeIndices[src]
+        newtgt = usedNodeIndices[tgt]
+
+        assert(newsrc != newtgt)
+
+        usedMessengerEdgesCounter[(newsrc, newtgt)] = messengerEdgesCounter[(src, tgt)]
+        usedCategoryEdgesCounter[(newsrc, newtgt)] = categoryEdgesCounter[(src, tgt)]
+
+        usedEdges[(newsrc, newtgt)] = allEdges[(src, tgt)]
+
+
+
+    graphObj = {
+        'nodes': [{'name': x} for x in usedNodes],
+        'links': [{'source': x[0],
+                   'target': x[1],
+                   'value': usedEdges[x],
+                   'messengers': usedMessengerEdgesCounter[x],
+                   'categories': usedCategoryEdgesCounter[x]
+                   }
+                  for x in usedEdges]
+    }
+
+    print("nodes")
+
+    for x in graphObj['nodes']:
+        print(x)
+
+
+    print("links")
+    for x in graphObj['links']:
+        print(x)
+
+    return graphObj
 
 @app.route('/find_interactions', methods=['GET', 'POST'])
 def findInteractions():
@@ -101,15 +471,27 @@ def findInteractions():
 
     print(interactReq)
 
-    return returnInteractions(interactReq.get('elements', None), interactReq.get('categories', None), interactReq.get('messengers', None), organisms=interactReq.get('organisms', None))
+
+    fetchSentences=True
+    if 'sentences' in interactReq:
+        if interactReq['sentences'].upper() == 'FALSE':
+            fetchSentences = False
+
+    return returnInteractions(interactReq.get('elements', None), interactReq.get('categories', None), interactReq.get('messengers', None), organisms=interactReq.get('organisms', None), fetchSentences=fetchSentences)
 
 @app.route('/status')
 def getStatus():
     return app.make_response((jsonify({'error': 'must include homid'}), 400, None))
 
 
-def returnInteractions(cells=None, categories=None, messengers=None, organisms=None):
+def makeInteractionObject(cells=None, categories=None, messengers=None, organisms=None, fetchSentences=True):
 
+    global relDBs
+    global sentDB
+    global pmid2Categories
+    global pmid2Messenger
+    global categoriesObo
+    global messengersObo
 
     cells = cells if cells!=None else []
     categories = categories if categories!=None else []
@@ -170,68 +552,6 @@ def returnInteractions(cells=None, categories=None, messengers=None, organisms=N
 
         print("Must include any organism", organisms)
 
-    for rel in allRels:
-
-        if organisms != None:
-
-            if rel.orgs == None:
-                continue
-
-            if not any([x in rel.orgs for x in organisms]):
-                continue
-
-        if rel.docid != -1:
-            allDocIDs.add(rel.docid)
-
-        evJSON = rel.toJSON()
-
-        evSent = evJSON.get('rel_sentence', None)
-
-        if evSent != None:
-            evSentTxt = sentDB.get_sentence(evSent)
-
-            if evSentTxt != None:
-
-                loadedSents += 1
-                evJSON['sentence'] = evSentTxt[1]
-
-        relID = (rel.l_id_type, rel.r_id_type)
-
-        foundRels[relID].append(evJSON)
-
-    print("Loaded Sentences", loadedSents)
-
-    addInfo = {}
-
-    if pmid2Categories:
-
-        addInfo['categories'] = None
-
-        allDocInfos = {}
-
-        for docid in allDocIDs:
-            docInfo = pmid2Categories.getDOC(docid)
-
-            if docInfo != None:
-                allDocInfos[docid] = docInfo
-
-        addInfo['categories'] = allDocInfos
-
-    if pmid2Messenger:
-
-        addInfo['messengers'] = None
-
-        allDocInfos = {}
-
-        for docid in allDocIDs:
-            docInfo = pmid2Messenger.getDOC(docid)
-
-            if docInfo != None:
-                allDocInfos[docid] = docInfo
-
-        addInfo['messengers'] = allDocInfos
-
-
     allowedIDs = {}
     if categories != None:
 
@@ -262,63 +582,180 @@ def returnInteractions(cells=None, categories=None, messengers=None, organisms=N
         allowedIDs['messengers'] = set(allowedTermIDs)
 
 
+    """
+    
+    FETCH ALL POSSIBLY RELEVANT DOCIDs
+    
+    """
+
+    allDocIDs = set()
+    for rel in allRels:
+
+        if organisms != None:
+
+            if rel.orgs == None:
+                continue
+
+            if not any([x in rel.orgs for x in organisms]):
+                continue
+
+        if rel.docid != -1:
+            allDocIDs.add(rel.docid)
+
+    """
+
+    CHECK ALL POSSIBLY RELEVANT DOCIDs for RELEVANCE
+
+    """
+
+
+
+    addInfo = {}
+    if pmid2Categories:
+
+        addInfo['categories'] = None
+
+        allDocInfos = {}
+
+        for docid in allDocIDs:
+            docInfo = pmid2Categories.getDOC(docid)
+
+            if docInfo != None:
+                allDocInfos[docid] = docInfo
+
+        addInfo['categories'] = allDocInfos
+
+    if pmid2Messenger:
+
+        addInfo['messengers'] = None
+
+        allDocInfos = {}
+
+        for docid in allDocIDs:
+            docInfo = pmid2Messenger.getDOC(docid)
+
+            if docInfo != None:
+                allDocInfos[docid] = docInfo
+
+        addInfo['messengers'] = allDocInfos
+
+
+    """
+    
+    FOUND CATEGORIES FOR ALL DOCIDs
+    
+    
+    GOING TO LOAD SENTENCES
+        
+    """
+
+
+
+
+    print("Loading sentences")
+    for rel in allRels:
+
+        if organisms != None:
+
+            if rel.orgs == None:
+                continue
+
+            if not any([x in rel.orgs for x in organisms]):
+                continue
+
+        if rel.docid != -1:
+            allDocIDs.add(rel.docid)
+
+        evJSON = rel.toJSON()
+
+
+        """
+        
+        THIS PART WILL REJECT EVIDENCES IF INCORRECT SELECTOR
+        
+        """
+
+        if categories != None and len(allowedIDs['categories']) > 0:
+
+            docID = evJSON['docid']
+
+            docIDDiseaseInfo = addInfo['categories'].get(docID, [])
+
+            if len(docIDDiseaseInfo) == 0:
+                continue
+            else:
+
+                acceptEv = any([x['termid'] in allowedIDs['categories'] for x in docIDDiseaseInfo])
+
+                if not acceptEv:
+                    continue
+
+        if messengers != None and len(allowedIDs['messengers']) > 0:
+
+            docID = evJSON['docid']
+
+            docIDGOInfo = addInfo['messengers'].get(docID, [])
+
+            if len(docIDGOInfo) == 0:
+                continue
+            else:
+
+                acceptEv = any([x['termid'] in allowedIDs['messengers'] for x in docIDGOInfo])
+
+                if not acceptEv:
+                    continue
+
+
+        """
+        
+        THIS SECTION IS ONLY PASSED BY EVIDENCES WHICH ARE SELECTED
+        
+        """
+
+
+
+        if fetchSentences:
+            evSent = evJSON.get('rel_sentence', None)
+
+            if evSent != None:
+                evSentTxt = sentDB.get_sentence(evSent)
+
+                if evSentTxt != None:
+
+                    loadedSents += 1
+                    evJSON['sentence'] = evSentTxt[1]
+
+        relID = (rel.l_id_type, rel.r_id_type)
+
+        foundRels[relID].append(evJSON)
+
+    print("Loaded Sentences", loadedSents)
+
+
     allrels = []
     for lent, rent in foundRels:
 
         lrEvs = foundRels[(lent, rent)]
 
-        okEvs = []
-
-        for jsonEV in lrEvs:
-
-            if categories != None and len(allowedIDs['categories']) > 0:
-
-                docID = jsonEV['docid']
-
-                docIDDiseaseInfo = addInfo['categories'].get(docID, [])
-
-                if len(docIDDiseaseInfo) == 0:
-                    continue
-                else:
-
-                    acceptEv = any([x['termid'] in allowedIDs['categories'] for x in docIDDiseaseInfo])
-
-                    if not acceptEv:
-                        continue
-
-            if messengers != None and len(allowedIDs['messengers']) > 0:
-
-                docID = jsonEV['docid']
-
-                docIDGOInfo = addInfo['messengers'].get(docID, [])
-
-                if len(docIDGOInfo) == 0:
-                    continue
-                else:
-
-                    acceptEv = any([x['termid'] in allowedIDs['messengers'] for x in docIDGOInfo])
-
-                    if not acceptEv:
-                        continue
-
-            okEvs.append(jsonEV)
-
-
-        if len(okEvs) > 0:
-
-
-
-            allrels.append({'lid':lent[0],
-                            'rid': rent[0],
-                            'ltype': lent[1],
-                            'rtype': rent[1],
-                            'evidences': okEvs
-                            })
+        allrels.append({'lid':lent[0],
+                        'rid': rent[0],
+                        'ltype': lent[1],
+                        'rtype': rent[1],
+                        'evidences': lrEvs
+                        })
 
     returnObj = {
         'rels': allrels,
         'pmidinfo': addInfo
     }
+
+    return returnObj
+
+
+def returnInteractions(cells=None, categories=None, messengers=None, organisms=None, fetchSentences=True):
+
+
+    returnObj = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=fetchSentences)
 
     return app.make_response((jsonify(returnObj), 200, None))
 
@@ -466,13 +903,6 @@ def findID():
         )
 
 
-    if reMatch.match("Tester"):
-
-        for testerID in testRels.tester2rels:
-            if not testerID.startswith("Tester"):
-                continue
-            jsonResult.append({'name': testerID, 'group': 'gene'})
-
     return app.make_response((jsonify( jsonResult ), 200, None))
 
 
@@ -536,6 +966,7 @@ def go_autocomplete():
 
 @app.route('/cells_ac', methods=['GET', 'POST'])
 def cells_autocomplete():
+    global ccPMID
 
     searchWords = request.get_json(force=True, silent=True)
     searchWord = searchWords['search']
@@ -565,6 +996,9 @@ def cells_autocomplete():
 
 @app.route("/relation_feedback", methods=["GET", "POST"])
 def rel_feedback():
+
+    global mirFeedback
+
     feedbackInfo = request.get_json(force=True, silent=True)
 
     print(feedbackInfo)
@@ -597,32 +1031,36 @@ def rel_feedback():
 
     return app.make_response((jsonify({}), 200, None))
 
-def atoi(text):
-    return int(text) if text.isdigit() else text
 
-def natural_keys(text):
-    '''
-    alist.sort(key=natural_keys) sorts in human order
-    http://nedbatchelder.com/blog/200712/human_sorting.html
-    (See Toothy's implementation in the comments)
-    '''
-    return [ atoi(c.docid) for c in re.split('(\d+)', text) ]
 
+relDBs = None
+sentDB = None
+pmid2Categories = None
+pmid2Messenger = None
+categoriesObo = None
+messengersObo = None
+pmid2pmcDB = None
+mirFeedback = None
+ccPMID = None
+cellsObo = None
 
 def start_app_from_args(args):
 
     global relDBs
-    global categoriesObo
-    global messengersObo
+    global sentDB
     global pmid2Categories
     global pmid2Messenger
+    global categoriesObo
+    global messengersObo
+    global ccPMID
+    global cellsObo
     global mirFeedback
-    global sentDB
+    global pmid2pmcDB
 
 
     pmidBase = args.textmine + '/aggregated/'
 
-    normGeneSymbols = normalize_gene_names(args.obodir + "/hgnc_no_withdrawn.syn")
+    normGeneSymbols = normalize_gene_names(path=args.obodir + "/hgnc_no_withdrawn.syn")
 
     print("Loading Interactions")
 
@@ -677,8 +1115,6 @@ def start_app_from_args(args):
 
 
     if allDBS == None:
-        pmid2Categories = None
-        pmid2Messenger = None
 
         print(datetime.datetime.now(), "Loading GO")
         pmid2Categories = PMID2XDB.loadFromFile(pmidBase + "/categories.pmid", categoriesObo, requiredPMIDs)
@@ -696,8 +1132,7 @@ def start_app_from_args(args):
     print(datetime.datetime.now(), "Loading finished")
 
 
-if __name__ == '__main__':
-
+def getCLParser():
     parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
     parser.add_argument('-t', '--textmine', type=str,
                         help='Base for Textmining. Includes aggregated_ and results folder', required=True)
@@ -705,6 +1140,12 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
     parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
     parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
+
+    return parser
+
+if __name__ == '__main__':
+
+    parser = getCLParser()
 
     args = parser.parse_args()
 
@@ -719,15 +1160,10 @@ if __name__ == '__main__':
 
 
 def gunicorn_start():
-    argstr = "--textmine /home/j/joppich/tm_soehnlein/ --obodir /home/j/joppich/tm_soehnlein/obos --sentdir /home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/pmid_sent/ --feedback /home/j/joppich/tm_soehnlein/feedback --port 65522"
 
-    parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
-    parser.add_argument('-t', '--textmine', type=str,
-                         help='Base for Textmining. Includes aggregated_ and results folder', required=True)
-    parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
-    parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
-    parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
-    parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
+    parser = getCLParser()
+
+    argstr = "--textmine /home/j/joppich/tm_soehnlein/ --obodir /home/j/joppich/tm_soehnlein/obos --sentdir /home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/pmid_sent --feedback /home/j/joppich/tm_soehnlein/feedback --port 65522"
 
     args = parser.parse_args(shlex.split(argstr))
 
