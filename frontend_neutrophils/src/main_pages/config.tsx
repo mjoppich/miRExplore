@@ -2,12 +2,13 @@
 
 export default class config {
 
-    static restServer = 'http://localhost'
-    static restPort = '65522'
+    static restServer = 'http://bioclient1.bio.ifi.lmu.de'
+    static restPort = '80'
+    static restFolder = 'neutrophils'
 
     static getRestAddress()
     {
-        return this.restServer + ":" + this.restPort ;
+        return this.restServer + ":" + this.restPort + "/" + this.restFolder + "/";
     }
 
     static axiosConfig = {

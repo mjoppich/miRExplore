@@ -11,7 +11,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 
 const AppClient = () => 
-<Router>
+<Router basename={'/neutrophils'}>
   <MainApp/>
 </Router>
 ;

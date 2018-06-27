@@ -1,4 +1,4 @@
-import * as React from 'react'; 
+import * as React from 'react';
 import Toggle from 'material-ui/Toggle';
 import OrganismChipAC from '../components/OrganismChipAC';
 import EntityChipAC from '../components/EntityChipAC';
@@ -9,11 +9,12 @@ import FlatButton from 'material-ui/FlatButton';
 import axios from 'axios';
 import config from '../config';
 import TextField from 'material-ui/TextField';
+import Grid from 'material-ui/Grid';
 
 import QueryResult from './QueryResult';
 
 export interface QueryComponentProps { key: number, loadSentences?: boolean, showEvidenceTable?: boolean, showShortEvidenceTable?: boolean};
-export interface QueryComponentState { 
+export interface QueryComponentState {
     selectedElements: Array<any>,
     selectedOrganisms: Array<any>,
     selectedCategories: Array<any>,
@@ -44,7 +45,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
         this.setState({selectedElements: [],
             showSankeyChart:true,
             showInteractionGraph: false,
-            selectedOrganisms: [], 
+            selectedOrganisms: [],
             selectedMessengers: [],
             selectedCategories: [],
             obolevel: 2
@@ -92,7 +93,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
         for (var i = 0; i < this.state.selectedElements.length; ++i)
         {
-            sendData['elements'] = this.state.selectedElements;   
+            sendData['elements'] = this.state.selectedElements;
         }
 
         if ((this.state.selectedMessengers) && (this.state.selectedMessengers.length > 0))
@@ -138,7 +139,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
     render()
     {
-        
+
 /*
 
 
@@ -194,8 +195,8 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
             //alignResults.push(<pre key={0}>{JSON.stringify(this.state.interactions, null, 2)}</pre>)   ;
             //alignResults.push(<pre key={1}>{JSON.stringify(this.state.selectedOrganisms, null, 2)}</pre>)   ;
-            //var alignKeys = Object.keys(this.state.alignments);   
-            
+            //var alignKeys = Object.keys(this.state.alignments);
+
             //<EntityChipAC onValueChange={(newvalues) => {console.log("onVC called"); this.setState({selectedElements: newvalues})}} />
         }
 
@@ -207,7 +208,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                 <CardText>
 
                     <div>
-                        
+
 
                         <OboChipAC
                             url="autocomplete"
@@ -238,18 +239,25 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                             onValueChange={(newvalues) => this.setState({selectedMessengers: newvalues})
                         }/>
 
-                        /**
-                        
-                        Add number editor for obo level here
-                        
-                         */
+			<Grid container spacing={8} alignItems="flex-end">
+			  <Grid item>
+			    Obo-Level
+			  </Grid>
+			  <Grid item>
+				<TextField
+				    value={this.state.obolevel}
+				    onChange={ (event, newValue) => {this.setState({obolevel: Number(newValue)})} }
+				    type="number"
+					  id="oboinput"
+					  helperText="Specify how many levels to go down in cell hierarchy"
+					  fullWidth
+					  margin="normal"
+					/>
+			  </Grid>
+			</Grid>
 
-                         <TextField
-                            value={this.state.obolevel}
-                            onChange={ (event, newValue) => {this.setState({obolevel: Number(newValue)})} }
-                            type="number"
-                            />
-               
+
+
                         <Toggle
                         label="Show Interaction Graph"
                         defaultToggled={false}
@@ -273,7 +281,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                         {
                             alignResults
                         }
-                        
+
                     </div>
 
                 </CardText>
