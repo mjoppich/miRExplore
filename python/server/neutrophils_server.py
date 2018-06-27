@@ -44,7 +44,7 @@ from collections import defaultdict, Counter
 
 from flask_cors import CORS
 
-dataurl = '/home/mjoppich/git/miRExplore/frontend_neutrophils/src/static/'
+dataurl = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'frontend_neutrophils/src/static/'
 
 app = Flask(__name__, static_folder=dataurl, static_url_path='/static')
 
@@ -177,25 +177,41 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
     """
 
     allRoots = cellsObo.getRoots()
+    cellRoot = cellsObo.dTerms.get('CL:0000000', None)
+    if cellRoot != None:
+        #allRoots = []
+        allRoots.append( cellRoot )
+
     oboid2majorid = {}
+    oboid2rootdist = {}
 
     for root in allRoots:
 
         oboid2majorid[root.id] = root.id
+        oboid2rootdist[root.id] = -1000
 
         allchildren = root.getChildrenAtLevel(obolevel, withLevel=True)
 
-        print("Root node", root.id, root.name, [(x.id, x.name) for x in allchildren])
+        print("Root node", root.id, root.name, [(x.id, x.name, l) for (x,l) in allchildren])
 
-        for child in allchildren:
+        for child,l in allchildren:
 
-            newc = child.getAllChildren()
+            newc = child.getAllChildren(withLevel=True)
+            oboid2majorid[child.id] = child.id
+            oboid2rootdist[child.id] = -1000
 
-            for nc in newc:
+            for nc,cl in newc:
                 if 'CL:0000893' in nc.term.id or 'CL:0000893' in child.id:
-                    print( nc.term.id, nc.term.name, "=>", child.name, child.id)
+                    print( nc.term.id, nc.term.name, cl, "=>", child.name, child.id, l)
 
-                oboid2majorid[nc.term.id] = child.id
+
+                if not nc.term.id in oboid2rootdist or oboid2rootdist[nc.term.id] > cl:
+                    oboid2majorid[nc.term.id] = child.id
+                    oboid2rootdist[nc.term.id] = cl
+
+                    if 'CL:0000893' in nc.term.id or 'CL:0000893' in child.id:
+                        print( nc.term.id, nc.term.name, cl, "==>", child.name, child.id, l)
+
 
 
     oldname2newname = {}
@@ -241,11 +257,6 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
             allNodes.add(x['rid'])
 
 
-    print("Cell obo nodes")
-    for x in allNodes:
-        print("obo node", x)
-
-
     for termid in messengersObo.dTerms:
         obonode = messengersObo.dTerms[termid]
 
@@ -265,7 +276,12 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
     allNodes.add('mUnknown')
     allNodes.add('cUnknown')
 
-    allNodes = list(allNodes)
+
+    allNodes = list(sorted(allNodes))
+
+    print("allNodes")
+    for x in allNodes:
+        print("obo node", x)
 
     """
     now we need to add edges :)
@@ -277,6 +293,27 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
     cellSrc = set()
     cellTgt = set()
+
+
+    def check_circ(lid, rid):
+
+        edgeCellCell = (allNodes.index(lid), allNodes.index(rid))
+
+        ccSrc = edgeCellCell[1] in cellSrc
+        ccTgt = edgeCellCell[0] in cellTgt
+
+        if ccSrc or ccTgt:
+            edgeCellCell = tuple(reversed(edgeCellCell))
+        else:
+            return edgeCellCell
+
+        ccSrc = edgeCellCell[1] in cellSrc
+        ccTgt = edgeCellCell[0] in cellTgt
+
+        if ccSrc or ccTgt:
+            return None
+
+        return edgeCellCell
 
 
     for x in rels:
@@ -291,33 +328,36 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                 lid = oldname2newname.get(lid, evidence['lid'])
                 rid = oldname2newname.get(rid, evidence['rid'])
 
-            if lid == rid:
-                rid = rid + "_r"
+            if (lid == rid):
+                rid = rid + "_c"
 
                 if not rid in allNodes:
                     allNodes.append(rid)
 
+            edgeCellCell = check_circ(lid, rid)
 
-            edgeCellCell = (allNodes.index(lid), allNodes.index(rid))
-
-            if edgeCellCell[1] < edgeCellCell[0]:
-                edgeCellCell = tuple(reversed(edgeCellCell))
+            if edgeCellCell == None:
 
 
-            ccSrc = edgeCellCell[1] in cellSrc
-            ccTgt = edgeCellCell[0] in cellTgt
+                addL = lid + "_c" in allNodes
+                addR = rid + "_c" in allNodes
 
-            if ccSrc or ccTgt:
-                edgeCellCell = tuple(reversed(edgeCellCell))
+                if addL and not addR:
+                    lid = lid + "_c"
+                elif not addL and addR:
+                    rid = rid + "_c"
+                elif addL and addR:
+                    print("lid and rid modified in allnodes?", lid, rid, allNodes)
+                elif not addL and not addR:
+                    lid = lid + "_c"
+                    allNodes.append(lid)
 
-            ccSrc = edgeCellCell[1] in cellSrc
-            ccTgt = edgeCellCell[0] in cellTgt
+                edgeCellCell = check_circ(lid, rid)
 
+                if edgeCellCell == None:
 
-            if ccSrc and ccTgt:
-                print("Circular closure", edgeCellCell)
-                print(evidence)
-                continue
+                    print("Circular", lid, rid, allNodes)
+                    continue
 
             cellSrc.add(edgeCellCell[0])
             cellTgt.add(edgeCellCell[1])

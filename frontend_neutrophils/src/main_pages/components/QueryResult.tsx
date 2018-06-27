@@ -33,7 +33,7 @@ export interface QueryResultState {
         showShortEvidenceTable: false,
         showEvidenceTable: true,
         searchQuery: null,
-        obolevel: 2
+        obolevel: 4
         };
 
     orgTLC2Long = {

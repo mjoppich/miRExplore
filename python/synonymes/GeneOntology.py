@@ -206,18 +206,25 @@ class GOTerm:
 
         self.__children_at_level(allchildren, level, withLevel=withLevel)
 
+        if withLevel:
+            allchildren = set([(x, level-l) for x,l in allchildren])
+
+
         return allchildren
 
 
-    def getAllChildren(self, maxLevel = -1):
+    def getAllChildren(self, maxLevel=-1, withLevel=False):
 
         allchildren = set()
 
-        self.__addAllChildrenRec(allchildren, maxLevel)
+        self.__addAllChildrenRec(allchildren, maxLevel, withLevel=withLevel)
+
+        if withLevel:
+            allchildren = set([(x, maxLevel-l) for x,l in allchildren])
 
         return allchildren
 
-    def __addAllChildrenRec(self, already_seen, maxLevel):
+    def __addAllChildrenRec(self, already_seen, maxLevel, withLevel=False):
 
         if self.children == None or maxLevel == 0:
             return
@@ -226,9 +233,12 @@ class GOTerm:
 
             if not x in already_seen:
 
-                already_seen.add(x)
+                if not withLevel:
+                    already_seen.add(x)
+                else:
+                    already_seen.add((x, maxLevel))
 
-                childchildren = x.term.__addAllChildrenRec(already_seen, maxLevel-1)
+                childchildren = x.term.__addAllChildrenRec(already_seen, maxLevel-1, withLevel=withLevel)
 
     def getAllParents(self):
 
