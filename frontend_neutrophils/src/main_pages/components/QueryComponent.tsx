@@ -1,15 +1,17 @@
 import * as React from 'react';
-import Toggle from 'material-ui/Toggle';
+import Switch from '@material-ui/core/Switch'
 import OrganismChipAC from '../components/OrganismChipAC';
 import EntityChipAC from '../components/EntityChipAC';
-import LinearProgress from 'material-ui/LinearProgress';
+import LinearProgress from '@material-ui/core/LinearProgress';
 import OboChipAC from '../components/OBOChipAC';
 import {Card, CardActions, CardHeader, CardText} from 'material-ui/Card';
-import FlatButton from 'material-ui/FlatButton';
+import Button from '@material-ui/core/Button';
 import axios from 'axios';
 import config from '../config';
-import TextField from 'material-ui/TextField';
-import Grid from 'material-ui/Grid';
+import TextField from '@material-ui/core/TextField';
+
+import FormGroup from '@material-ui/core/FormGroup';
+import FormControlLabel from '@material-ui/core/FormControlLabel'
 
 import QueryResult from './QueryResult';
 
@@ -48,7 +50,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
             selectedOrganisms: [],
             selectedMessengers: [],
             selectedCategories: [],
-            obolevel: 2
+            obolevel: 4
         });
     }
 
@@ -239,42 +241,49 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                             onValueChange={(newvalues) => this.setState({selectedMessengers: newvalues})
                         }/>
 
-			<Grid container spacing={8} alignItems="flex-end">
-			  <Grid item>
-			    Obo-Level
-			  </Grid>
-			  <Grid item>
+      <FormGroup>
+
+          <FormControlLabel
+            control={
+                <Switch
+                checked={this.state.showInteractionGraph}
+                onChange={(newValue) => this.setState({showInteractionGraph: !this.state.showInteractionGraph})}
+                />
+            }
+            label="Show Interaction Graph"
+          />
+
+            <FormControlLabel
+            control={
+                <Switch
+                checked={this.state.showSankeyChart}
+                onChange={(newValue) => this.setState({showSankeyChart: !this.state.showSankeyChart})}
+                /> 
+            }
+            label="Show Sankey Chart"
+          />
+
+            <FormControlLabel
+            control={
 				<TextField
 				    value={this.state.obolevel}
-				    onChange={ (event, newValue) => {this.setState({obolevel: Number(newValue)})} }
+				    onChange={ (newValue) => {this.setState({obolevel: Number(newValue)})} }
 				    type="number"
 					  id="oboinput"
 					  helperText="Specify how many levels to go down in cell hierarchy"
-					  fullWidth
 					  margin="normal"
 					/>
-			  </Grid>
-			</Grid>
+            }
+            label="Obo-Level"
+          />
+
+                        <Button onClick={() => this.prepareResults()}>
+                        Query specified Elements
+                        </Button>
+            </FormGroup>
 
 
 
-                        <Toggle
-                        label="Show Interaction Graph"
-                        defaultToggled={false}
-                        toggled={this.state.showInteractionGraph}
-                        onToggle={(event, newValue) => this.setState({showInteractionGraph: !this.state.showInteractionGraph})}
-                        />
-
-
-                         <Toggle
-                        label="Show Sankey Chart"
-                        defaultToggled={true}
-                        toggled={this.state.showSankeyChart}
-                        onToggle={(event, newValue) => this.setState({showSankeyChart: !this.state.showSankeyChart})}
-                        />
-
-
-                        <FlatButton label="Query specified Elements" onClick={() => this.prepareResults()}/>
                     </div>
 
                     <div>

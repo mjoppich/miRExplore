@@ -2,7 +2,7 @@
 
 export default class config {
 
-    static restServer = 'http://bioclient1.bio.ifi.lmu.de'
+    static restServer = 'http://localhost'
     static restPort = '80'
     static restFolder = 'neutrophils'
 
