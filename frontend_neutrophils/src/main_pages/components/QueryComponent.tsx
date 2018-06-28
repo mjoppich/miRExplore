@@ -102,7 +102,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
         console.log(this.state);
         console.log(sendData);
 
-        if (!(this.state.selectedElements))
+        if (!(this.state.selectedElements) || (this.state.selectedElements.length == 0))
         {
             return;
         }

@@ -91,12 +91,14 @@ export default class FlatOboSynViewer extends React.Component<FlatOboSynViewerPr
                                         id:"termid",
                                         accessor: d => [d.termid, d.termname],
                                         Cell: (row) => {
-                                            var docID = row.value[0];
-                                            var docSent = row.value[1];
+                                            var termID = row.value[0];
+                                            var termName = row.value[1];
 
                                             var allHTMLElems = [];
-                                            allHTMLElems.push(<a key={allHTMLElems.length} href={"https://www.ncbi.nlm.nih.gov/pubmed/"+docID} target="_blank">{docID}</a>);
-                                            allHTMLElems.push(<span key={allHTMLElems.length}>{docSent}</span>);
+
+                                            var termWebID = termID.replace(":", "_");
+                                            allHTMLElems.push(<a key={allHTMLElems.length} href={"https://www.ebi.ac.uk/ols/ontologies/bfo/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2F"+termWebID} target="_blank">{termID}</a>);
+                                            allHTMLElems.push(<span key={allHTMLElems.length}>{termName}</span>);
                                             
                                             return <div style={{display: "grid"}}>
                                                 {
@@ -126,7 +128,8 @@ export default class FlatOboSynViewer extends React.Component<FlatOboSynViewerPr
 
                                             for (var i =0; i < children.length; ++i)
                                             {
-                                                allHTMLElems.push(<a key={allHTMLElems.length} href={"https://www.ncbi.nlm.nih.gov/pubmed/"+children[i].id} target="_blank">{children[i].name}</a>);
+                                                var childID = children[i].id.replace(":", "_");
+                                                allHTMLElems.push(<a key={allHTMLElems.length} href={"https://www.ebi.ac.uk/ols/ontologies/bfo/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2F"+childID} target="_blank">{children[i].name}</a>);
                                             }
                                             
                                             return <div style={{display: "grid"}}>
@@ -150,7 +153,7 @@ export default class FlatOboSynViewer extends React.Component<FlatOboSynViewerPr
                                         }
                                     },
                                     {
-                                        Header: "Synonymes",
+                                        Header: "Synonyms",
                                         id:"syns",
                                         accessor: d => d.synonymes,
                                         Cell: (row) => {
