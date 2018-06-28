@@ -153,7 +153,7 @@ def oboinfo():
                     'name': elem.term.name
                 })
 
-        nodeEntry['children'] = sorted(allChildren, key=lambda x: x.name)
+        nodeEntry['children'] = sorted(allChildren, key=lambda x: x['name'])
 
         allSyns = []
 
