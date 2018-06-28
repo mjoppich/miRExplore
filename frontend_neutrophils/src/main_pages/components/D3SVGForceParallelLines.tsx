@@ -116,15 +116,34 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         
         this.force
         .nodes(theprops.graph.nodes) 
-        .force("link").links(theprops.graph.links)
+        .force("link").links(theprops.graph.links);
 
-    var predictionLink = this.svg.selectAll(".pred-link")
+        this.maxGroup1Value = 0;
+        this.maxGroup2Value = 0;
+
+        for (var i=0; i < theprops.graph.links.length; ++i)
+        {
+            var edge = theprops.graph.links[i];
+
+            if (edge.group1 > this.maxGroup1Value)
+            {
+                this.maxGroup1Value = edge.group1;
+            }
+
+            if (edge.group2 > this.maxGroup2Value)
+            {
+                this.maxGroup2Value = edge.group2;
+            }
+        }
+
+
+    var group1Link = this.svg.selectAll(".g1-link")
         .data(theprops.graph.links)
         .enter()
         .append("line")
         .attr("class", "link");
 
-    var evidenceLink = this.svg.selectAll(".ev-link")
+    var group2Link = this.svg.selectAll(".g2-link")
         .data(theprops.graph.links)
         .enter()
         .append("line")
@@ -156,14 +175,14 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
     var self=this;
 
-    predictionLink
-    .style("stroke-width", function stroke(d)  {return self.prediction_link_width(d) })
+    group1Link
+    .style("stroke-width", function stroke(d)  {return self.group1_link_width(d) })
     .style("stroke", "#70C05A")
     //.style("stroke-width", "3.5px")
     .style("stroke-opacity", "1.0")
   
-   evidenceLink
-    .style("stroke-width", function stroke(d)  {return self.evidence_link_width(d) })
+   group2Link
+    .style("stroke-width", function stroke(d)  {return self.group2_link_width(d) })
     .style("stroke", "#438DCA")
     //.style("stroke-width", "3.5px")
     .style("stroke-opacity", "1.0")
@@ -171,12 +190,12 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
     var tickFunction = function () {
 
-        predictionLink
+        group1Link
         .attr("x1", function(d) { return d.source.x-self.line_shift(d,1)[0]; })
         .attr("y1", function(d) { return d.source.y-self.line_shift(d,1)[1]; })
         .attr("x2", function(d) { return d.target.x-self.line_shift(d,1)[0]; })
         .attr("y2", function(d) { return d.target.y-self.line_shift(d,1)[1]; });
-        evidenceLink
+        group2Link
             .attr("x1", function(d) { return d.source.x-self.line_shift(d,-1)[0]; })
             .attr("y1", function(d) { return d.source.y-self.line_shift(d,-1)[1]; })
             .attr("x2", function(d) { return d.target.x-self.line_shift(d,-1)[0]; })
@@ -251,15 +270,18 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
       return [delta_x, delta_y]
     }
 
-    evidence_link_width(d)
+    maxGroup1Value: number;
+    maxGroup2Value: number;
+
+    group1_link_width(d)
     {
-        var baseWidth = Math.min(20.0, d.evidence) / 20.0;
+        var baseWidth = Math.max(20.0, d.group1) / this.maxGroup1Value;
         return 5.0 + 5.0*baseWidth;
     }
 
-    prediction_link_width(d)
+    group2_link_width(d)
     {
-        var baseWidth = Math.min(20.0, d.predicted) / 20.0;
+        var baseWidth = Math.max(20.0, d.group2) / this.maxGroup2Value;
         return 5.0 + 5.0*baseWidth;
     }
 
@@ -434,11 +456,11 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         //this.context.beginPath();
         //this.context.lineWidth = 20;
         //this.context.strokeStyle = "red";
-        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, -1, d.predicted));
+        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, -1, d.group1));
         //this.context.stroke();   
 
         //this.context.beginPath();
-        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, 1, d.evidence));
+        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, 1, d.group2));
         //this.context.stroke();
       
         this.context.beginPath();
@@ -502,10 +524,10 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
             if (shiftFactor == 1)
             {
-                ctx.lineWidth = d.evidence;
+                ctx.lineWidth = d.group1;
                 ctx.strokeStyle = "green";
             } else {
-                ctx.lineWidth = d.predicted;
+                ctx.lineWidth = d.group2;
                 ctx.strokeStyle = "red";
             }
 

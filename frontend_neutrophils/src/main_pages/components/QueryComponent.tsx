@@ -26,7 +26,8 @@ export interface QueryComponentState {
     showInteractionGraph:boolean,
     showSankeyChart: boolean,
     queryStarted: boolean,
-    obolevel: number
+    obolevel: number,
+    loadSentences: boolean
  };
 
 export default class QueryComponent extends React.Component<QueryComponentProps, QueryComponentState> {
@@ -53,8 +54,19 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
         showInteractionGraph: false,
 
         obolevel: 3,
-        queryStarted: false
+        queryStarted: false,
+        loadSentences: null
     };
+
+    static getDerivedStateFromProps(props, state) {
+        if (state.loadSentences == null) {
+          return {
+            loadSentences: props.loadSentences,
+          }
+        }
+
+        return null;
+      }
 
     newElementSelected( newElement )
     {
@@ -115,7 +127,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
             sendData['organisms'] = this.state.selectedOrganisms;
         }
 
-        if (!this.props.loadSentences)
+        if (!this.state.loadSentences)
         {
             sendData['sentences'] = "false";
         }
@@ -245,6 +257,17 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
         <FormGroup>
 
+            
+            <FormControlLabel
+            control={
+                <Switch
+                checked={this.state.loadSentences}
+                onChange={(newValue) => this.setState({loadSentences: !this.state.loadSentences})}
+                /> 
+            }
+            label="Load Sentences"
+            />
+
             <FormControlLabel
             control={
                 <Switch
@@ -267,11 +290,11 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
             <TextField
                 id="oboinput"
-                label="Number"
+                label="Ontology Hierarchy Level"
                 value={this.state.obolevel}
                 onChange={(evt) => {console.log(evt.target.value); this.setState({obolevel: Number(evt.target.value)})}}
                 type="number"
-                helperText="Specify how many levels to go down in cell hierarchy"
+                helperText="For plots only: specify how many levels to go down in cell hierarchy"
 
                 InputLabelProps={{
                 shrink: true,

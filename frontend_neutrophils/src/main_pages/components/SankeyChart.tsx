@@ -136,7 +136,7 @@ export default class D3SankeyChart extends React.Component<D3SankeyChartProps, D
             .attr("text-anchor", "start");
 
         node.append("title")
-            .text(function (d: any) { return d.name + "\n" + format(d.value); });
+            .text(function (d: any) { var obos = "" ? d.obo == null : d.obo.join(", ") + "\n"; return d.name + "\n" + obos + format(d.value); });
 
         console.log("Sankey chart drawn.")
     }

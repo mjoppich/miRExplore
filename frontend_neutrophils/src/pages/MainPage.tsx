@@ -50,7 +50,7 @@ export default class MainPage extends React.Component<MainPageProps, MainPageSta
         exampleLocLinks.push( {href: '#explore', text: 'Welcome !'} );
 
         var rightsLocLinks = [];
-        rightsLocLinks.push( {href: '#welcome', text: 'Welcome !'} );
+        rightsLocLinks.push( {href: '#analyse', text: 'Welcome !'} );
 
 
         const mainPage = (
@@ -111,7 +111,7 @@ export default class MainPage extends React.Component<MainPageProps, MainPageSta
                             onClick={() => this.select(1)}
                         />
                         <BottomNavigationItem
-                            label="Analyze"
+                            label="Data Input"
                             icon={AnalyzeIcon}
                             onClick={() => this.select(2)}
                         />

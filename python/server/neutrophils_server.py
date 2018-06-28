@@ -100,6 +100,80 @@ def help():
 
     return res, 200, None
 
+
+
+@app.route('/oboinfo', methods=['POST'])
+def oboinfo():
+    interactReq = request.get_json(force=True, silent=True)
+
+    global categoriesObo
+    global messengersObo
+    global cellsObo
+
+    if interactReq == None:
+        return app.make_response((jsonify( {'error': 'invalid json'} ), 400, None))
+
+    if not 'oboname' in interactReq:
+        return app.make_response((jsonify( {'error': 'must include oboname'} ), 400, None))
+
+    print(interactReq)
+
+    oboname = interactReq['oboname']
+
+
+    selObo = {
+        'cells': cellsObo,
+        'messengers': messengersObo,
+        'categories': categoriesObo
+    }
+
+    if not oboname in selObo:
+        return app.make_response((jsonify( {'error': 'oboname must be in ' + ", ".join([x for x in selObo])} ), 400, None))
+
+    obo = selObo[oboname]
+    retObj = []
+
+
+    for termid in sorted([x for x in obo.dTerms]):
+
+        node = obo.dTerms[termid]
+
+        nodeEntry = {}
+
+        nodeEntry['termid'] = node.id
+        nodeEntry['termname'] = node.name
+
+        allChildren = []
+
+
+        if node.children != None:
+            for elem in node.children:
+                allChildren.append({
+                    'id': elem.term.id,
+                    'name': elem.term.name
+                })
+
+        nodeEntry['children'] = allChildren
+
+        allSyns = []
+
+
+        if node.synonym != None:
+            for syn in node.synonym:
+
+                if syn == None:
+                    continue
+                allSyns.append(syn.syn)
+
+        nodeEntry['synonymes'] = allSyns
+
+        retObj.append(nodeEntry)
+
+
+    return app.make_response((jsonify(retObj), 200, None))
+
+
+
 @app.route('/sankey', methods=['POST'])
 def sankey_network():
     interactReq = request.get_json(force=True, silent=True)
@@ -146,15 +220,17 @@ def interaction_network():
                               interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
                               majorParents=True, onlyCells=True, obolevel=obolevel)
 
+
+    for edge in graphObj['links']:
+        edge['group1'] = edge['messengers']
+        edge['group2'] = edge['categories']
+
+
     return app.make_response((jsonify(graphObj), 200, None))
 
 
 
 def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2):
-
-    if obolevel == None:
-        print("Error: obolevel was none", obolevel)
-        obolevel = 4
 
     elemJSON = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=False)
 
@@ -175,46 +251,116 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
     """
     
+    count evidence-hits per obo id
+    
+    """
+
+    hitsPerOboID = Counter()
+
+    if majorParents:
+
+        for x in rels:
+
+            for evidence in x['evidences']:
+
+                src = evidence.get('lontid', evidence['lid'])
+                tgt = evidence.get('rontid', evidence['rid'])
+
+                hitsPerOboID[src] += 1
+
+                if src in cellsObo.dTerms:
+                    oboNode = cellsObo.dTerms[src]
+
+                    for child in oboNode.getAllParents():
+                        hitsPerOboID[child.id] += 1
+
+                hitsPerOboID[tgt] += 1
+
+                if tgt in cellsObo.dTerms:
+                    oboNode = cellsObo.dTerms[tgt]
+
+                    for child in oboNode.getAllParents():
+                        hitsPerOboID[child.id] += 1
+
+
+    """
+    
     In order to avoid too many single nodes, assign each child to a major parent ....
     
     """
 
     allRoots = cellsObo.getRoots()
-    cellRoot = cellsObo.dTerms.get('CL:0000000', None)
-    if cellRoot != None:
-        #allRoots = []
-        allRoots.append( cellRoot )
+    cellRoot = cellsObo.dTerms.get('CL:0000255', None)
+
 
     oboid2majorid = {}
     oboid2rootdist = {}
 
-    for root in allRoots:
 
-        oboid2majorid[root.id] = root.id
-        oboid2rootdist[root.id] = -1000
+    def prepareObo2Major( base, overwrite=True ):
 
-        allchildren = root.getChildrenAtLevel(obolevel, withLevel=True)
+        if overwrite or not base.id in oboid2majorid:
+            oboid2majorid[base.id] = base.id
+            oboid2rootdist[base.id] = -1000
 
-        print("Root node", root.id, root.name, [(x.id, x.name, l) for (x,l) in allchildren])
+        baseChildren = base.getAllChildren(maxLevel=obolevel)
+        baseChildrenIDs = [x.term.id for x in baseChildren]
 
-        for child,l in allchildren:
+
+        for child in baseChildren:
+            if not child.term.id in oboid2rootdist or oboid2rootdist[child.term.id] > 0:
+                if overwrite or not child.term.id in oboid2majorid:
+
+                    if hitsPerOboID[child.term.id] > 10:
+                        oboid2majorid[child.term.id] = child.term.id
+                    else:
+
+                        if overwrite and child.term.id.startswith("CL"):
+                            print(child.term.name, child.term.id, hitsPerOboID[child.term.id])
+
+                        oboid2majorid[child.term.id] = base.id
+
+                    if child.term.id == 'CL:1000497':
+                        print("Too few hits for", child.term.name, oboid2majorid[child.term.id], hitsPerOboID[child.term.id], base.id)
+
+
+                    oboid2rootdist[child.term.id] = -1000
+
+        allchildren = base.getChildrenAtLevel(obolevel, withLevel=True)
+
+        print("Query Hits", oboid2majorid['CL:1000497'], hitsPerOboID['CL:1000497'], base.id)
+
+        print("Root node", base.id, base.name, [(x.id, x.name, l) for (x, l) in allchildren])
+
+        for child, l in allchildren:
 
             newc = child.getAllChildren(withLevel=True)
-            oboid2majorid[child.id] = child.id
-            oboid2rootdist[child.id] = -1000
 
-            for nc,cl in newc:
-                if 'CL:0000893' in nc.term.id or 'CL:0000893' in child.id:
-                    print( nc.term.id, nc.term.name, cl, "=>", child.name, child.id, l)
+            if not child.id in oboid2majorid:
+                oboid2majorid[child.id] = child.id
+                oboid2rootdist[child.id] = -1000
 
+            for nc, cl in newc:
 
                 if not nc.term.id in oboid2rootdist or oboid2rootdist[nc.term.id] > cl:
-                    oboid2majorid[nc.term.id] = child.id
-                    oboid2rootdist[nc.term.id] = cl
 
-                    if 'CL:0000893' in nc.term.id or 'CL:0000893' in child.id:
-                        print( nc.term.id, nc.term.name, cl, "==>", child.name, child.id, l)
+                    if overwrite or not nc.term.id in oboid2majorid:
+                        oboid2majorid[nc.term.id] = oboid2majorid[child.id]
 
+                        if nc.term.id == 'CL:1000497':
+                            print("Too few hits for", child.name, nc.term.name, oboid2majorid[child.id], oboid2majorid[nc.term.id], base.id)
+
+                        oboid2rootdist[nc.term.id] = cl
+
+
+                    #print(nc.term.id, nc.term.name, cl, "==>", child.name, child.id, l)
+
+
+    for root in [cellRoot]:
+        prepareObo2Major(root)
+
+    for root in allRoots:
+        prepareObo2Major(root, overwrite=False)
 
 
     oldname2newname = {}
@@ -282,10 +428,6 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
     allNodes = list(sorted(allNodes))
 
-    print("allNodes")
-    for x in allNodes:
-        print("obo node", x)
-
     """
     now we need to add edges :)
     """
@@ -318,6 +460,7 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
         return edgeCellCell
 
+    name2obo = defaultdict(set)
 
     for x in rels:
 
@@ -330,6 +473,10 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
                 lid = oldname2newname.get(lid, evidence['lid'])
                 rid = oldname2newname.get(rid, evidence['rid'])
+
+            name2obo[lid].add(evidence.get('lontid', evidence['lid']))
+            name2obo[rid].add(evidence.get('rontid', evidence['rid']))
+
 
             if (lid == rid):
                 rid = rid + "_c"
@@ -441,9 +588,11 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
 
     graphObj = {
-        'nodes': [{'name': x} for x in usedNodes],
+        'nodes': [{'name': x, 'obo': list(name2obo[x])} for x in usedNodes],
         'links': [{'source': x[0],
                    'target': x[1],
+                   'srcname': usedNodes[x[0]],
+                   'tgtname': usedNodes[x[1]],
                    'value': usedEdges[x],
                    'messengers': usedMessengerEdgesCounter[x],
                    'categories': usedCategoryEdgesCounter[x]
@@ -851,7 +1000,7 @@ def findID():
     if searchWord == None or len(searchWord) < 2:
         return app.make_response((jsonify( [] ), 200, None))
 
-    reMatch = regex.compile(searchWord+'{e<=3}')
+    reMatch = regex.compile(searchWord+'{e<=3}', regex.IGNORECASE)
 
     jsonResultByType = defaultdict(set)
 

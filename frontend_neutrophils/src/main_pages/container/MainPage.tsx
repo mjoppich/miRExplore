@@ -50,7 +50,7 @@ export class MainStatus extends React.Component<{},{}> {
                 <span>
                     <h4>General Information</h4>
                     <p>
-                        neutrophil TM 
+                    neutrophINT - know your neutrophil interaction
                     </p>
                 </span>
                 <span>
@@ -100,11 +100,11 @@ export class WelcomePage extends React.Component<{},{}> {
             <div>
             <Card style={{marginBottom: "20px"}}>
                 <CardTitle
-                    title="neutrophilTM"
+                    title="neutrophINT"
                     subtitle="v1.0"
                 />
                 <CardText >
-                    <p>neutrophil TM</p>
+                    <p>neutrophINT </p>
                     <p>Welcome!</p>
                     <p>Explore the database in the explore tab</p>
                 </CardText>

@@ -530,17 +530,8 @@ export interface QueryResultState {
                                                         var rowData = row[filterID];
 
                                                         var allTerms = [];
-
-                                                        if ('orgs' in row)
-                                                        {
-                                                            for (var i = 0; i < row['orgs'].length; ++i)
-                                                            {
-                                                                var org = row['orgs'][i];
-                                                                var longOrg = this.orgTLC2Long[org] || org;
-
-                                                                allTerms.push(longOrg);
-                                                            }
-                                                        }
+                                                        allTerms.push(rowData[0]);
+                                                    
                                                         
                                                         var retval = matchSorter(allTerms, filter.value);
                                                         return retval.length > 0;
@@ -555,6 +546,24 @@ export interface QueryResultState {
                                                             <span style={{whiteSpace: 'normal'}}>{row.value[0]}</span>
                                                             <span style={{whiteSpace: 'normal'}}>{row.value[1]}</span>
                                                         </div>;
+                                                    },
+                                                    filterMethod: (filter, row) => {
+                                                        var filterID = filter.id;
+                                                        var rowData = row[filterID];
+
+                                                        var allTerms = [];
+
+                                                        allTerms.push(rowData[0]);
+                                                        allTerms.push(rowData[1]);
+
+                                                        var retval = matchSorter(allTerms, filter.value);
+
+                                                        console.log("rel Filter")
+                                                        console.log(retval)
+                                                        console.log(filter.value)
+                                                        console.log(allTerms)
+                                                        
+                                                        return retval.length > 0;
                                                     }
                                                   },
                                                   {
@@ -603,6 +612,21 @@ export interface QueryResultState {
                                                         } else {
                                                             return <span></span>
                                                         }
+                                                    },
+                                                    filterMethod: (filter, row) => {
+                                                        var filterID = filter.id;
+                                                        var rowData = row[filterID];
+
+                                                        var allTerms = rowData.split(" ");
+                                                        
+                                                        var retval = matchSorter(allTerms, filter.value);
+
+                                                        console.log("Sentence Filter")
+                                                        console.log(allTerms)
+                                                        console.log(retval)
+                                                        console.log(filter.value)
+
+                                                        return retval.length > 0;
                                                     }
                                                   }
                                                 ]

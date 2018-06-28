@@ -51,17 +51,20 @@ export class ExploreMainPage extends React.Component<ExplorePageProps, ExplorePa
                 <Card style={{marginBottom: "20px"}}>
                     <CardHeader
                     title="Create Query"
-                    subtitle="Manage your queries"
-                    actAsExpander={true}
-                    showExpandableButton={true}
+                    subtitle="Explore new interactions"
                     />
                     <CardActions>
                     <FlatButton label="New Query" onClick={this.newQuery.bind(this)}/>
                     <FlatButton label="Clear" onClick={this.clearQueries.bind(this)}/>
                     </CardActions>
-                    <CardText expandable={true}>
+                    <CardText>
 
-                        <p>Some explanation on how to use this view!</p>
+                        <p>Using a query you can query our database for interactions.</p>
+                        <p>You must select an entity for which you would like to explore interactions. This might be one term, but can also be multiple terms.</p>
+                        <p>You can restrict your search to such evidences, which must be for a specific organism, or must include a specific messenger or category.</p>
+                        <p>You can show a interaction network for your selected evidences, or a sankey chart, showing you also how the interactions are connected to messengers or categories</p>
+                        <p>Enjoy exploring your neutrophils!</p>
+
 
                     </CardText>
                 </Card>
