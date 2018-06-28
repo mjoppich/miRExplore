@@ -18,23 +18,22 @@ export default class NISankeyChart extends React.Component<NIInteractionNetworkP
         'links': []
     };
 
+    readonly state = {
+        'graphData': this.emptyGraph,
+        'newData': []
+    };
+
+
 
     constructor(props) {
         super(props);
 
         console.log(this.props);
 
-        
-
-        this.state = {
-            'graphData': this.emptyGraph,
-            'newData': []
-        };
     }
 
     componentWillMount()
     {
-        //this.setState({newData: [], graphData: []});
     }
 
     componentDidMount()
@@ -44,11 +43,12 @@ export default class NISankeyChart extends React.Component<NIInteractionNetworkP
     }
 
 
-    componentWillReceiveProps(newprops)
-    {
-        this.props = newprops;
+    componentDidUpdate(prevProps, prevState, snapshot) {
 
-        this.reloadGraphData();
+        if (prevProps != this.props)
+        {
+            this.reloadGraphData();
+        }
     }
 
     reloadGraphData()

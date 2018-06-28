@@ -152,6 +152,10 @@ def interaction_network():
 
 def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2):
 
+    if obolevel == None:
+        print("Error: obolevel was none", obolevel)
+        obolevel = 4
+
     elemJSON = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=False)
 
     rels = elemJSON['rels']

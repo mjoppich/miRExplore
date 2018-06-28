@@ -42,17 +42,19 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
     }
 
-    componentWillMount()
-    {
-        this.setState({selectedElements: [],
-            showSankeyChart:true,
-            showInteractionGraph: false,
-            selectedOrganisms: [],
-            selectedMessengers: [],
-            selectedCategories: [],
-            obolevel: 4
-        });
-    }
+    readonly state = {
+        selectedElements: [],
+        selectedOrganisms: [],
+        selectedMessengers: [],
+        selectedCategories: [],
+        interactions: [],
+
+        showSankeyChart:true,
+        showInteractionGraph: false,
+
+        obolevel: 3,
+        queryStarted: false
+    };
 
     newElementSelected( newElement )
     {
@@ -241,9 +243,9 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                             onValueChange={(newvalues) => this.setState({selectedMessengers: newvalues})
                         }/>
 
-      <FormGroup>
+        <FormGroup>
 
-          <FormControlLabel
+            <FormControlLabel
             control={
                 <Switch
                 checked={this.state.showInteractionGraph}
@@ -251,7 +253,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                 />
             }
             label="Show Interaction Graph"
-          />
+            />
 
             <FormControlLabel
             control={
@@ -261,25 +263,26 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                 /> 
             }
             label="Show Sankey Chart"
-          />
+            />
 
-            <FormControlLabel
-            control={
-				<TextField
-				    value={this.state.obolevel}
-				    onChange={ (newValue) => {this.setState({obolevel: Number(newValue)})} }
-				    type="number"
-					  id="oboinput"
-					  helperText="Specify how many levels to go down in cell hierarchy"
-					  margin="normal"
-					/>
-            }
-            label="Obo-Level"
-          />
+            <TextField
+                id="oboinput"
+                label="Number"
+                value={this.state.obolevel}
+                onChange={(evt) => {console.log(evt.target.value); this.setState({obolevel: Number(evt.target.value)})}}
+                type="number"
+                helperText="Specify how many levels to go down in cell hierarchy"
 
-                        <Button onClick={() => this.prepareResults()}>
-                        Query specified Elements
-                        </Button>
+                InputLabelProps={{
+                shrink: true,
+
+                }}
+                margin="normal"
+            />
+
+                <Button onClick={() => this.prepareResults()}>
+                Query specified Elements
+                </Button>
             </FormGroup>
 
 

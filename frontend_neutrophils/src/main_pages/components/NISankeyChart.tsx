@@ -24,18 +24,13 @@ export default class NISankeyChart extends React.Component<NISankeyChartProps, N
 
         console.log(this.props);
 
-        
-
-        this.state = {
-            'graphData': this.emptyGraph,
-            'newData': []
-        };
     }
 
-    componentWillMount()
-    {
-        //this.setState({newData: [], graphData: []});
-    }
+
+    readonly state = {
+        'graphData': this.emptyGraph,
+        'newData': []
+    };
 
     componentDidMount()
     {
@@ -43,13 +38,14 @@ export default class NISankeyChart extends React.Component<NISankeyChartProps, N
         this.reloadGraphData();
     }
 
+    componentDidUpdate(prevProps, prevState, snapshot) {
 
-    componentWillReceiveProps(newprops)
-    {
-        this.props = newprops;
-
-        this.reloadGraphData();
+        if (prevProps != this.props)
+        {
+            this.reloadGraphData();
+        }
     }
+
 
     reloadGraphData()
     {
