@@ -97,7 +97,9 @@ export default class FlatOboSynViewer extends React.Component<FlatOboSynViewerPr
                                             var allHTMLElems = [];
 
                                             var termWebID = termID.replace(":", "_");
-                                            allHTMLElems.push(<a key={allHTMLElems.length} href={"https://www.ebi.ac.uk/ols/ontologies/bfo/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2F"+termWebID} target="_blank">{termID}</a>);
+                                            var oboID = termID.substr(0, termID.indexOf(":")).toLowerCase();
+
+                                            allHTMLElems.push(<a key={allHTMLElems.length} href={"https://www.ebi.ac.uk/ols/ontologies/"+oboID+"/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2F"+termWebID} target="_blank">{termID}</a>);
                                             allHTMLElems.push(<span key={allHTMLElems.length}>{termName}</span>);
                                             
                                             return <div style={{display: "grid"}}>
@@ -129,7 +131,8 @@ export default class FlatOboSynViewer extends React.Component<FlatOboSynViewerPr
                                             for (var i =0; i < children.length; ++i)
                                             {
                                                 var childID = children[i].id.replace(":", "_");
-                                                allHTMLElems.push(<a key={allHTMLElems.length} href={"https://www.ebi.ac.uk/ols/ontologies/bfo/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2F"+childID} target="_blank">{children[i].name}</a>);
+                                                var oboID = children[i].id.substr(0, children[i].id.indexOf(":")).toLowerCase();
+                                                allHTMLElems.push(<a key={allHTMLElems.length} href={"https://www.ebi.ac.uk/ols/ontologies/"+oboID+"/terms?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2F"+childID} target="_blank">{children[i].name}</a>);
                                             }
                                             
                                             return <div style={{display: "grid"}}>
