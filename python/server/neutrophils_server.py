@@ -1312,11 +1312,14 @@ if __name__ == '__main__':
     app.run(threaded=True, host="0.0.0.0", port=args.port)
 
 
-def gunicorn_start():
+def gunicorn_start(datadir="/home/j/joppich/tm_soehnlein/", sentdir="/home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/pmid_sent"):
 
     parser = getCLParser()
 
-    argstr = "--textmine /home/j/joppich/tm_soehnlein/ --obodir /home/j/joppich/tm_soehnlein/obos --sentdir /home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/pmid_sent --feedback /home/j/joppich/tm_soehnlein/feedback --port 65522"
+    argstr = "--textmine {datadir} --obodir {datadir}/obos --sentdir {sentdir} --feedback {datadir}/feedback".format(datadir=datadir, sentdir=sentdir)
+
+    print("Starting app with")
+    print(argstr)
 
     args = parser.parse_args(shlex.split(argstr))
 
