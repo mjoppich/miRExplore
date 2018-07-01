@@ -101,15 +101,14 @@ export class WelcomePage extends React.Component<{},{}> {
             <Card style={{marginBottom: "20px"}}>
                 <CardTitle
                     title="neutrophINT"
-                    subtitle="v1.0"
+                    subtitle="neutrophil INTeractions v1.0"
                 />
                 <CardText >
-                    <p>neutrophINT </p>
                     <p>Welcome!</p>
                     <p>Explore the database in the explore tab</p>
                 </CardText>
             </Card>
-                    <Card>
+            <Card style={{marginBottom: "20px"}}>
                         <CardText >
                             <MainStatus/>
                         </CardText>
@@ -120,8 +119,8 @@ export class WelcomePage extends React.Component<{},{}> {
                     title="Data Privacy"
                 />
                 <CardText >
-                    You can find the data privacy guide-lines <a target="_blank" href="https://www.bio.ifi.lmu.de/funktionen/datenschutz/index.html">here</a>.
-                    Your IP address might be stored by the web server. All log files are deleted after 7 days.
+                    <p>You can find the data privacy guide-lines <a target="_blank" href="https://www.bio.ifi.lmu.de/funktionen/datenschutz/index.html">here</a>.</p>
+                    <p>Your IP address might be stored by the web server. All log files are deleted after 7 days.</p>
                 </CardText>
             </Card>
             </div>
