@@ -114,6 +114,16 @@ export class WelcomePage extends React.Component<{},{}> {
                             <MainStatus/>
                         </CardText>
                     </Card>
+
+            <Card style={{marginBottom: "20px"}}>
+                <CardTitle
+                    title="Data Privacy"
+                />
+                <CardText >
+                    You can find the data privacy guide-lines <a target="_blank" href="https://www.bio.ifi.lmu.de/funktionen/datenschutz/index.html">here</a>.
+                    Your IP address might be stored by the web server. All log files are deleted after 7 days.
+                </CardText>
+            </Card>
             </div>
 
         );
