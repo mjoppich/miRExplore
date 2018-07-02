@@ -13,15 +13,17 @@ class feedbackDB:
 
         self.feedbackByID = defaultdict(list)
 
-        if os.path.isfile(filepath):
-            with open(filepath, 'r') as fin:
+        if self.filepath != None:
 
-                for line in fin:
-                    line = line.strip()
-                    aline = eval(line)
-                    self.all_feedback.append(aline)
+            if os.path.isfile(filepath):
+                with open(filepath, 'r') as fin:
 
-                    self.feedbackByID[aline[1]].append(aline)
+                    for line in fin:
+                        line = line.strip()
+                        aline = eval(line)
+                        self.all_feedback.append(aline)
+
+                        self.feedbackByID[aline[1]].append(aline)
 
 
     def get_feedback(self, dataid):
@@ -35,7 +37,8 @@ class feedbackDB:
 
     def save_to_file(self):
 
-        with open(self.filepath, 'w') as fout:
-            for elem in self.all_feedback:
-                fout.write(str(elem) + "\n")
+        if self.filepath != None:
+            with open(self.filepath, 'w') as fout:
+                for elem in self.all_feedback:
+                    fout.write(str(elem) + "\n")
 

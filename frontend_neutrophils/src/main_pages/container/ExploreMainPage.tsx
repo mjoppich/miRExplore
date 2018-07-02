@@ -4,7 +4,7 @@ import FlatButton from 'material-ui/FlatButton';
 
 import QueryComponent from '../components/QueryComponent';
 
-export interface ExplorePageProps { };
+export interface ExplorePageProps { switchTab?: any };
 export interface ExplorePageState { queriesStored: number};
 
 export class ExploreMainPage extends React.Component<ExplorePageProps, ExplorePageState> {

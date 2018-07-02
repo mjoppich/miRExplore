@@ -4,7 +4,7 @@ export default class config {
 
     static restServer = 'http://localhost'//'https://turingwww.bio.ifi.lmu.de'
     static restPort = '65522'
-    static restFolder = null;//'neutrophils'
+    static restFolder = '';//'neutrophils'
 
     static getRestAddress()
     {

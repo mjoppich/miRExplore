@@ -20,14 +20,16 @@ import ActionHome from 'material-ui/svg-icons/action/home';
 import ActionTimeline from 'material-ui/svg-icons/action/timeline';
 import { ExploreMainPage } from "main_pages/container/ExploreMainPage";
 import {AnalyseMainPage} from "main_pages/container/AnalyseMainPage";
+import MenuToolBar from '../main_pages/components/MenuToolBar';
+
 
 const ExploreIcon = <ActionExplore/>
 const HomeIcon = <ActionHome/>
 const AnalyzeIcon = <ActionTimeline/>
 
 
-export interface MainPageProps { selected:number };
-export interface MainPageState { selected: number, subPageElems: any; locLinks };
+export interface MainPageProps { selected: number};
+export interface MainPageState { selected: number, subPageElems: any, locLinks: any, width: number, height: number };
 
 export default class MainPage extends React.Component<MainPageProps, MainPageState> {
 
@@ -37,87 +39,125 @@ export default class MainPage extends React.Component<MainPageProps, MainPageSta
     constructor(props) {
         super(props);
 
-        console.log(this.props);
 
     }
 
     componentWillMount() {
 
         var mainLocLinks = [];
-        mainLocLinks.push( {href: '#welcome', text: 'Welcome !'} );
+        mainLocLinks.push( {index: 0, text: 'Home'} );
 
         var exampleLocLinks = [];
-        exampleLocLinks.push( {href: '#explore', text: 'Welcome !'} );
+        exampleLocLinks.push( {index: 1, text: 'Explore'} );
 
         var rightsLocLinks = [];
-        rightsLocLinks.push( {href: '#analyse', text: 'Welcome !'} );
+        rightsLocLinks.push( {index: 2, text: 'Data Input'} );
 
 
         const mainPage = (
             <div>        
-                <ScrollableAnchor id={'welcome'}><div style={{margin: "15px auto 15px auto"}}><MainWelcomePage/></div></ScrollableAnchor>
+                <div style={{margin: "15px auto 15px auto"}}><MainWelcomePage switchTab={this.select.bind(this)}/></div>
             </div>
         );
 
         const examplePage = (
             <div>
-                <ScrollableAnchor id={'welcome'}><div style={{margin: "15px auto 15px auto"}}><ExploreMainPage/></div></ScrollableAnchor>
+                <div style={{margin: "15px auto 15px auto"}}><ExploreMainPage switchTab={this.select.bind(this)}/></div>
             </div>
         );
 
         const rightsPage = (
             <div>        
-                <ScrollableAnchor id={'welcome'}><div style={{margin: "15px auto 15px auto"}}><AnalyseMainPage/></div></ScrollableAnchor>
+                <div style={{margin: "15px auto 15px auto"}}><AnalyseMainPage switchTab={this.select.bind(this)}/></div>
             </div>
         );
+
+        var allLinks = [];
+        mainLocLinks.forEach(element => { allLinks.push(element); });
+        exampleLocLinks.forEach(element => { allLinks.push(element); });
+        rightsLocLinks.forEach(element => { allLinks.push(element); });
+
 
         this.setState({
             subPageElems: [
                 mainPage, examplePage, rightsPage
             ],
-            locLinks: [
-                mainLocLinks, exampleLocLinks, rightsLocLinks
-            ],
+            locLinks: allLinks,
             selected: this.props.selected
         })
     }
 
     select(bottomSelect: number)
     {
-        this.setState({selected: bottomSelect});
+
+        if ((bottomSelect != null) && (bottomSelect != undefined))
+        {
+            this.setState({selected: bottomSelect});
+        }
+    }
+
+    componentDidMount() {
+
+        this.updateWindowDimensions();
+        window.addEventListener('resize', this.updateWindowDimensions.bind(this));
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('resize', this.updateWindowDimensions.bind(this));
+    }
+
+    updateWindowDimensions() {
+        this.setState({ width: window.innerWidth, height: window.innerHeight });
     }
 
     /**
      * Render the component.
      */
     render() {
+        var self=this;
 
+        var expContainerWidth: number = 1000;
+        var containerWidth = expContainerWidth + 'px';
+
+        if (this.state.width*0.8 < expContainerWidth)
+        {
+            containerWidth = "80%"
+        }
+
+        containerWidth = "80%";
 
         return (
         <MuiThemeProvider muiTheme={getMuiTheme()}>
+            <div>
+                <div style={{height: 100, left:0, top: 0, width: 100+'%', zIndex: 1000, position: 'fixed'}}>
+                    <MenuToolBar locationLinks={this.state.locLinks} currentSelection={this.state.selected} onChange={self.select.bind(self)}/>
+                </div>
 
-            <MainPageBase locLinks={this.state.locLinks[this.state.selected]}>
-                {this.state.subPageElems[this.state.selected]}
-                <Card>
-                        <BottomNavigation selectedIndex={this.state.selected}>
-                        <BottomNavigationItem
-                            label="Home"
-                            icon={HomeIcon}
-                            onClick={() => this.select(0)}
-                        />
-                        <BottomNavigationItem
-                            label="Explore"
-                            icon={ExploreIcon}
-                            onClick={() => this.select(1)}
-                        />
-                        <BottomNavigationItem
-                            label="Data Input"
-                            icon={AnalyzeIcon}
-                            onClick={() => this.select(2)}
-                        />
-                        </BottomNavigation>
-                </Card>
-            </MainPageBase>
+                <div style={{height: 100, top: 56+'px', width: containerWidth, zIndex: 900, position: 'relative', margin: '0 auto'}}>
+                    {this.state.subPageElems[this.state.selected]}
+
+                    <Card>
+                            <BottomNavigation selectedIndex={this.state.selected}>
+                            <BottomNavigationItem
+                                label="Home"
+                                icon={HomeIcon}
+                                onClick={() => this.select(0)}
+                            />
+                            <BottomNavigationItem
+                                label="Explore"
+                                icon={ExploreIcon}
+                                onClick={() => this.select(1)}
+                            />
+                            <BottomNavigationItem
+                                label="Data Input"
+                                icon={AnalyzeIcon}
+                                onClick={() => this.select(2)}
+                            />
+                            </BottomNavigation>
+                    </Card>
+                </div>
+
+            </div>
         </MuiThemeProvider>);
       }
 

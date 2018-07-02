@@ -5,7 +5,7 @@ import FlatButton from 'material-ui/FlatButton';
 import QueryComponent from '../components/QueryComponent';
 import FlatOboSynViewer from '../components/FlatOboSynViewer';
 
-export interface AnalyseMainPageProps { };
+export interface AnalyseMainPageProps { switchTab?: any };
 export interface AnalyseMainPageState { };
 
 export class AnalyseMainPage extends React.Component<AnalyseMainPageProps, AnalyseMainPageState> {
