@@ -39,7 +39,6 @@ export default class MainPage extends React.Component<MainPageProps, MainPageSta
     constructor(props) {
         super(props);
 
-        console.log(this.props);
 
     }
 
@@ -90,8 +89,6 @@ export default class MainPage extends React.Component<MainPageProps, MainPageSta
 
     select(bottomSelect: number)
     {
-        console.log("New selected page:")
-        console.log(bottomSelect);
 
         if ((bottomSelect != null) && (bottomSelect != undefined))
         {
@@ -102,11 +99,11 @@ export default class MainPage extends React.Component<MainPageProps, MainPageSta
     componentDidMount() {
 
         this.updateWindowDimensions();
-        window.addEventListener('resize', this.updateWindowDimensions);
+        window.addEventListener('resize', this.updateWindowDimensions.bind(this));
     }
 
     componentWillUnmount() {
-        window.removeEventListener('resize', this.updateWindowDimensions);
+        window.removeEventListener('resize', this.updateWindowDimensions.bind(this));
     }
 
     updateWindowDimensions() {
@@ -133,7 +130,7 @@ export default class MainPage extends React.Component<MainPageProps, MainPageSta
         <MuiThemeProvider muiTheme={getMuiTheme()}>
             <div>
                 <div style={{height: 100, left:0, top: 0, width: 100+'%', zIndex: 1000, position: 'fixed'}}>
-                    <MenuToolBar locationLinks={this.state.locLinks} currentLocation={this.state.selected} onChange={self.select.bind(self)}/>
+                    <MenuToolBar locationLinks={this.state.locLinks} currentSelection={this.state.selected} onChange={self.select.bind(self)}/>
                 </div>
 
                 <div style={{height: 100, top: 56+'px', width: containerWidth, zIndex: 900, position: 'relative', margin: '0 auto'}}>
