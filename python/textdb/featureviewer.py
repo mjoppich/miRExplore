@@ -68,10 +68,11 @@ class FeatureViewer:
 
     def __init__(self):
 
-        #my_dir = "/home/mjoppich/ownCloud/data/miRExplore/obodir/map_data"
-        my_dir = "./mm10"
+        my_dir = "/home/mjoppich/ownCloud/data/miRExplore/obodir/map_data"
+        #my_dir = "./mm10"
 
-        interaction_file = os.path.join(my_dir, "mm10_interactions_allDBs.json")
+        #interaction_file = os.path.join(my_dir, "mm10_interactions_allDBs.json")
+        interaction_file = os.path.join(my_dir, "Mirbase_mouse_gencode_pc_filtered_new_test.json")
         with open(interaction_file) as interaction_input:
             self.df_interactions = json.load(interaction_input)
 
@@ -85,7 +86,6 @@ class FeatureViewer:
         gene_type = None
         if 'ENS' in gene:
             gene_type = 'gene'
-            valid_gene = 0 # ENS mirnada internactions not parsed yet
         elif 'LNC' in gene:
             gene_type = 'lncrna'
         else:
@@ -108,7 +108,7 @@ class FeatureViewer:
         gene_length = 0
         for gene in self.df_genes:
             gene_id = gene["gene_id"]
-            if (gene_id == my_gene):
+            if gene_id == my_gene:
                 gene_start = int(gene['start']) 
                 gene_stop = int(gene['stop'])  
                 gene_length = gene_stop - gene_start
@@ -138,7 +138,6 @@ class FeatureViewer:
                         if transcript['CDS']:
                             # print("found CDS for " + transcript_id)
                             for cds in transcript['CDS']:
-                                print(cds.get('start') + "  stop " + cds['stop'])
                                 cds_assembly_start = int(cds['start'])
                                 cds_assembly_stop = int(cds['stop'])
                                 cds_length = cds_assembly_stop - cds_assembly_start
@@ -214,4 +213,4 @@ if __name__ == '__main__':
     '''
     print(json.dumps(json_result, indent=4))
 
-# python3 featureviewer.py LNC_GE_mm10_00500789 mmu-let-7g-5p
+# python3 featureviewer.py ENSMUSG00000056476.13 mmu-let-7g-5p

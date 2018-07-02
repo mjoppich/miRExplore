@@ -10,23 +10,27 @@ from typing import Any
 
 class MirandaRel(DataBaseRel):
 
-    def __init__(self, lent, rent, datasource):
+    def __init__(self, lent, rent, datasource, transcript, align_score, energy, mirna_start, mirna_end, 
+                    lnc_start, lnc_end, align_length, mirna_identity, lncrna_identity, mirna_alignment, 
+                    alignment, lncrna_alignment):
 
         self.lent = lent
         self.rent = rent
         self.data_source = datasource
 
-        self.energy = None
-        self.mirna_start = None
-        self.mirna_end = None
-        self.lnc_start = None
-        self.lnc_end = None
-        self.align_length = None
-        self.mirna_identity = None
-        self.lncrna_identity = None
-        self.mirna_alignment = None
-        self.alignment = None
-        self.lncrna_alignment = None
+        self.transcript = transcript
+        self.align_score = align_score
+        self.energy = energy
+        self.mirna_start = mirna_start
+        self.mirna_end = mirna_end
+        self.lnc_start = lnc_start
+        self.lnc_end = lnc_end
+        self.align_length = align_length
+        self.mirna_identity = mirna_identity
+        self.lncrna_identity = lncrna_identity
+        self.mirna_alignment = mirna_alignment
+        self.alignment = alignment
+        self.lncrna_alignment = lncrna_alignment
 
     @property
     def lid(self):
@@ -57,6 +61,8 @@ class MirandaRel(DataBaseRel):
             'lid': self.lid,
             'data_source': self.data_source,
 
+            'transcript': self.transcript,
+            'align_score': self.align_score,
             'energy': self.energy,
             'mirna_start': self.mirna_start,
             'mirna_end': self.mirna_end,
@@ -101,7 +107,7 @@ class MirandaRelDB(DataBaseDescriptor):
         for mirtEntry in mirandaEvidences:
 
             lid = mirtEntry['Name_miRNA']
-            rid = mirtEntry['Name_lncRNA']
+            rid = mirtEntry['Name_gene']
             org, lid = cls.harmonizeMIRNA(lid)
 
             print(org, lid, rid)
@@ -109,6 +115,8 @@ class MirandaRelDB(DataBaseDescriptor):
             if not org in ['hsa', 'mmu']:
                 continue
 
+            transcript = mirtEntry['Name_transcript']
+            align_score = mirtEntry['align_score']
             energy = mirtEntry['energy']
             mirna_start = mirtEntry['mirna_start']
             mirna_end = mirtEntry['mirna_end']
@@ -123,13 +131,10 @@ class MirandaRelDB(DataBaseDescriptor):
             dataSource = 'miranda'
 
             relations = set([
-                MirandaRel((lid, ltype), (rid, rtype), dataSource)
+                MirandaRel((lid, ltype), (rid, rtype), dataSource, transcript, align_score, energy, mirna_start, mirna_end, 
+                    lnc_start, lnc_end, align_length, mirna_identity, lncrna_identity, mirna_alignment, alignment, lncrna_alignment)
                 ])
-            '''
-            , energy, mirna_start, mirna_end, lnc_start, lnc_end,
-            align_length, mirna_identity, lncrna_identity, mirna_alignment, alignment, lncrna_alignment
-            
-            '''
+         
 
             for rel in relations:
 
