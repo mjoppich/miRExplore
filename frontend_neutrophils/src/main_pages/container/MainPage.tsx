@@ -1,9 +1,9 @@
 import * as React from "react"; 
 import { Card, CardTitle, CardText } from 'material-ui/Card';
+import { Button } from "../../../node_modules/@material-ui/core";
+import ActionExplore from 'material-ui/svg-icons/action/explore';
 
-import D3SVGParallelLinesGraph from '../components/D3SVGForceParallelLines';
-import MEFeatureViewer from '../components/MEFeatureViewer';
-import SankeyChart from '../components/SankeyChart';
+
 
 export class MainStatus extends React.Component<{},{}> {
 
@@ -72,7 +72,7 @@ export class MainStatus extends React.Component<{},{}> {
 }
 
 
-export class WelcomePage extends React.Component<{},{}> {
+export class WelcomePage extends React.Component<{ switchTab?: any },{}> {
 
     /**
      * Class constructor.
@@ -100,12 +100,12 @@ export class WelcomePage extends React.Component<{},{}> {
             <div>
             <Card style={{marginBottom: "20px"}}>
                 <CardTitle
-                    title="neutrophINT"
+                    title="neutrophINT - Welcome!"
                     subtitle="neutrophil INTeractions v1.0"
                 />
                 <CardText >
-                    <p>Welcome!</p>
-                    <p>Explore the database in the explore tab</p>
+                    <p>Explore the database in the explore tab.</p>
+                    <p>Go to <Button onClick={() => this.props.switchTab(1)}> <ActionExplore/> Explore</Button> tab.</p>
                 </CardText>
             </Card>
             <Card style={{marginBottom: "20px"}}>

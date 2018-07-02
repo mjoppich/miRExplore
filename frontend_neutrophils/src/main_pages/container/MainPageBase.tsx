@@ -66,7 +66,7 @@ export default class MainPageBase extends React.Component<PageBaseProps,PageBase
 
                 <div style={{width: 0.8*this.state.width}}>
                     <div style={{height: 100, left:0, top: 0, width: 100+'%', zIndex: 1000, position: 'fixed'}}>
-                        <MenuToolBar locationLinks={this.state.locLinks} currentLocation={this.state.hashLocation}/>
+                        <MenuToolBar locationLinks={this.state.locLinks} currentLocation={this.state.hashLocation} onChange={null}/>
                     </div>
 
                     <div style={{height: 100, top: 56+'px', width: containerWidth, zIndex: 900, position: 'relative', margin: '0 auto'}}>

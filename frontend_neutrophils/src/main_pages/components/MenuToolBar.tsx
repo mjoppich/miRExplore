@@ -9,8 +9,8 @@ import RaisedButton from 'material-ui/RaisedButton';
 import {Toolbar, ToolbarGroup, ToolbarSeparator, ToolbarTitle} from 'material-ui/Toolbar';
 
 
-export interface MenuToolBarProps {  currentLocation: any; locationLinks: any };
-export interface MenuToolBarState { value: any; pages: any; pageIdx: any; self: any; mode:any; };
+export interface MenuToolBarProps {  currentLocation: any; locationLinks: any, onChange: any };
+export interface MenuToolBarState { value: any; pageIdx: any; self: any; mode:any; };
 
 export default class MenuToolBar extends React.Component<MenuToolBarProps,MenuToolBarState> {
 
@@ -23,6 +23,11 @@ export default class MenuToolBar extends React.Component<MenuToolBarProps,MenuTo
   handleChange(event, index, value){
        this.setState({value});
 
+       if (this.props.onChange)
+       {
+         this.props.onChange(value);
+       }
+
   }
 
   componentWillReceiveProps(nextProps){
@@ -32,11 +37,10 @@ export default class MenuToolBar extends React.Component<MenuToolBarProps,MenuTo
         var href2idx = {}
         for (var i = 0; i < nextProps.locationLinks.length; i++)
         {
-          href2idx[ nextProps.locationLinks[i].href ] = i;
+          href2idx[ nextProps.locationLinks[i].index ] = i;
         }
 
         this.setState({
-          pages: nextProps.locationLinks,
           pageIdx: href2idx,
           value: 0
         });
@@ -66,12 +70,11 @@ export default class MenuToolBar extends React.Component<MenuToolBarProps,MenuTo
     var href2idx = {}
     for (var i = 0; i < this.props.locationLinks.length; i++)
     {
-      href2idx[ this.props.locationLinks[i].href ] = i;
+      href2idx[ this.props.locationLinks[i].index ] = i;
     }
 
     this.setState({
       value: 0,
-      pages: this.props.locationLinks,
       pageIdx: href2idx
     });
   }
@@ -80,9 +83,10 @@ export default class MenuToolBar extends React.Component<MenuToolBarProps,MenuTo
 
     var allPages = []
 
-    for (var i = 0; i < this.state.pages.length; i++)
+    for (var i = 0; i < this.props.locationLinks.length; i++)
     {
-      allPages.push(<MenuItem key={i} value={i} primaryText={this.state.pages[i].text} href={this.state.pages[i].href}/>);
+      console.log(this.props.locationLinks)
+      allPages.push(<MenuItem key={i} value={this.props.locationLinks[i].index} primaryText={this.props.locationLinks[i].text}/>);
     }
 
     return (
