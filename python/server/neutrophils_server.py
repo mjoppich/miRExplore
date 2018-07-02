@@ -1291,7 +1291,7 @@ def getCLParser():
                         help='Base for Textmining. Includes aggregated_ and results folder', required=True)
     parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
     parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
-    parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
+    parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=False)
     parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
 
     return parser
@@ -1312,11 +1312,11 @@ if __name__ == '__main__':
     app.run(threaded=True, host="0.0.0.0", port=args.port)
 
 
-def gunicorn_start(datadir="/home/j/joppich/tm_soehnlein/", sentdir="/home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/pmid_sent"):
+def gunicorn_start(datadir="/home/j/joppich/tm_soehnlein/", sentdir="/home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/pmid_sent", feedbackFile=None):
 
     parser = getCLParser()
 
-    argstr = "--textmine {datadir} --obodir {datadir}/obos --sentdir {sentdir} --feedback {datadir}/feedback".format(datadir=datadir, sentdir=sentdir)
+    argstr = "--textmine {datadir} --obodir {datadir}/obos --sentdir {sentdir} --feedback {feedbackFile}".format(datadir=datadir, sentdir=sentdir, feedbackFile=feedbackFile)
 
     print("Starting app with")
     print(argstr)
