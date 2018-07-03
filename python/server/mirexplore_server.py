@@ -6,6 +6,7 @@ import sys
 import os
 
 from synonymes.SynonymFile import Synfile
+from textdb.SymbolEnsemblDB import SymbolEnsemblDB
 from utils.tmutils import normalize_gene_names
 
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
@@ -37,7 +38,8 @@ from collections import defaultdict
 from flask_cors import CORS
 
 
-app = Flask(__name__)
+dataurl = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'frontend/src/static/'
+app = Flask(__name__, static_folder=dataurl, static_url_path='/static')
 CORS(app)
 
 app.config['DEBUG'] = False
@@ -63,6 +65,12 @@ allOrgInfos = [{
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
+
+
+@app.route('/')
+def root():
+    retFile = 'index.html'
+    return app.send_static_file(retFile)
 
 @app.route('/test', methods=['GET', 'POST'])
 def test():
@@ -684,7 +692,9 @@ if __name__ == '__main__':
 
     # allInteractions = defaultdict(list)
 
-    mirandaDB_mm10 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/mm10_interactionsAllGenes.txt")
+    symbol2ensemblDB = SymbolEnsemblDB.loadFromFile(args.obodir + "/sym2ens/")
+
+    mirandaDB_mm10 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/mm10_interactionsAllGenes.txt", symbol2ens=symbol2ensemblDB)
     #mirandaDB_hg38 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/hg38_interactionsAllGenes.txt")
 
     recordsDB = miRecordDB.loadFromFile(filelocation=args.obodir + "/mirecords_v4.xlsx", normGeneSymbols=normGeneSymbols)

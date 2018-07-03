@@ -68,7 +68,7 @@ class FeatureViewer:
 
     def __init__(self):
 
-        my_dir = "/home/mjoppich/ownCloud/data/miRExplore/obodir/map_data"
+        my_dir = "/home/mjoppich/ownCloud/data/miRExplore/obodir/"
         #my_dir = "./mm10"
 
         #interaction_file = os.path.join(my_dir, "mm10_interactions_allDBs.json")

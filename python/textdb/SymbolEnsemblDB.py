@@ -8,6 +8,7 @@ class SymbolEnsemblDB:
     def __init__(self):
 
         self.org2convert = defaultdict(lambda: defaultdict(set))
+        self.org2ens2symbol = defaultdict(lambda: dict())
 
 
     def get_all_genes(self, geneid):
@@ -26,6 +27,26 @@ class SymbolEnsemblDB:
                 ret[org] = self.org2convert[org][geneid]
 
         return ret
+
+    def get_symbol_from_ens(self, org, ens):
+
+        if not org in self.org2convert:
+            return None
+
+
+        if ens in self.org2ens2symbol[org]:
+            return self.org2ens2symbol[org][ens]
+
+        return None
+
+    def get_symbol_for_ensembl(self, ensid):
+
+        for org in self.org2ens2symbol:
+
+            if ensid in self.org2ens2symbol[org]:
+                return self.org2ens2symbol[org][ensid]
+
+        return None
 
 
 
@@ -73,6 +94,7 @@ class SymbolEnsemblDB:
 
                 for geneid in egenes:
                     ret.org2convert['mmu'][symbol].add(geneid)
+                    ret.org2ens2symbol['mmu'][geneid] = symbol
 
         if hsa:
 
@@ -93,6 +115,7 @@ class SymbolEnsemblDB:
                     continue
 
                 ret.org2convert['hsa'][symbol].add(ensemblGeneID)
+                ret.org2ens2symbol['hsa'][ensemblGeneID] = symbol
 
 
         return ret
@@ -102,6 +125,6 @@ if __name__ == '__main__':
 
     db = SymbolEnsemblDB.loadFromFile("/home/mjoppich/ownCloud/data/miRExplore/obodir/sym2ens")
 
-    ret = db.get_all_genes('CXCR1')
+    ret = db.get_symbol_for_ensembl('ENSMUSG00000024171')
 
     print(ret)

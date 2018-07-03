@@ -97,7 +97,7 @@ class MirandaRelDB(DataBaseDescriptor):
         return self.rtyped
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype='mirna', rtype='lncrna'):
+    def loadFromFile(cls, filepath, symbol2ens, ltype='mirna', rtype='lncrna'):
 
         ret = MirandaRelDB(ltype, rtype)
         file_base = os.path.basename(filepath)
@@ -110,38 +110,53 @@ class MirandaRelDB(DataBaseDescriptor):
             rid = mirtEntry['Name_gene']
             org, lid = cls.harmonizeMIRNA(lid)
 
-            print(org, lid, rid)
+            if "." in rid:
+                rid = rid[0:rid.index(".")]
+
+            #print(org, lid, rid)
 
             if not org in ['hsa', 'mmu']:
                 continue
 
-            transcript = mirtEntry['Name_transcript']
-            align_score = mirtEntry['align_score']
-            energy = mirtEntry['energy']
-            mirna_start = mirtEntry['mirna_start']
-            mirna_end = mirtEntry['mirna_end']
-            lnc_start = mirtEntry['lnc_start']
-            lnc_end = mirtEntry['lnc_end']
-            align_length = mirtEntry['align_len']
-            mirna_identity = mirtEntry['mirna_iden']
-            lncrna_identity = mirtEntry['lncrna_iden']
-            mirna_alignment = mirtEntry['mirna_alignment']
-            alignment = mirtEntry['alignment']
-            lncrna_alignment = mirtEntry['lncrna_alignment']
-            dataSource = 'miranda'
+            retObj = symbol2ens.get_symbol_from_ens(org, rid)
 
-            relations = set([
-                MirandaRel((lid, ltype), (rid, rtype), dataSource, transcript, align_score, energy, mirna_start, mirna_end, 
-                    lnc_start, lnc_end, align_length, mirna_identity, lncrna_identity, mirna_alignment, alignment, lncrna_alignment)
-                ])
-         
+            if retObj == None and not rid.startswith('LNC'):
+                print(lid, rid, org)
+                continue
+            else:
+                retObj = [rid]
 
-            for rel in relations:
+            for symbol in retObj:
 
-                ret.ltype2rel[lid].add(rel)
-                ret.rtype2rel[rid].add(rel)
+                rid = symbol
 
-            ret.all_ltypes.add(lid)
-            ret.all_rtypes.add(rid)
+                transcript = mirtEntry['Name_transcript']
+                align_score = mirtEntry['align_score']
+                energy = mirtEntry['energy']
+                mirna_start = mirtEntry['mirna_start']
+                mirna_end = mirtEntry['mirna_end']
+                lnc_start = mirtEntry['lnc_start']
+                lnc_end = mirtEntry['lnc_end']
+                align_length = mirtEntry['align_len']
+                mirna_identity = mirtEntry['mirna_iden']
+                lncrna_identity = mirtEntry['lncrna_iden']
+                mirna_alignment = mirtEntry['mirna_alignment']
+                alignment = mirtEntry['alignment']
+                lncrna_alignment = mirtEntry['lncrna_alignment']
+                dataSource = 'miranda'
+
+                relations = set([
+                    MirandaRel((lid, ltype), (rid, rtype), dataSource, transcript, align_score, energy, mirna_start, mirna_end,
+                        lnc_start, lnc_end, align_length, mirna_identity, lncrna_identity, mirna_alignment, alignment, lncrna_alignment)
+                    ])
+
+
+                for rel in relations:
+
+                    ret.ltype2rel[lid].add(rel)
+                    ret.rtype2rel[rid].add(rel)
+
+                ret.all_ltypes.add(lid)
+                ret.all_rtypes.add(rid)
 
         return ret

@@ -191,10 +191,13 @@ def sankey_network():
 
     obolevel = interactReq.get('obolevel', 3)
 
+    selected = interactReq.get('elements')
+    selectedCells = [x['termid'] for x in selected if x['group'] == 'CELLS']
+
 
     graphObj = make_plot_info(interactReq.get('elements', None), interactReq.get('categories', None),
                               interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
-                              majorParents=True, onlyCells=False, obolevel=obolevel )
+                              majorParents=True, onlyCells=False, obolevel=obolevel, selectedElems=selectedCells )
 
     return app.make_response((jsonify(graphObj), 200, None))
 
@@ -230,7 +233,7 @@ def interaction_network():
 
 
 
-def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2):
+def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2, selectedElems=None):
 
     elemJSON = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=False)
 
@@ -247,6 +250,23 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                 termid = ev['termid']
 
                 docInfos[x][pmid].add(termid)
+
+
+    selectedIDs = {}
+
+    if selectedElems != None:
+
+        for termID in selectedElems:
+
+            if termID in cellsObo.dTerms:
+
+                selectedIDs[termID] = termID
+
+                ecTerm = cellsObo.dTerms[termID]
+                ac = ecTerm.getAllChildren()
+
+                for child in ac:
+                    selectedIDs[child.term.id] = termID
 
 
     """
@@ -311,26 +331,31 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
             if not child.term.id in oboid2rootdist or oboid2rootdist[child.term.id] > 0:
                 if overwrite or not child.term.id in oboid2majorid:
 
-                    if hitsPerOboID[child.term.id] > 10:
-                        oboid2majorid[child.term.id] = child.term.id
+                    if child.term.id in selectedIDs:
+
+                        oboid2majorid[child.term.id] = selectedIDs[child.term.id]
+                        oboid2rootdist[child.term.id] = -1000
+
                     else:
 
-                        if overwrite and child.term.id.startswith("CL"):
-                            print(child.term.name, child.term.id, hitsPerOboID[child.term.id])
 
-                        oboid2majorid[child.term.id] = base.id
+                        if hitsPerOboID[child.term.id] > 10:
+                            oboid2majorid[child.term.id] = child.term.id
+                        else:
 
-                    if child.term.id == 'CL:1000497':
-                        print("Too few hits for", child.term.name, oboid2majorid[child.term.id], hitsPerOboID[child.term.id], base.id)
+                            if overwrite and child.term.id.startswith("CL"):
+                                print(child.term.name, child.term.id, hitsPerOboID[child.term.id])
+
+                            oboid2majorid[child.term.id] = base.id
+
+                        if child.term.id == 'CL:1000497':
+                            print("Too few hits for", child.term.name, oboid2majorid[child.term.id], hitsPerOboID[child.term.id], base.id)
 
 
-                    oboid2rootdist[child.term.id] = -1000
+                        oboid2rootdist[child.term.id] = -1000
 
         allchildren = base.getChildrenAtLevel(obolevel, withLevel=True)
 
-        print("Query Hits", oboid2majorid['CL:1000497'], hitsPerOboID['CL:1000497'], base.id)
-
-        print("Root node", base.id, base.name, [(x.id, x.name, l) for (x, l) in allchildren])
 
         for child, l in allchildren:
 
@@ -345,12 +370,20 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                 if not nc.term.id in oboid2rootdist or oboid2rootdist[nc.term.id] > cl:
 
                     if overwrite or not nc.term.id in oboid2majorid:
-                        oboid2majorid[nc.term.id] = oboid2majorid[child.id]
 
-                        if nc.term.id == 'CL:1000497':
-                            print("Too few hits for", child.name, nc.term.name, oboid2majorid[child.id], oboid2majorid[nc.term.id], base.id)
+                        if nc.term.id in selectedIDs:
 
-                        oboid2rootdist[nc.term.id] = cl
+                            oboid2majorid[nc.term.id] = selectedIDs[nc.term.id]
+                            oboid2rootdist[nc.term.id] = -1000
+
+                        else:
+
+                            oboid2majorid[nc.term.id] = oboid2majorid[child.id]
+
+                            if nc.term.id == 'CL:1000497':
+                                print("Too few hits for", child.name, nc.term.name, oboid2majorid[child.id], oboid2majorid[nc.term.id], base.id)
+
+                            oboid2rootdist[nc.term.id] = cl
 
 
                     #print(nc.term.id, nc.term.name, cl, "==>", child.name, child.id, l)
