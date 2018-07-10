@@ -1,4 +1,5 @@
 import codecs
+import re
 from enum import Enum
 import shlex
 import sys
@@ -283,6 +284,26 @@ class GOTerm:
     @classmethod
     def splitSynonymValue(cls, search, delimeter=' ', quotedText={'(': ')', '[': ']', '\"': '\"', '\'': '\''}):
 
+        aval = shlex.split(search)
+
+
+        if aval[0].startswith("\"") and aval[0].endswith("\""):
+            aval[0] = aval[0][1:len(aval[0])-1]
+
+
+        if len(aval) < 4:
+            return aval
+
+        rval = []
+        rval.append(aval[0])
+        rval.append(aval[1])
+        rval.append(aval[2])
+        rval.append(" ".join(aval[3:]))
+
+
+        return rval
+
+
         splitPos = []
         i = 0
         while i < len(search) and not i < 0:
@@ -351,6 +372,9 @@ class GOTerm:
 
             if cls.compareIDs("ID", key):
                 term.id = value
+
+                if value == 'NCIT:C25779':
+                    print(value)
 
             elif cls.compareIDs("alt_id", key):
 
@@ -532,7 +556,7 @@ class GOTerm:
 
             if syntype > 0:
                 syntypett = aval[syntype].upper()
-                syntypet = GOSynonymeType[syntypett]
+                syntypet = GOSynonymeType.UNKNOWN #GOSynonymeType[syntypett]
 
             scopet = GOSynonymeScope[aval[scope]]
 
@@ -976,10 +1000,27 @@ if __name__ == '__main__':
     #oTest = GeneOntology("/home/proj/projekte/textmining/FBN_ATOL_Dummerstorf/Daten-Ontologien/MethodOntology_MZ1.obo") #"C:/ownCloud/data/biomodels/go.obo"
     #oTest.loadGeneAnnotation("/home/users/joppich/ownCloud/data/biomodels/gene2go.9606", {9606})
     #oTest = GeneOntology("/home/proj/projekte/textmining/FBN_ATOL_Dummerstorf/Daten-Ontologien/synonymes/modified/atol_v6_MZ.prot.obo")
-    oTest = GeneOntology('/mnt/c/dev/data/fbn_textmine/mom_new.obo')
+    #oTest = GeneOntology('/mnt/c/dev/data/fbn_textmine/mom_new.obo')
+    oTest = GeneOntology('/mnt/c/Users/mjopp/Downloads/ncit.obo')
 
     #print(oTest.getID('GO:0002281'))
     #print(oTest.getGenes({9606}, 'GO:0002281'))
+
+    oterm = oTest.dTerms['NCIT:C20027']
+    allchildren = oterm.getAllChildren()
+
+    print(len(allchildren))
+
+    oRet = GeneOntology()
+
+
+    for rel in allchildren:
+        print(rel.term.id, rel.term.name)
+        oRet.dTerms[rel.term.id] = rel.term
+
+    oRet.saveFile("/mnt/c/Users/mjopp/Desktop/ncit.obo")
+
+    oTest = GeneOntology('/mnt/c/Users/mjopp/Desktop/ncit.obo')
 
 
     print( oTest.getRoots() )

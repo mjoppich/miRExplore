@@ -1,8 +1,9 @@
 import * as React from "react"; 
 import { Card, CardTitle, CardText } from 'material-ui/Card';
+import { Button } from "../../../node_modules/@material-ui/core";
+import ActionExplore from 'material-ui/svg-icons/action/explore';
 
-import D3SVGParallelLinesGraph from '../components/D3SVGForceParallelLines';
-import MEFeatureViewer from '../components/MEFeatureViewer';
+
 
 export class MainStatus extends React.Component<{},{}> {
 
@@ -24,6 +25,9 @@ export class MainStatus extends React.Component<{},{}> {
     /**
      * Render the component.
      * <MEFeatureViewer features={[]} location={[]}/>
+     * 
+     *                 <MEFeatureViewer features={[]} location={[]}/>
+                <D3SVGParallelLinesGraph graph={graphData} id="d3front"/>
      */
     render() {
 
@@ -68,9 +72,8 @@ export class MainStatus extends React.Component<{},{}> {
                         <li><b>PubMeds</b></li>
                     </ul>
                 </span>
-                
-                <MEFeatureViewer features={[]} location={[]}/>
-                <D3SVGParallelLinesGraph graph={graphData} id="d3front"/>
+               
+
             </div>
         );
     }
@@ -78,7 +81,7 @@ export class MainStatus extends React.Component<{},{}> {
 }
 
 
-export class WelcomePage extends React.Component<{},{}> {
+export class WelcomePage extends React.Component<{ switchTab?: any },{}> {
 
     /**
      * Class constructor.
@@ -106,20 +109,29 @@ export class WelcomePage extends React.Component<{},{}> {
             <div>
             <Card style={{marginBottom: "20px"}}>
                 <CardTitle
-                    title="mingleRNA"
-                    subtitle="v0.1"
+                    title="neutrophINT - Welcome!"
+                    subtitle="neutrophil INTeractions v1.0"
                 />
                 <CardText >
-                    <p>miRExplore v.5 online.</p>
-                    <p>Welcome!</p>
-                    <p>Explore the database in the explore tab</p>
+                    <p>Explore the database in the explore tab.</p>
+                    <p>Go to <Button onClick={() => this.props.switchTab(1)}> <ActionExplore/> Explore</Button> tab.</p>
                 </CardText>
             </Card>
-                    <Card>
+            <Card style={{marginBottom: "20px"}}>
                         <CardText >
                             <MainStatus/>
                         </CardText>
                     </Card>
+
+            <Card style={{marginBottom: "20px"}}>
+                <CardTitle
+                    title="Data Privacy"
+                />
+                <CardText >
+                    <p>You can find the data privacy guide-lines <a target="_blank" href="https://www.bio.ifi.lmu.de/funktionen/datenschutz/index.html">here</a>.</p>
+                    <p>Your IP address might be stored by the web server. All log files are deleted after 7 days.</p>
+                </CardText>
+            </Card>
             </div>
 
         );

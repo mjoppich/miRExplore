@@ -210,7 +210,7 @@ class MiGenRelDB(DataBaseDescriptor):
 
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna', dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None):
+    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None):
 
 
         ret = MiGenRelDB(ltype, rtype)
@@ -228,7 +228,8 @@ class MiGenRelDB(DataBaseDescriptor):
 
         with open(filepath, 'r') as fin:
 
-            #PCBP1	miR-3978	ORGMIR4299	29138420	True	True	[('GM', 'GVM', 'POS', 'express', '29138420.2.5', False, (26, 34), (0, 5), (6, 16)), ('GM', 'GMV', 'POS', 'express', '29138420.2.5', False, (26, 34), (0, 5), (35, 45))]
+
+            #miR-182 mir-182 MIRNA   CBFA3   RUNX3   GENE    29054094        True    True    [('21', 'V21', 'POS', 'express', '29054094.2.3', False, (92, 99), (82, 87), (62, 72), 'all_rels')]
 
             for lineIdx, line in enumerate(fin):
 

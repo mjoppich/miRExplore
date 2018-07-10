@@ -7,6 +7,8 @@ import os
 
 from synonymes.SynonymFile import Synfile
 from textdb.SymbolEnsemblDB import SymbolEnsemblDB
+from textdb.featureviewer import FeatureViewer
+from textdb.rfamDB import RFamDB
 from utils.tmutils import normalize_gene_names
 
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
@@ -102,10 +104,45 @@ def getGeneFeatures(geneID):
 @app.route('/get_features/<geneID>/<mirnaID>')
 def getGeneMirnaFeatures(geneID, mirnaID):
 
+    global featureViewer
+    global symbol2ensemblDB
+
+
     if geneID == None:
         return app.make_response((jsonify( {'error': 'invalid geneid'} ), 400, None))
 
-    return app.make_response((jsonify({'gene_id': geneID, 'mirna_id': mirnaID }), 200, None))
+
+    resObj = {
+        'gene_id': geneID
+    }
+
+
+    if mirnaID != None:
+        resObj['mirna_id'] = mirnaID
+
+    ret = []
+
+    collectGenes = symbol2ensemblDB.get_all_genes(geneID)
+
+    for org in collectGenes:
+        geneEnsIDs = collectGenes[org]
+
+        if geneEnsIDs == None:
+            continue
+
+
+        for geneEnsID in geneEnsIDs:
+
+            lret = featureViewer.getFeatures(geneEnsID, mirnaID)
+
+            if len(lret) > 0:
+                ret += list(lret)
+
+    if ret != None:
+        resObj['features'] = ret
+
+
+    return app.make_response((jsonify(resObj), 200, None))
 
 
 
@@ -122,14 +159,37 @@ def findInteractions():
 
     print(interactReq)
 
-    return returnInteractions(interactReq.get('gene', None), interactReq.get('mirna', None), interactReq.get('lncrna', None), organisms=interactReq.get('organisms', None), diseaseRestrictions=interactReq.get('disease', None), goRestrictions=interactReq.get('go', None), cellRestrictions=interactReq.get('cells', None))
+
+    gene = interactReq.get('gene', None)
+    mirna = interactReq.get('mirna', None)
+    lncrna = interactReq.get('lncrna', None)
+    organisms = interactReq.get('organisms', None)
+    diseases = interactReq.get('disease', None)
+    goes = interactReq.get('go', None)
+    cells = interactReq.get('cells', None)
+
+    loadSentences = interactReq.get('sentences', "true").upper() == "TRUE"
+
+    return returnInteractions(gene, mirna, lncrna, organisms=organisms, diseaseRestrictions=diseases, goRestrictions=goes, cellRestrictions=cells, loadSentences=loadSentences)
 
 @app.route('/status')
 def getStatus():
     return app.make_response((jsonify({'error': 'must include homid'}), 400, None))
 
 
-def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None):
+def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None, loadSentences=True):
+
+    global mirFeedback
+    global mirandaDB_mm10
+    global relDBs
+    global diseaseObo
+    global goObo
+    global cellObo
+    global pmid2go
+    global pmid2disease
+    global pmid2fma
+    global pmid2cell
+    global sentDB
 
     genes = genes if genes!=None else []
     mirnas = mirnas if mirnas!=None else []
@@ -255,7 +315,7 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
         evSent = evJSON.get('rel_sentence', None)
 
-        if evSent != None:
+        if evSent != None and loadSentences:
             evSentTxt = sentDB.get_sentence(evSent)
 
             if evSentTxt != None:
@@ -505,6 +565,9 @@ def getOrganisms():
 @app.route('/autocomplete', methods=['GET', 'POST'])
 def findID():
 
+    global relDBs
+    global testRels
+
     jsonResult = set()
 
     searchWords = request.get_json(force=True, silent=True)
@@ -551,6 +614,8 @@ def findID():
 @app.route('/disease_ac', methods=['GET', 'POST'])
 def disease_autocomplete():
 
+    global pmid2disease
+
     searchWords = request.get_json(force=True, silent=True)
     searchWord = searchWords['search']
 
@@ -579,6 +644,9 @@ def disease_autocomplete():
 
 @app.route('/go_ac', methods=['GET', 'POST'])
 def go_autocomplete():
+
+    global pmid2go
+
 
     searchWords = request.get_json(force=True, silent=True)
     searchWord = searchWords['search']
@@ -609,6 +677,8 @@ def go_autocomplete():
 @app.route('/cells_ac', methods=['GET', 'POST'])
 def cells_autocomplete():
 
+    global pmid2cell
+
     searchWords = request.get_json(force=True, silent=True)
     searchWord = searchWords['search']
 
@@ -637,6 +707,9 @@ def cells_autocomplete():
 
 @app.route("/relation_feedback", methods=["GET", "POST"])
 def rel_feedback():
+
+    global mirFeedback
+
     feedbackInfo = request.get_json(force=True, silent=True)
 
     print(feedbackInfo)
@@ -667,23 +740,43 @@ def rel_feedback():
     return app.make_response((jsonify({}), 200, None))
 
 
+mirFeedback = None
+mirandaDB_mm10 = None
+relDBs = None
+diseaseObo = None
+goObo = None
+cellObo = None
+pmid2go = None
+pmid2disease = None
+pmid2fma = None
+pmid2cell = None
+testRels = None
+mirelPMID = None
+sentDB=None
+featureViewer = None
+symbol2ensemblDB = None
 
-if __name__ == '__main__':
+
+def loadData(args):
 
 
-    parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
-    parser.add_argument('-t', '--textmine', type=str, help='Base for Textmining. Includes aggregated_ and results folder', required=True)
-    parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
-    parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
-    parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
-    parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
+    global mirFeedback
+    global mirandaDB_mm10
+    global relDBs
+    global diseaseObo
+    global goObo
+    global cellObo
+    global pmid2go
+    global pmid2disease
+    global pmid2fma
+    global pmid2cell
+    global testRels
+    global mirelPMID
+    global sentDB
+    global featureViewer
+    global symbol2ensemblDB
 
-    args = parser.parse_args()
-
-    for x in args.__dict__:
-        print(x, args.__dict__[x])
-
-    pmidBase = args.textmine + '/aggregated_pmid/'
+    pmidBase = args.textmine# + '/aggregated_pmid/'
     pmcBase = args.textmine + '/aggregated_pmc/'
 
     normGeneSymbols = normalize_gene_names()
@@ -695,7 +788,7 @@ if __name__ == '__main__':
     symbol2ensemblDB = SymbolEnsemblDB.loadFromFile(args.obodir + "/sym2ens/")
 
     mirandaDB_mm10 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/mm10_interactionsAllGenes.txt", symbol2ens=symbol2ensemblDB)
-    #mirandaDB_hg38 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/hg38_interactionsAllGenes.txt")
+    # mirandaDB_hg38 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/hg38_interactionsAllGenes.txt")
 
     recordsDB = miRecordDB.loadFromFile(filelocation=args.obodir + "/mirecords_v4.xlsx", normGeneSymbols=normGeneSymbols)
     mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=args.obodir + "/miRTarBase.csv", normGeneSymbols=normGeneSymbols)
@@ -706,11 +799,11 @@ if __name__ == '__main__':
     pmid2pmcDB = PMID2PMCDB.loadFromFile(args.textmine + '/pmid2pmc')
     print(datetime.datetime.now(), "Loading mirel")
 
-    testRels = None#TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
+    testRels = None  # TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
 
-    mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="gene", rtype="mirna", normGeneSymbols=normGeneSymbols)
-    lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")
-    geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
+    mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols)
+    lncMirPMID = None  # MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")
+    geneLncPMID = None  # MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
 
     relDBs = [recordsDB, mirtarbaseDB, mirelPMID, lncMirPMID, geneLncPMID, mirandaDB_mm10]
 
@@ -721,8 +814,7 @@ if __name__ == '__main__':
     mirFeedback = feedbackDB(args.feedback)
 
     print(datetime.datetime.now(), "Loading sents")
-    sentDB = SentenceDB.loadFromFile(args.sentdir,
-                                    args.textmine+ "/aggregated_pmid/pmid2sent")
+    sentDB = SentenceDB.loadFromFile(args.sentdir, args.textmine + "/pmid2sent")
     print(datetime.datetime.now(), "Finished sents")
 
     requiredPMIDs = set()
@@ -753,7 +845,6 @@ if __name__ == '__main__':
 
     print(datetime.datetime.now(), "Loading ontologies finished")
 
-
     if allDBS == None:
         pmid2go = None
         pmid2disease = None
@@ -777,10 +868,36 @@ if __name__ == '__main__':
         with open(pmidBase + "/dbs.pickle", 'wb') as fout:
             pickle.dump(allDBS, fout)
 
+
+
+    print(datetime.datetime.now(), "Loading Features")
+
+    rfDB = RFamDB.loadFromFile(pmidBase + '/rfam.regions.mirexplore')
+
+    featureViewer = FeatureViewer(args.obodir, 'mmu', rfamDB=rfDB)
+
+
     print(datetime.datetime.now(), "Loading finished")
 
 
+if __name__ == '__main__':
+
+
+    parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
+    parser.add_argument('-t', '--textmine', type=str, help='Base for Textmining. Includes aggregated_ and results folder', required=True)
+    parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
+    parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
+    parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
+    parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
+
+    args = parser.parse_args()
+
+    for x in args.__dict__:
+        print(x, args.__dict__[x])
+
     print("Starting Flask on port", args.port)
+
+    loadData(args)
 
     print([rule.rule for rule in app.url_map.iter_rules() if rule.endpoint != 'static'])
     app.run(threaded=True, host="0.0.0.0", port=args.port)

@@ -49,7 +49,6 @@ export default class EvidenceReportButtons extends React.Component<EvidenceRepor
 
             axios.post(config.getRestAddress() + "/feedback_info",sendData, config.axiosConfig)
             .then(function (response) {
-              console.log(response.data);
     
               if (response.data.feedback_cum > 0)
               {

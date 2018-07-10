@@ -5,6 +5,8 @@ import pprint
 from pprint import pprint
 from collections import defaultdict
 
+from textdb.rfamDB import RFamDB
+
 
 class FeatureViewer:
 
@@ -66,17 +68,20 @@ class FeatureViewer:
         ]
     """
 
-    def __init__(self):
+    def __init__(self, basedir, org, rfamDB=None):
 
-        my_dir = "/home/mjoppich/ownCloud/data/miRExplore/obodir/"
+        #my_dir = "/home/mjoppich/ownCloud/data/miRExplore/obodir/"
         #my_dir = "./mm10"
 
+        self.rfamDB = rfamDB
+        self.org = org
+
         #interaction_file = os.path.join(my_dir, "mm10_interactions_allDBs.json")
-        interaction_file = os.path.join(my_dir, "Mirbase_mouse_gencode_pc_filtered_new_test.json")
+        interaction_file = os.path.join(basedir, "mm10_interactions_allDBs_and_pc.json")
         with open(interaction_file) as interaction_input:
             self.df_interactions = json.load(interaction_input)
 
-        gene_file = os.path.join(my_dir, "mm10_primary_assembly_and_lncRNA.json")
+        gene_file = os.path.join(basedir, "mm10_primary_assembly_and_lncRNA.json")
         with open(gene_file) as gene_input:
             self.df_genes = json.load(gene_input)
 
@@ -86,6 +91,7 @@ class FeatureViewer:
         gene_type = None
         if 'ENS' in gene:
             gene_type = 'gene'
+
         elif 'LNC' in gene:
             gene_type = 'lncrna'
         else:
@@ -95,23 +101,54 @@ class FeatureViewer:
         json_res = []
 
         if (valid_gene == 1):
+
+            print("gene: "+gene)
+            print("mirna: " + str(mirna))
+
             container['gene_id'] = gene
             container['gene_type'] = gene_type
-            (container['gene_length'], container['transcript_list']) = self.getGeneAnnotations(gene, gene_type, mirna)
+
+            (geneInfo, container['transcript_list']) = self.getGeneAnnotations(gene, gene_type, mirna)
+
+            for elemID in geneInfo:
+                container[elemID] = geneInfo[elemID]
+
+            if 'chr' in container and self.rfamDB != None:
+
+                rfams = self.rfamDB.get_entries(self.org, container['chr'], container['gene_start'], container['gene_stop'], container['strand'])
+                container['rfams'] = rfams
+
             json_res.append(container)
         else:
-            print("ERROR: Gene ID not recognized " + gene_id)
+            print("ERROR: Gene ID not recognized " + gene)
         return json_res
 
     def getGeneAnnotations(self, my_gene, type, mirna_id):
         json_transcripts = []
         gene_length = 0
+
+        geneInfo = {}
+
         for gene in self.df_genes:
             gene_id = gene["gene_id"]
-            if gene_id == my_gene:
+
+            compGeneID = gene_id
+
+            if "." in compGeneID:
+                compGeneID = compGeneID[0:compGeneID.index(".")]
+
+            if compGeneID == my_gene:
                 gene_start = int(gene['start']) 
                 gene_stop = int(gene['stop'])  
                 gene_length = gene_stop - gene_start
+
+                geneInfo['gene_length'] = gene_length
+                geneInfo['gene_start'] = gene_start
+                geneInfo['gene_stop'] = gene_stop
+                geneInfo['strand'] = gene['strand']
+                geneInfo['chr'] = gene['chr']
+
+
                 for transcript in gene['transcripts_list']:
                     transcript_id = transcript['transcript_id']
                     transcript_start = int(transcript['start']) 
@@ -161,7 +198,7 @@ class FeatureViewer:
                     else:
                         print("ERROR: Invalid gene_id or transcript_id (None Type)")
                     json_transcripts.append(container_transcript)
-        return (gene_length, json_transcripts)
+        return (geneInfo, json_transcripts)
 
 
     def getTranscriptInteractions(self, my_transcript, my_gene, my_mirna):
@@ -199,14 +236,17 @@ class FeatureViewer:
 
 if __name__ == '__main__':
 
-    input_gene = sys.argv[1]
-    if len(sys.argv) >= 3: 
+    if len(sys.argv) >= 3:
+        input_gene = sys.argv[1]
         input_mirna = sys.argv[2]
     else:
+        input_gene = "ENSMUSG00000045382"
         input_mirna = "" 
 
-    fv = FeatureViewer()
-    json_result = []
+    rfDB = RFamDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmid/rfam.regions.mirexplore')
+
+    fv = FeatureViewer("/home/mjoppich/ownCloud/data/miRExplore/obodir/", "mmu", rfamDB=rfDB)
+
     json_result = fv.getFeatures(input_gene, input_mirna)
     '''
         do stuff with json json_result

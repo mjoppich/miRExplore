@@ -90,14 +90,21 @@ class RFamDB:
         self.all_entries[entryID].addi(entry.rfam_start, entry.rfam_end, entry)
 
 
-    def get_entries(self, org, chr, start, stop):
+    def get_entries(self, org, chr, start, stop, strand=None):
 
         if not (org, chr) in self.all_entries:
             return None
 
         it = self.all_entries[(org, chr)]
 
-        return it[start:stop]
+        allfound = it[start:stop]
+
+        if strand == None:
+            allreturn = [x.data for x in allfound]
+        else:
+            allreturn = [x.data for x in allfound if x.data['strand'] == strand]
+
+        return allreturn
 
 
 
@@ -187,9 +194,9 @@ if __name__ == '__main__':
 
     rfDB = RFamDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmid/rfam.regions.mirexplore')
 
-    allEntries = rfDB.get_entries('hsa', 'chr19', 9050000, 9150000)
+    allEntries = rfDB.get_entries('mmu', 'chr1', 0, 9150000)
 
     for x in allEntries:
-        print(x, x.data)
+        print(x)
 
 

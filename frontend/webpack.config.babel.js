@@ -113,6 +113,7 @@ const client = {
   }
 };
 
+/**
 const server = {
   target: 'node',
   node: {
@@ -154,7 +155,7 @@ const server = {
           options: 'cacheDirectory=.babel_cache',
         },
       },
-      */
+      
     ],
   },
   resolve: {
@@ -165,5 +166,6 @@ const server = {
     ],
   },
 };
+*/
 
-export default [client, server];
+export default [client];

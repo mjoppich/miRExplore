@@ -19,7 +19,8 @@ class SymbolEnsemblDB:
 
         geneid = geneid.upper()
 
-        ret = {"query": geneid}
+        ret={}
+
         for org in self.org2convert:
 
             if geneid in self.org2convert[org]:
@@ -126,5 +127,6 @@ if __name__ == '__main__':
     db = SymbolEnsemblDB.loadFromFile("/home/mjoppich/ownCloud/data/miRExplore/obodir/sym2ens")
 
     ret = db.get_symbol_for_ensembl('ENSMUSG00000024171')
+    ret = db.get_all_genes("CXCR4")
 
     print(ret)

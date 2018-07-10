@@ -975,6 +975,8 @@ export default class FeatureViewer {
 
     transitionObj = new Transition(this);
 
+    trackNameWidth = 210;
+
     events: any;
     //div = null;
     //el = null;
@@ -1015,10 +1017,13 @@ export default class FeatureViewer {
 
     scaling = null;
 
+    trackRightTransform = 220;
+
+    sequenceName="Sequence";
 
 
     updateLineTooltip(mouse,pD){
-        var xP = mouse-110;
+        var xP = mouse-this.trackRightTransform;
         var elemHover = {};
         for (var l=0; l<pD.length;l++) {
             if (this.scaling(pD[l].x) < xP && this.scaling(pD[l+1].x) > xP) {
@@ -1079,6 +1084,12 @@ export default class FeatureViewer {
         //this.el = div;
 
         this.sequence = sequence;
+
+        if (options.sequenceName)
+        {
+            this.sequenceName = options.sequenceName;
+        }
+
         this.intLength =  this.isInt(sequence) ? sequence : null;
         this.fvLength = this.intLength | sequence.length;
 
@@ -1123,7 +1134,7 @@ export default class FeatureViewer {
                 top: 10,
                 right: 20,
                 bottom: 20,
-                left: 110
+                left: this.trackRightTransform
             };
             
         this.width = $(div).width() - this.margin.left - this.margin.right - 17,
@@ -1390,7 +1401,7 @@ export default class FeatureViewer {
                 .style("stroke", "") // colour the line
                 .style("fill", "#DFD5D3") // remove any fill colour
                 .attr("points", function (d) {
-                    return (self.margin.left - 105) + "," + (d.y - 3) + ", " + (self.margin.left - 105) + "," + (d.y + 12) + ", " + (self.margin.left - 15) + "," + (d.y + 12) + ", " + (self.margin.left - 7) + "," + (d.y + 4.5) + ", " + (self.margin.left - 15) + "," + (d.y -3); // x,y points
+                    return (self.margin.left - self.trackNameWidth) + "," + (d.y - 3) + ", " + (self.margin.left - self.trackNameWidth) + "," + (d.y + 12) + ", " + (self.margin.left - 15) + "," + (d.y + 12) + ", " + (self.margin.left - 7) + "," + (d.y + 4.5) + ", " + (self.margin.left - 15) + "," + (d.y -3); // x,y points
                 });
 
             this.yAxisSVGgroup
@@ -1398,7 +1409,7 @@ export default class FeatureViewer {
                 .attr("class", "yaxis")
                 .attr("text-anchor", "start")
                 .attr("x", function () {
-                    return self.margin.left - 102
+                    return self.margin.left - self.trackNameWidth+3
                 })
                 .attr("y", function (d) {
                     return d.y + 8
@@ -1433,7 +1444,10 @@ export default class FeatureViewer {
 
         showFilteredFeature(className, color, baseUrl){
             var featureSelected = this.yAxisSVG.selectAll("."+className+"Arrow");
-            var minY = this.margin.left - 105;
+
+
+
+            var minY = this.margin.left - this.trackNameWidth;
             var maxY = this.margin.left - 7;
 
             var gradient = this.svg
@@ -1476,7 +1490,7 @@ export default class FeatureViewer {
                 .attr("filter", url_dropshadow);
             selection
                 .attr("points", function (d) {
-                    return (self.margin.left - 105) + "," + (d.y - 3) + ", " + (self.margin.left - 105) + "," + (d.y + 12) + ", " + (self.margin.left - 10) + "," + (d.y + 12) + ", " + (self.margin.left - 2) + "," + (d.y + 4.5) + ", " + (self.margin.left - 10) + "," + (d.y -3); // x,y points
+                    return (self.margin.left - self.trackNameWidth) + "," + (d.y - 3) + ", " + (self.margin.left - self.trackNameWidth) + "," + (d.y + 12) + ", " + (self.margin.left - 10) + "," + (d.y + 12) + ", " + (self.margin.left - 2) + "," + (d.y + 4.5) + ", " + (self.margin.left - 10) + "," + (d.y -3); // x,y points
                 });
         }
 
@@ -1488,7 +1502,7 @@ export default class FeatureViewer {
                 .style("fill", "rgba(95,46,38,0.2)")
                 .attr("filter", "")
                 .attr("points", function (d) {
-                    return (self.margin.left - 105) + "," + (d.y - 3) + ", " + (self.margin.left - 105) + "," + (d.y + 12) + ", " + (self.margin.left - 15) + "," + (d.y + 12) + ", " + (self.margin.left - 7) + "," + (d.y + 4.5) + ", " + (self.margin.left - 15) + "," + (d.y -3); // x,y points
+                    return (self.margin.left - self.trackNameWidth) + "," + (d.y - 3) + ", " + (self.margin.left - self.trackNameWidth) + "," + (d.y + 12) + ", " + (self.margin.left - 15) + "," + (d.y + 12) + ", " + (self.margin.left - 7) + "," + (d.y + 4.5) + ", " + (self.margin.left - 15) + "," + (d.y -3); // x,y points
                 });
         };
 
@@ -2155,13 +2169,13 @@ export default class FeatureViewer {
                 }
                 self.features.push({
                     data: self.sequence,
-                    name: "Sequence",
+                    name: self.sequenceName,
                     className: "AA",
                     color: "black",
                     type: "text"
                 });
                 self.yData.push({
-                    title: "Sequence",
+                    title: self.sequenceName,
                     y: self.Yposition - 8
                 });
             }
