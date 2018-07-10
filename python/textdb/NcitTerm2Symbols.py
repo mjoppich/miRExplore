@@ -22,6 +22,8 @@ class NcitTermSymbolDB:
         ensembl2hgncDF = DataFrame.parseFromFile(baseFolder + "ensembl_hgnc_uniprot.txt")
         ensembl2mgiDF = DataFrame.parseFromFile(baseFolder + "ensembl_mgi_hgnc.tsv")
 
+        addUniprotEnsemblDF = DataFrame.parseFromFile(baseFolder + "add_swissprot_ensembl")
+
 
         print("ncit2swissprot")
         print(ncit2swissprotDF.getHeader())
@@ -47,6 +49,13 @@ class NcitTermSymbolDB:
 
             ensemblGeneID = row['Gene stable ID']
             swissprotID = row['UniProtKB/Swiss-Prot ID']
+
+            swissprot2ensembl[swissprotID].add(ensemblGeneID)
+
+        for row in addUniprotEnsemblDF:
+
+            ensemblGeneID = row['From']
+            swissprotID = row['To']
 
             swissprot2ensembl[swissprotID].add(ensemblGeneID)
 
@@ -91,7 +100,7 @@ class NcitTermSymbolDB:
 
             if hsaEnsembls == None:
                 unknownSwissprots.add(swissprotID)
-                print("no ensembl for swissprot", swissprotID)
+                #print("no ensembl for swissprot", swissprotID)
                 continue
 
             for hsaEnsembl in hsaEnsembls:
@@ -118,6 +127,28 @@ class NcitTermSymbolDB:
                     retDB.org_term2symbol['mmu'][ncitID].add(mmuSym)
 
         print(unknownSwissprots)
+
+        #for x in unknownSwissprots:
+        #    print(x)
+
+        print(len(unknownSwissprots))
+
+        wellAnnotated = 0
+        for row in ncit2swissprotDF:
+            ncitID = row['NCIt Code']
+
+            hsaRes = retDB.org_term2symbol['hsa'].get(ncitID, None)
+            mmuRes = retDB.org_term2symbol['mmu'].get(ncitID, None)
+
+            if hsaRes == None or mmuRes == None:
+                print(ncitID, row['NCIt Preferred Name'], hsaRes, mmuRes)
+
+            else:
+                wellAnnotated += 1
+
+        print("well annotated:", wellAnnotated)
+
+
 
         return
 

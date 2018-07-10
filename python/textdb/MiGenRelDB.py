@@ -210,7 +210,7 @@ class MiGenRelDB(DataBaseDescriptor):
 
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None):
+    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None, switchLR=False):
 
 
         ret = MiGenRelDB(ltype, rtype)
@@ -237,6 +237,23 @@ class MiGenRelDB(DataBaseDescriptor):
 
                 aline = line.split('\t')
 
+                turnEvs= False
+
+
+                if switchLR:
+                    turnEvs = True
+
+                    tmp = aline[0:3]
+
+                    aline[0] = aline[3]
+                    aline[1] = aline[4]
+                    aline[2] = aline[5]
+
+                    aline[3] = tmp[0]
+                    aline[4] = tmp[1]
+                    aline[5] = tmp[2]
+
+
                 lid = aline[0]
                 rid = aline[3]
 
@@ -246,13 +263,12 @@ class MiGenRelDB(DataBaseDescriptor):
                 if ret.r_ont_based:
                     rid = rid.replace('_', ':', 1)
 
-                turnEvs= False
                 if ltype == rtype and lid > rid:
                     tmp = lid
                     lid = rid
                     rid = tmp
 
-                    turnEvs = True
+                    turnEvs = not turnEvs
 
 
                 sameParagraph = aline[7] == 'True'
@@ -295,7 +311,7 @@ class MiGenRelDB(DataBaseDescriptor):
                     docOrgs = docOrgs.union(docOrgRes)
 
 
-                tmRelations = None if aline[9] == 'None' else eval(aline[9  ])
+                tmRelations = None if aline[9] == 'None' else eval(aline[9])
 
 
                 if ltype == rtype and lid > rid:
