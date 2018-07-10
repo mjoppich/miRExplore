@@ -271,6 +271,7 @@ class MiGenRelDB(DataBaseDescriptor):
                     turnEvs = not turnEvs
 
 
+
                 sameParagraph = aline[7] == 'True'
                 sameSentence = aline[8] == 'True'
 
