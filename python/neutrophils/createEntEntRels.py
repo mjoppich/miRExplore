@@ -497,7 +497,7 @@ if __name__ == '__main__':
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
     relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
 
-    relationSyns = AssocSynfile(args.datadir + '/obos/allrels.csv')
+    relationSyns = AssocSynfile(args.datadir + '/obodir/allrels.csv')
 
     accept_pmids = None
 

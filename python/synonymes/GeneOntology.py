@@ -373,9 +373,6 @@ class GOTerm:
             if cls.compareIDs("ID", key):
                 term.id = value
 
-                if value == 'NCIT:C25779':
-                    print(value)
-
             elif cls.compareIDs("alt_id", key):
 
                 if term.alt_id == None:
@@ -389,6 +386,9 @@ class GOTerm:
                     term.synonym = set()
 
                 elem = cls.handleSynonyme(value)
+
+                if elem == None:
+                    print(aValue)
 
                 term.synonym.add(elem)
 
@@ -507,6 +507,8 @@ class GOTerm:
                     for splitval in aSplitVals:
                         syn = GOSynonyme(splitval, scopeT, GOSynonymeType.UNKNOWN, None)
 
+                        if syn == None:
+                            print(aValue)
                         term.synonym.add(syn)
 
 
@@ -516,6 +518,10 @@ class GOTerm:
                         term.synonym = set()
 
                     syn = GOSynonyme(aValue[1], GOSynonymeScope.EXACT, GOSynonymeType.UNKNOWN, None)
+
+                    if syn == None:
+                        print(aValue)
+
                     term.synonym.add(syn)
 
             else:

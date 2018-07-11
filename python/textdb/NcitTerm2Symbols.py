@@ -107,7 +107,7 @@ class NcitTermSymbolDB:
                 hsaSym = hsaEnsembl2Sym.get(hsaEnsembl, None)
 
                 if hsaSym == None:
-                    print("no hsa symols for", hsaEnsembl)
+                    pass  #print("no hsa symols for", hsaEnsembl)
                     continue
 
                 retDB.org_term2symbol['hsa'][ncitID].add(hsaSym)
@@ -115,23 +115,24 @@ class NcitTermSymbolDB:
                 mmuIDs = hsaEnsembl2mmuEnsembl.get(hsaEnsembl, None)
 
                 if mmuIDs == None:
-                    print("no mmu ortholog for", hsaEnsembl)
+                    pass  #print("no mmu ortholog for", hsaEnsembl)
                     continue
 
                 for mmuID in mmuIDs:
                     mmuSym = mmuEnsembl2Sym.get(mmuID)
 
                     if mmuSym == None:
-                        print("no mmu symbol for", mmuID)
+                        pass  #print("no mmu symbol for", mmuID)
+                        continue
 
                     retDB.org_term2symbol['mmu'][ncitID].add(mmuSym)
 
-        print(unknownSwissprots)
+        #print(unknownSwissprots)
 
         #for x in unknownSwissprots:
         #    print(x)
 
-        print(len(unknownSwissprots))
+        #print(len(unknownSwissprots))
 
         wellAnnotated = 0
         for row in ncit2swissprotDF:
@@ -141,7 +142,7 @@ class NcitTermSymbolDB:
             mmuRes = retDB.org_term2symbol['mmu'].get(ncitID, None)
 
             if hsaRes == None or mmuRes == None:
-                print(ncitID, row['NCIt Preferred Name'], hsaRes, mmuRes)
+                pass#print(ncitID, row['NCIt Preferred Name'], hsaRes, mmuRes)
 
             else:
                 wellAnnotated += 1
@@ -150,7 +151,7 @@ class NcitTermSymbolDB:
 
 
 
-        return
+        return retDB
 
         for elem in swissprot2ensembl:
             if len(swissprot2ensembl[elem]) > 1:

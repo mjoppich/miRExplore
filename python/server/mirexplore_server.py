@@ -167,17 +167,18 @@ def findInteractions():
     diseases = interactReq.get('disease', None)
     goes = interactReq.get('go', None)
     cells = interactReq.get('cells', None)
+    ncits = interactReq.get('ncits', None)
 
     loadSentences = interactReq.get('sentences', "true").upper() == "TRUE"
 
-    return returnInteractions(gene, mirna, lncrna, organisms=organisms, diseaseRestrictions=diseases, goRestrictions=goes, cellRestrictions=cells, loadSentences=loadSentences)
+    return returnInteractions(gene, mirna, lncrna, organisms=organisms, diseaseRestrictions=diseases, goRestrictions=goes, cellRestrictions=cells, ncitRestrictions=ncits, loadSentences=loadSentences)
 
 @app.route('/status')
 def getStatus():
     return app.make_response((jsonify({'error': 'must include homid'}), 400, None))
 
 
-def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None, loadSentences=True):
+def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None, ncitRestrictions=None, loadSentences=True):
 
     global mirFeedback
     global mirandaDB_mm10
@@ -185,6 +186,7 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
     global diseaseObo
     global goObo
     global cellObo
+    global ncitObo
     global pmid2go
     global pmid2disease
     global pmid2fma
@@ -329,91 +331,66 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
     addInfo = {}
 
-    if pmid2disease:
-
-        addInfo['disease'] = None
+    def makeAddInfo( pmidFile ):
 
         allDocInfos = {}
 
         for docid in allDocIDs:
-            docInfo = pmid2disease.getDOC(docid)
+            docInfo = pmidFile.getDOC(docid)
 
             if docInfo != None:
                 allDocInfos[docid] = docInfo
 
-        addInfo['disease'] = allDocInfos
+        return allDocInfos
+
+    if pmid2disease:
+        addInfo['disease'] = makeAddInfo(pmid2disease)
+
 
     if pmid2go:
+        addInfo['go'] = makeAddInfo(pmid2go)
 
-        addInfo['go'] = None
-
-        allDocInfos = {}
-
-        for docid in allDocIDs:
-            docInfo = pmid2go.getDOC(docid)
-
-            if docInfo != None:
-                allDocInfos[docid] = docInfo
-
-        addInfo['go'] = allDocInfos
 
     if pmid2cell:
+        addInfo['cells'] = makeAddInfo(pmid2cell)
 
-        addInfo['cells'] = None
+    if pmid2ncit:
+        addInfo['ncits'] = makeAddInfo(pmid2ncit)
 
-        allDocInfos = {}
+    #if pmid2fma:
+    #    addInfo['fma'] = makeAddInfo(pmid2fma)
 
-        for docid in allDocIDs:
-            docInfo = pmid2cell.getDOC(docid)
 
-            if docInfo != None:
-                allDocInfos[docid] = docInfo
+    def getAllowedTermIDs(restrictions, obo):
 
-        addInfo['cells'] = allDocInfos
+        allowedTermIDs = []
+        for delem in restrictions:
+            elemTerm = obo.getID(delem['termid'])
+
+            if elemTerm == None:
+                continue
+
+            elemTerms = [x.term.id for x in elemTerm.getAllChildren()] + [elemTerm.id]
+            allowedTermIDs += elemTerms
+
+        return set(allowedTermIDs)
+
+
 
     allowedIDs = defaultdict(list)
 
     if diseaseRestrictions != None:
-
-        allowedTermIDs = []
-        for delem in diseaseRestrictions:
-            elemTerm = diseaseObo.getID(delem['termid'])
-
-            if elemTerm == None:
-                continue
-
-            elemTerms = [x.term.id for x in elemTerm.getAllChildren()] + [elemTerm.id]
-            allowedTermIDs += elemTerms
-
-        allowedIDs['disease'] = set(allowedTermIDs)
+        allowedIDs['disease'] = getAllowedTermIDs(diseaseRestrictions, diseaseObo)
 
     if goRestrictions != None:
-
-        allowedTermIDs = []
-        for delem in goRestrictions:
-            elemTerm = goObo.getID(delem['termid'])
-
-            if elemTerm == None:
-                continue
-
-            elemTerms = [x.term.id for x in elemTerm.getAllChildren()] + [elemTerm.id]
-            allowedTermIDs += elemTerms
-
-        allowedIDs['go'] = set(allowedTermIDs)
+        allowedIDs['go'] = getAllowedTermIDs(diseaseRestrictions, goObo)
 
     if cellRestrictions != None:
+        allowedIDs['cells'] = getAllowedTermIDs(diseaseRestrictions, cellObo)
 
-        allowedTermIDs = []
-        for delem in cellRestrictions:
-            elemTerm = cellObo.getID(delem['termid'])
+    if ncitRestrictions != None:
+        allowedIDs['ncits'] = getAllowedTermIDs(ncitRestrictions, ncitObo)
 
-            if elemTerm == None:
-                continue
-
-            elemTerms = [x.term.id for x in elemTerm.getAllChildren()] + [elemTerm.id]
-            allowedTermIDs += elemTerms
-
-        allowedIDs['cells'] = set(allowedTermIDs)
 
 
     allrels = []
@@ -425,51 +402,40 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
         for jsonEV in lrEvs:
 
-            if diseaseRestrictions != None and len(allowedIDs['disease']) > 0:
+
+            def checkEvID(infoID):
+
+                if len(addInfo[infoID]) == 0:
+                    return True
 
                 docID = jsonEV['docid']
 
-                docIDDiseaseInfo = addInfo['disease'].get(docID, [])
+                infoIDInfos = addInfo[infoID].get(docID, [])
 
-                if len(docIDDiseaseInfo) == 0:
-                    continue
+                if len(infoIDInfos) == 0:
+                    return False
                 else:
 
-                    acceptEv = any([x['termid'] in allowedIDs['disease'] for x in docIDDiseaseInfo])
+                    acceptEv = any([x['termid'] in allowedIDs[infoID] for x in infoIDInfos])
 
                     if not acceptEv:
-                        continue
+                        return False
 
-            if goRestrictions != None and len(allowedIDs['go']) > 0:
+                return True
 
-                docID = jsonEV['docid']
 
-                docIDGOInfo = addInfo['go'].get(docID, [])
 
-                if len(docIDGOInfo) == 0:
-                    continue
-                else:
+            if diseaseRestrictions != None and not checkEvID('disease'):
+                continue
 
-                    acceptEv = any([x['termid'] in allowedIDs['go'] for x in docIDGOInfo])
+            if goRestrictions != None and not checkEvID('go'):
+                continue
 
-                    if not acceptEv:
-                        continue
+            if cellRestrictions != None and not checkEvID('cells'):
+                continue
 
-            if cellRestrictions != None and len(allowedIDs['cells']) > 0:
-
-                docID = jsonEV['docid']
-
-                docIDCellInfo = addInfo['cells'].get(docID, [])
-
-                if len(docIDCellInfo) == 0:
-                    continue
-                else:
-
-                    acceptEv = any([x['termid'] in allowedIDs['cells'] for x in docIDCellInfo])
-
-                    if not acceptEv:
-                        continue
-
+            if ncitRestrictions != None and not checkEvID('ncits'):
+                continue
 
             okEvs.append(jsonEV)
 
@@ -642,6 +608,39 @@ def disease_autocomplete():
 
     return app.make_response((jsonify(jsonResult), 200, None))
 
+
+@app.route('/ncit_ac', methods=['GET', 'POST'])
+def ncit_autocomplete():
+
+    global pmid2ncit
+
+
+    searchWords = request.get_json(force=True, silent=True)
+    searchWord = searchWords['search']
+
+    if searchWord == None or len(searchWord) < 2:
+        return app.make_response((jsonify([]), 200, None))
+
+    reMatch = regex.compile(searchWord + '{e<=3}')
+
+    jsonResult = list()
+
+    for (termName, termID) in pmid2ncit.getTerms():
+
+        if reMatch.match(termName):
+            jsonResult.append(
+                {
+                    'name': termName,
+                    'termid': termID,
+                    'group': 'go'
+                }
+            )
+
+        if len(jsonResult) > 100:
+            break
+
+    return app.make_response((jsonify(jsonResult), 200, None))
+
 @app.route('/go_ac', methods=['GET', 'POST'])
 def go_autocomplete():
 
@@ -746,10 +745,12 @@ relDBs = None
 diseaseObo = None
 goObo = None
 cellObo = None
+ncitObo = None
 pmid2go = None
 pmid2disease = None
 pmid2fma = None
 pmid2cell = None
+pmid2ncit = None
 testRels = None
 mirelPMID = None
 sentDB=None
@@ -775,6 +776,8 @@ def loadData(args):
     global sentDB
     global featureViewer
     global symbol2ensemblDB
+    global pmid2ncit
+    global ncitObo
 
     pmidBase = args.textmine# + '/aggregated_pmid/'
     pmcBase = args.textmine + '/aggregated_pmc/'
@@ -796,14 +799,14 @@ def loadData(args):
     allDBS = None
 
     print(datetime.datetime.now(), "Loading PMID2PMC")
-    pmid2pmcDB = PMID2PMCDB.loadFromFile(args.textmine + '/pmid2pmc')
+    #pmid2pmcDB = PMID2PMCDB.loadFromFile(args.textmine + '/pmid2pmc')
     print(datetime.datetime.now(), "Loading mirel")
 
     testRels = None  # TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
 
     mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols)
-    lncMirPMID = None  # MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.cur.pmid", ltype="lncrna", rtype="mirna")
-    geneLncPMID = None  # MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.cur.pmid", ltype="gene", rtype="lncrna")
+    lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.pmid", ltype="lncrna", rtype="mirna")
+    geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.pmid", ltype="gene", rtype="lncrna")
 
     relDBs = [recordsDB, mirtarbaseDB, mirelPMID, lncMirPMID, geneLncPMID, mirandaDB_mm10]
 
@@ -834,6 +837,7 @@ def loadData(args):
         pmid2disease = allDBS[1]
         pmid2fma = allDBS[2]
         pmid2cell = allDBS[3]
+        pmid2ncit = allDBS[4]
 
         print(datetime.datetime.now(), "Loading pickle ended")
 
@@ -842,6 +846,9 @@ def loadData(args):
     diseaseObo = GeneOntology(args.obodir + "/doid.obo")
     goObo = GeneOntology(args.obodir + "/go.obo")
     cellObo = GeneOntology(args.obodir + "/meta_cells.obo")
+    ncitObo = GeneOntology(args.obodir + "/ncit.obo")
+    fmaObo = GeneOntology(args.obodir + "/fma_obo.obo")
+
 
     print(datetime.datetime.now(), "Loading ontologies finished")
 
@@ -850,32 +857,31 @@ def loadData(args):
         pmid2disease = None
         pmid2fma = None
         pmid2cell = None
+        pmid2ncit = None
 
         print(datetime.datetime.now(), "Loading GO")
         pmid2go = PMID2XDB.loadFromFile(pmidBase + "/go.pmid", goObo, requiredPMIDs)
         print(datetime.datetime.now(), "Loading Disease")
         pmid2disease = PMID2XDB.loadFromFile(pmidBase + "/disease.pmid", diseaseObo, requiredPMIDs)
-        # print(datetime.datetime.now(), "Loading FMA")
-        # pmid2fma = PMID2XDB.loadFromFile(pmidBase + "/model_anatomy.pmid")
+        print(datetime.datetime.now(), "Loading FMA")
+        pmid2fma = PMID2XDB.loadFromFile(pmidBase + "/model_anatomy.pmid", fmaObo, requiredPMIDs)
         print(datetime.datetime.now(), "Loading cellline")
         pmid2cell = PMID2XDB.loadFromFile(pmidBase + "/celllines.pmid", cellObo, requiredPMIDs)
-        print(datetime.datetime.now(), "Loading mirna")
+        print(datetime.datetime.now(), "Loading ncit")
+        pmid2ncit = PMID2XDB.loadFromFile(pmidBase + "/ncit.pmid", ncitObo, requiredPMIDs)
 
-        allDBS = (pmid2go, pmid2disease, pmid2fma, pmid2cell)
+        allDBS = (pmid2go, pmid2disease, pmid2fma, pmid2cell, pmid2ncit)
 
         print(datetime.datetime.now(), "Writing Pickle")
 
         with open(pmidBase + "/dbs.pickle", 'wb') as fout:
             pickle.dump(allDBS, fout)
 
-
+        print(datetime.datetime.now(), "Finished Writing Pickle")
 
     print(datetime.datetime.now(), "Loading Features")
-
     rfDB = RFamDB.loadFromFile(pmidBase + '/rfam.regions.mirexplore')
-
     featureViewer = FeatureViewer(args.obodir, 'mmu', rfamDB=rfDB)
-
 
     print(datetime.datetime.now(), "Loading finished")
 
