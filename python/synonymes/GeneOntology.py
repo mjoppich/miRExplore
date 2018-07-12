@@ -254,9 +254,16 @@ class GOTerm:
         if self.is_a == None:
             return
 
+        if None in self.is_a:
+            print("oboterm with none parent ...", self.id, self.name)
+
         for x in self.is_a:
 
             if not x.term in already_seen:
+
+                if x.term == None:
+                    print("None observed", x, x.termid)
+                    continue
 
                 already_seen.add(x.term)
 
@@ -1007,26 +1014,27 @@ if __name__ == '__main__':
     #oTest.loadGeneAnnotation("/home/users/joppich/ownCloud/data/biomodels/gene2go.9606", {9606})
     #oTest = GeneOntology("/home/proj/projekte/textmining/FBN_ATOL_Dummerstorf/Daten-Ontologien/synonymes/modified/atol_v6_MZ.prot.obo")
     #oTest = GeneOntology('/mnt/c/dev/data/fbn_textmine/mom_new.obo')
-    oTest = GeneOntology('/mnt/c/Users/mjopp/Downloads/ncit.obo')
+    #oTest = GeneOntology('/mnt/c/Users/mjopp/Downloads/ncit.obo')
+    oTest = GeneOntology('/home/mjoppich/ownCloud/data/miRExplore/obodir/ncit.obo')
 
     #print(oTest.getID('GO:0002281'))
     #print(oTest.getGenes({9606}, 'GO:0002281'))
 
-    oterm = oTest.dTerms['NCIT:C20027']
-    allchildren = oterm.getAllChildren()
+    #oterm = oTest.dTerms['NCIT:C20027']
+    #allchildren = oterm.getAllChildren()
 
-    print(len(allchildren))
+    #print(len(allchildren))
 
-    oRet = GeneOntology()
+    #oRet = GeneOntology()
 
 
-    for rel in allchildren:
-        print(rel.term.id, rel.term.name)
-        oRet.dTerms[rel.term.id] = rel.term
+    #for rel in allchildren:
+    #    print(rel.term.id, rel.term.name)
+    #    oRet.dTerms[rel.term.id] = rel.term
 
-    oRet.saveFile("/mnt/c/Users/mjopp/Desktop/ncit.obo")
+    #oRet.saveFile("/mnt/c/Users/mjopp/Desktop/ncit.obo")
 
-    oTest = GeneOntology('/mnt/c/Users/mjopp/Desktop/ncit.obo')
+    #oTest = GeneOntology('/mnt/c/Users/mjopp/Desktop/ncit.obo')
 
 
     print( oTest.getRoots() )

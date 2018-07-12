@@ -190,6 +190,7 @@ def sankey_network():
     print(interactReq)
 
     obolevel = interactReq.get('obolevel', 3)
+    messenger_obolevel = interactReq.get('messenger_obolevel', 3)
 
     selected = interactReq.get('elements')
     selectedCells = [x['termid'] for x in selected if x['group'] == 'CELLS']
@@ -197,7 +198,7 @@ def sankey_network():
 
     graphObj = make_plot_info(interactReq.get('elements', None), interactReq.get('categories', None),
                               interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
-                              majorParents=True, onlyCells=False, obolevel=obolevel, selectedElems=selectedCells )
+                              majorParents=True, onlyCells=False, obolevel=obolevel, messenger_obolevel=messenger_obolevel, selectedElems=selectedCells )
 
     return app.make_response((jsonify(graphObj), 200, None))
 
@@ -217,11 +218,12 @@ def interaction_network():
 
     print(interactReq)
     obolevel = interactReq.get('obolevel', 3)
+    messenger_obolevel = interactReq.get('messenger_obolevel', 3)
 
 
     graphObj = make_plot_info(interactReq.get('elements', None), interactReq.get('categories', None),
                               interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
-                              majorParents=True, onlyCells=True, obolevel=obolevel)
+                              majorParents=True, onlyCells=True, obolevel=obolevel, messenger_obolevel=messenger_obolevel)
 
 
     for edge in graphObj['links']:
@@ -233,88 +235,21 @@ def interaction_network():
 
 
 
-def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2, selectedElems=None):
-
-    elemJSON = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=False)
-
-    rels = elemJSON['rels']
-    addinfo = elemJSON['pmidinfo']
-
-    docInfos = defaultdict(lambda: defaultdict(set))
-
-    for x in addinfo:
-
-        alladdinfo = addinfo[x]
-        for pmid in alladdinfo:
-            for ev in alladdinfo[pmid]:
-                termid = ev['termid']
-
-                docInfos[x][pmid].add(termid)
+def getOboID2Major(selectedTermIDs, hitsPerOboID, obo, primaryRoots, remainingRoots, oboLevel = 3, minOccurrences=10):
 
 
     selectedIDs = {}
+    for termID in selectedTermIDs:
 
-    if selectedElems != None:
+        if termID in obo.dTerms:
 
-        for termID in selectedElems:
+            selectedIDs[termID] = termID
 
-            if termID in cellsObo.dTerms:
+            ecTerm = obo.dTerms[termID]
+            ac = ecTerm.getAllChildren()
 
-                selectedIDs[termID] = termID
-
-                ecTerm = cellsObo.dTerms[termID]
-                ac = ecTerm.getAllChildren()
-
-                for child in ac:
-                    selectedIDs[child.term.id] = termID
-
-
-    """
-    
-    count evidence-hits per obo id
-    
-    """
-
-    hitsPerOboID = Counter()
-
-    if majorParents:
-
-        for x in rels:
-
-            for evidence in x['evidences']:
-
-                src = evidence.get('lontid', evidence['lid'])
-                tgt = evidence.get('rontid', evidence['rid'])
-
-                hitsPerOboID[src] += 1
-
-                if src in cellsObo.dTerms:
-                    oboNode = cellsObo.dTerms[src]
-
-                    for child in oboNode.getAllParents():
-                        hitsPerOboID[child.id] += 1
-
-                hitsPerOboID[tgt] += 1
-
-                if tgt in cellsObo.dTerms:
-                    oboNode = cellsObo.dTerms[tgt]
-
-                    for child in oboNode.getAllParents():
-                        hitsPerOboID[child.id] += 1
-
-
-    """
-    
-    In order to avoid too many single nodes, assign each child to a major parent ....
-    
-    """
-
-    allRoots = cellsObo.getRoots()
-    cellRoot = cellsObo.dTerms.get('CL:0000255', None)
-
-
-    oboid2majorid = {}
-    oboid2rootdist = {}
+            for child in ac:
+                selectedIDs[child.term.id] = termID
 
 
     def prepareObo2Major( base, overwrite=True ):
@@ -323,7 +258,7 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
             oboid2majorid[base.id] = base.id
             oboid2rootdist[base.id] = -1000
 
-        baseChildren = base.getAllChildren(maxLevel=obolevel)
+        baseChildren = base.getAllChildren(maxLevel=oboLevel)
         baseChildrenIDs = [x.term.id for x in baseChildren]
 
 
@@ -339,12 +274,12 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                     else:
 
 
-                        if hitsPerOboID[child.term.id] > 10:
+                        if hitsPerOboID[child.term.id] > minOccurrences:
                             oboid2majorid[child.term.id] = child.term.id
                         else:
 
                             if overwrite and child.term.id.startswith("CL"):
-                                print(child.term.name, child.term.id, hitsPerOboID[child.term.id])
+                                pass#print(child.term.name, child.term.id, hitsPerOboID[child.term.id])
 
                             oboid2majorid[child.term.id] = base.id
 
@@ -354,7 +289,7 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
                         oboid2rootdist[child.term.id] = -1000
 
-        allchildren = base.getChildrenAtLevel(obolevel, withLevel=True)
+        allchildren = base.getChildrenAtLevel(oboLevel, withLevel=True)
 
 
         for child, l in allchildren:
@@ -386,19 +321,129 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                             oboid2rootdist[nc.term.id] = cl
 
 
-                    #print(nc.term.id, nc.term.name, cl, "==>", child.name, child.id, l)
 
+    oboid2majorid = {}
+    oboid2rootdist = {}
 
-    for root in [cellRoot]:
+    for root in primaryRoots:
         prepareObo2Major(root)
 
-    for root in allRoots:
-        prepareObo2Major(root, overwrite=False)
+
+    if remainingRoots != None:
+        for root in remainingRoots:
+            prepareObo2Major(root, overwrite=False)
+
+    return oboid2majorid
+
+
+
+
+def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2, messenger_obolevel=3, selectedElems=None):
+
+    global messengerID2Name
+
+    elemJSON = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=False)
+
+    rels = elemJSON['rels']
+    addinfo = elemJSON['pmidinfo']
+
+    docInfos = defaultdict(lambda: defaultdict(set))
+
+    for x in addinfo:
+
+        alladdinfo = addinfo[x]
+        for pmid in alladdinfo:
+            for ev in alladdinfo[pmid]:
+                termid = ev['termid']
+
+                docInfos[x][pmid].add(termid)
+
+
+
+
+    """
+    
+    count evidence-hits per obo id
+    
+    """
+
+    hitsPerOboID = Counter()
+    messengerHitsPerOboID = Counter()
+
+    evCount = 10
+
+    if majorParents:
+        evCount = 0
+        for x in rels:
+
+            for evidence in x['evidences']:
+
+                evCount += 1
+
+                src = evidence.get('lontid', evidence['lid'])
+                tgt = evidence.get('rontid', evidence['rid'])
+
+                hitsPerOboID[src] += 1
+
+                if src in cellsObo.dTerms:
+                    oboNode = cellsObo.dTerms[src]
+
+                    for child in oboNode.getAllParents():
+                        hitsPerOboID[child.id] += 1
+
+                hitsPerOboID[tgt] += 1
+
+                if tgt in cellsObo.dTerms:
+                    oboNode = cellsObo.dTerms[tgt]
+
+                    for child in oboNode.getAllParents():
+                        hitsPerOboID[child.id] += 1
+
+                evDocId = evidence['docid']
+                messengerIDs = docInfos['messengers'].get(evDocId, [])
+
+                for messengerID in messengerIDs:
+
+                    if messengerID in messengersObo.dTerms:
+                        oboNode = messengersObo.dTerms[messengerID]
+
+                        messengerHitsPerOboID[oboNode.id] += 1
+
+                        for child in oboNode.getAllParents():
+
+                            if child == None:
+                                print("null child", oboNode.id)
+                                continue
+
+                            messengerHitsPerOboID[child.id] += 1
+
+
+    """
+    
+    In order to avoid too many single nodes, assign each child to a major parent ....
+    
+    """
+
+    allRoots = cellsObo.getRoots()
+    cellRoot = cellsObo.dTerms.get('CL:0000255', None)
+
+    selectedCellElems = [x['termid'] for x in cells if x['group'] == 'CELLS']
+    oboid2majorid = getOboID2Major(selectedCellElems, hitsPerOboID, cellsObo, [cellRoot], allRoots)
+
+
+
+    if messengers != None:
+        selectedMessengerElems = [x['termid'] for x in messengers if x['group'] == 'messengers']
+    else:
+        selectedMessengerElems = []
+
+    messengerOboid2Major = getOboID2Major(selectedMessengerElems, messengerHitsPerOboID, messengersObo, messengersObo.getRoots(), None, messenger_obolevel, minOccurrences=int(evCount * 0.1))
 
 
     oldname2newname = {}
 
     allNodes = set()
+
 
     for x in rels:
 
@@ -411,6 +456,7 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
                 newsrc = oboid2majorid.get(src, src)
                 newtgt = oboid2majorid.get(tgt, tgt)
+
 
                 if newsrc != None:
                     srcTerm = cellsObo.dTerms[newsrc]
@@ -495,6 +541,7 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
     name2obo = defaultdict(set)
 
+
     for x in rels:
 
         for evidence in x['evidences']:
@@ -561,7 +608,15 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
             for messengerID in messengerEdges:
 
-                mNodeIdx = allNodes.index(messengerID)
+
+                if messengerID == 'mUnknown':
+                    messengerName = messengerID
+                else:
+
+                    messengerID = messengerOboid2Major[messengerID]
+                    messengerName = messengerID2Name[messengerID]
+
+                mNodeIdx = allNodes.index(messengerName)
 
                 if not onlyCells:
                     allEdges[(edgeCellCell[1], mNodeIdx)] += len(categoryEdges)
@@ -633,15 +688,19 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                   for x in usedEdges]
     }
 
-    print("nodes")
 
-    for x in graphObj['nodes']:
-        print(x)
+    debug=False
+
+    if debug:
+        print("nodes")
+
+        for x in graphObj['nodes']:
+            print(x)
 
 
-    print("links")
-    for x in graphObj['links']:
-        print(x)
+        print("links")
+        for x in graphObj['links']:
+            print(x)
 
     return graphObj
 
@@ -1229,6 +1288,7 @@ pmid2pmcDB = None
 mirFeedback = None
 ccPMID = None
 cellsObo = None
+messengerID2Name = None
 
 def start_app_from_args(args):
 
@@ -1242,6 +1302,7 @@ def start_app_from_args(args):
     global cellsObo
     global mirFeedback
     global pmid2pmcDB
+    global messengerID2Name
 
 
     pmidBase = args.textmine + '/aggregated/'
@@ -1296,6 +1357,13 @@ def start_app_from_args(args):
 
     categoriesObo = GeneOntology(args.obodir + "/categorization.obo")
     messengersObo = GeneOntology(args.obodir + "/messenger.obo")
+
+    messengerID2Name = {}
+
+    for termID in messengersObo.dTerms:
+        term= messengersObo.dTerms[termID]
+        messengerID2Name[term.id] = term.name
+
 
     print(datetime.datetime.now(), "Loading ontologies finished")
 

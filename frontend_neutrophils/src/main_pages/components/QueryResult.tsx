@@ -19,7 +19,7 @@ export interface QueryResultProps {
     showEvidenceTable: boolean,
     showShortEvidenceTable: boolean,
     searchQuery: any,
-    obolevel?: any
+    obolevels?: any
 };
 export interface QueryResultState { 
 
@@ -33,7 +33,7 @@ export interface QueryResultState {
         showShortEvidenceTable: false,
         showEvidenceTable: true,
         searchQuery: null,
-        obolevel: 3
+        obolevels: {cells: 3, messengers: 3}
         };
 
     orgTLC2Long = {
@@ -190,13 +190,13 @@ export interface QueryResultState {
 
         if (this.props.showInteractionGraph)
         {
-            evidenceGraph.push( <NIInteractionNetwork key={evidenceGraph.length} obolevel={this.props.obolevel} data={this.props.searchQuery} graphtitle={"Cell-Cell Interactions"}/>);
+            evidenceGraph.push( <NIInteractionNetwork key={evidenceGraph.length} obolevels={this.props.obolevels} data={this.props.searchQuery} graphtitle={"Cell-Cell Interactions"}/>);
 
         }
 
         if (this.props.showSankeyChart)
         {
-            evidenceGraph.push( <NISankeyChart key={evidenceGraph.length} obolevel={this.props.obolevel} data={this.props.searchQuery} graphtitle={"Cell-Cell Interactions to Category and Location"}/>);
+            evidenceGraph.push( <NISankeyChart key={evidenceGraph.length} obolevels={this.props.obolevels} data={this.props.searchQuery} graphtitle={"Cell-Cell Interactions to Category and Location"}/>);
         }
 
         

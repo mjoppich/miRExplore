@@ -6,7 +6,7 @@ import config from '../config';
 
 import D3SVGParallelLinesGraph from './D3SVGForceParallelLines';
 
-export interface NIInteractionNetworkProps { obolevel: number, data: any, graphtitle:string}
+export interface NIInteractionNetworkProps { obolevels: any, data: any, graphtitle:string}
 export interface NIInteractionNetworkState { newData: any, graphData:any}
 
 
@@ -66,7 +66,9 @@ export default class NISankeyChart extends React.Component<NIInteractionNetworkP
         console.log("NI iNetwork reload graph data");
         console.log(sendData);
 
-        sendData['obolevel'] = this.props.obolevel;
+        sendData['obolevel'] = this.props.obolevels['cells'];
+        sendData['messenger_obolevel'] = this.props.obolevels['messenger'];
+
 
         axios.post(config.getRestAddress() + "/interaction_network",sendData, config.axiosConfig)
         .then(function (response) {

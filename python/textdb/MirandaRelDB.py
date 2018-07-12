@@ -121,7 +121,7 @@ class MirandaRelDB(DataBaseDescriptor):
             retObj = symbol2ens.get_symbol_from_ens(org, rid)
 
             if retObj == None and not rid.startswith('LNC'):
-                print(lid, rid, org)
+                #print(lid, rid, org)
                 continue
             else:
                 retObj = [rid]

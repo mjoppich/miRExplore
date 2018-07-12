@@ -2,9 +2,6 @@ import * as React from "react";
 import * as d3 from 'd3';
 import * as ReactDOM from "react-dom";
 
-import axios from 'axios';
-
-
 
 interface SimNode extends d3.SimulationNodeDatum {
     id: string;
@@ -23,7 +20,7 @@ interface Graph {
     links: Array<SimLink>;
 }
 
-export interface D3SVGParallelLinesProps { id: string, graph: {nodes: any, links: any} }
+export interface D3SVGParallelLinesProps { graph: {nodes: any, links: any}, graphtitle?:string }
 export interface D3SVGParallelLinesState { }
 
 
@@ -71,26 +68,41 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         var width = domNode.clientWidth;
         var height = domNode.clientHeight;
 
-
         this.svg = d3.select(domNode).append("svg")
         .attr("width", width)
         .attr("height", height)
         .call(d3.zoom().on("zoom", function () {
             self.svg.attr("transform", d3.event.transform)
         }))
-        .append("g");
+        .append("g")
+        .attr("transform","translate("+width/2.0+","+height/2.0+")");
 
         var attractForce = d3.forceManyBody().strength(100).distanceMax(500).distanceMin(300);
-        var repelForce = d3.forceManyBody().strength(-200).distanceMax(250).distanceMin(20);
+        var repelForce = d3.forceManyBody().strength(-100).distanceMax(250).distanceMin(20);
+
+        var attractForce = d3.forceManyBody().strength(80).distanceMax(400).distanceMin(80);
+        var collisionForce = d3.forceCollide(12).strength(1).iterations(100);                       
+                            
 
         this.force = d3.forceSimulation<SimNode, SimLink>() 
             //.force("charge", d3.forceManyBody().strength(-700).distanceMin(200).distanceMax(500)) 
             .alphaDecay(0.03)
-            .force("attractForce",attractForce).force("repelForce",repelForce)
-            .force("link", d3.forceLink().id(function(d:any) { return d.index })) 
+            .velocityDecay(0.2)
+            .force("link", d3.forceLink().id(function(d:any) { return d.index }).distance(200))
+            //.force("x", d3.forceX(width / 2).strength(0.015))
+            //.force("y", d3.forceY(height / 2).strength(0.015))
+            .force("repel", d3.forceManyBody().strength(-100).distanceMax(250).distanceMin(20))
+            .force("collide", d3.forceCollide().radius(function(d)
+            {
+                return 20;
+            }).iterations(5));
+/*
+            .force("attractForce",attractForce).force("collisionForce",collisionForce)
+            .force("link", d3.forceLink().id(function(d:any) { return d.index }).distance(200))
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("y", d3.forceY(0.001))
             .force("x", d3.forceX(0.001))
+            */
 
         var color = function (group) {
             if (group == 'gene') {
@@ -100,19 +112,38 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
             } else {
                 return "#405275"
             }
-        }
+        };
         
         this.force
         .nodes(theprops.graph.nodes) 
-        .force("link").links(theprops.graph.links)
+        .force("link").links(theprops.graph.links);
 
-    var predictionLink = this.svg.selectAll(".pred-link")
+        this.maxGroup1Value = 0;
+        this.maxGroup2Value = 0;
+
+        for (var i=0; i < theprops.graph.links.length; ++i)
+        {
+            var edge = theprops.graph.links[i];
+
+            if (edge.group1 > this.maxGroup1Value)
+            {
+                this.maxGroup1Value = edge.group1;
+            }
+
+            if (edge.group2 > this.maxGroup2Value)
+            {
+                this.maxGroup2Value = edge.group2;
+            }
+        }
+
+
+    var group1Link = this.svg.selectAll(".g1-link")
         .data(theprops.graph.links)
         .enter()
         .append("line")
         .attr("class", "link");
 
-    var evidenceLink = this.svg.selectAll(".ev-link")
+    var group2Link = this.svg.selectAll(".g2-link")
         .data(theprops.graph.links)
         .enter()
         .append("line")
@@ -133,25 +164,25 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
             return color(d.group);
         });
 
+
     node.append("text")
-        .attr("dx", -18)
-        .attr("dy", 8)
-        .style("font-family", "overwatch")
+        .attr("dx", 20)
+        .attr("dy", ".35em")
         .style("font-size", "18px")
         .text(function (d) {
-            return d.label
+            return d.name
         });
 
     var self=this;
 
-    predictionLink
-    .style("stroke-width", function stroke(d)  {return self.prediction_link_width(d) })
+    group1Link
+    .style("stroke-width", function stroke(d)  {return self.group1_link_width(d) })
     .style("stroke", "#70C05A")
     //.style("stroke-width", "3.5px")
     .style("stroke-opacity", "1.0")
   
-   evidenceLink
-    .style("stroke-width", function stroke(d)  {return self.evidence_link_width(d) })
+   group2Link
+    .style("stroke-width", function stroke(d)  {return self.group2_link_width(d) })
     .style("stroke", "#438DCA")
     //.style("stroke-width", "3.5px")
     .style("stroke-opacity", "1.0")
@@ -159,12 +190,12 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
     var tickFunction = function () {
 
-        predictionLink
+        group1Link
         .attr("x1", function(d) { return d.source.x-self.line_shift(d,1)[0]; })
         .attr("y1", function(d) { return d.source.y-self.line_shift(d,1)[1]; })
         .attr("x2", function(d) { return d.target.x-self.line_shift(d,1)[0]; })
         .attr("y2", function(d) { return d.target.y-self.line_shift(d,1)[1]; });
-        evidenceLink
+        group2Link
             .attr("x1", function(d) { return d.source.x-self.line_shift(d,-1)[0]; })
             .attr("y1", function(d) { return d.source.y-self.line_shift(d,-1)[1]; })
             .attr("x2", function(d) { return d.target.x-self.line_shift(d,-1)[0]; })
@@ -217,7 +248,7 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
     total_width(d)
     {
         // or add d.evidence+d.predicted
-        return 30;
+        return 20;
     }
 
     line_shift(d, direction) {
@@ -239,14 +270,19 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
       return [delta_x, delta_y]
     }
 
-    evidence_link_width(d)
+    maxGroup1Value: number;
+    maxGroup2Value: number;
+
+    group1_link_width(d)
     {
-        return 5.0 + Math.min(100.0, d.evidence) / 10.0;
+        var baseWidth = Math.max(20.0, d.group1) / this.maxGroup1Value;
+        return 5.0 + 5.0*baseWidth;
     }
 
-    prediction_link_width(d)
+    group2_link_width(d)
     {
-        return 5.0 + Math.min(100.0, d.predicted) / 10.0;
+        var baseWidth = Math.max(20.0, d.group2) / this.maxGroup2Value;
+        return 5.0 + 5.0*baseWidth;
     }
 
     dragstarted(d) {
@@ -420,11 +456,11 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         //this.context.beginPath();
         //this.context.lineWidth = 20;
         //this.context.strokeStyle = "red";
-        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, -1, d.predicted));
+        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, -1, d.group1));
         //this.context.stroke();   
 
         //this.context.beginPath();
-        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, 1, d.evidence));
+        this.props.graph.links.forEach( (d) => this.drawLink(d, this.context, 1, d.group2));
         //this.context.stroke();
       
         this.context.beginPath();
@@ -488,10 +524,10 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
             if (shiftFactor == 1)
             {
-                ctx.lineWidth = d.evidence;
+                ctx.lineWidth = d.group1;
                 ctx.strokeStyle = "green";
             } else {
-                ctx.lineWidth = d.predicted;
+                ctx.lineWidth = d.group2;
                 ctx.strokeStyle = "red";
             }
 
@@ -607,7 +643,14 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
         console.log("d3 n4j did render");
 
+        var graphtitle = <span></span>;
+
+        if (this.props.graphtitle)
+        {
+            graphtitle = <h1>{this.props.graphtitle}</h1>;
+        }
+
         //{width: '800px', height:'400px'}
-            return (<div><p>graph</p><div ref="graph" style={{height: "800px", width: "1200px"}}></div></div>);
+            return (<div>{graphtitle}<div ref="graph" style={{height: "800px", width: "1200px"}}></div></div>);
     }
 }

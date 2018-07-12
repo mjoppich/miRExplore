@@ -6,7 +6,7 @@ import config from '../config';
 import D3SankeyChart from "./SankeyChart";
 
 
-export interface NISankeyChartProps { obolevel: number, data: any, graphtitle:string}
+export interface NISankeyChartProps { obolevels: any, data: any, graphtitle:string}
 export interface NISankeyChartState { newData: any, graphData:any}
 
 
@@ -59,7 +59,9 @@ export default class NISankeyChart extends React.Component<NISankeyChartProps, N
 
         var self=this;
 
-        sendData['obolevel'] = this.props.obolevel;
+        sendData['obolevel'] = this.props.obolevels['cells'];
+        sendData['messenger_obolevel'] = this.props.obolevels['messenger'];
+
 
         console.log("NI Sankey reload graph data");
         console.log(sendData);

@@ -1,14 +1,11 @@
 import * as React from 'react';
 import Switch from '@material-ui/core/Switch'
-import OrganismChipAC from '../components/OrganismChipAC';
-import EntityChipAC from '../components/EntityChipAC';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import OboChipAC from '../components/OBOChipAC';
-import {Card, CardActions, CardHeader, CardText} from 'material-ui/Card';
+import {Card, CardHeader, CardText} from 'material-ui/Card';
 import Button from '@material-ui/core/Button';
 import axios from 'axios';
 import config from '../config';
-import TextField from '@material-ui/core/TextField';
 
 import FormGroup from '@material-ui/core/FormGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel'
@@ -19,15 +16,17 @@ export interface QueryComponentProps { key: number, loadSentences?: boolean, sho
 export interface QueryComponentState {
     selectedElements: Array<any>,
     selectedOrganisms: Array<any>,
-    selectedCategories: Array<any>,
-    selectedMessengers: Array<any>,
+    selectedDiseases: Array<any>,
+    selectedGOs: Array<any>,
+    selectedCells: Array<any>,
+    selectedNCITs: Array<any>,
+
     interactions: any,
 
     showInteractionGraph:boolean,
-    showSankeyChart: boolean,
+    showFeatures: boolean,
     queryStarted: boolean,
-    obolevel: number,
-    messengerobolevel: number,
+
     loadSentences: boolean
  };
 
@@ -45,17 +44,17 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
     }
 
     readonly state = {
-        selectedElements: [],
+        selectedElements:[],
         selectedOrganisms: [],
-        selectedMessengers: [],
-        selectedCategories: [],
+        selectedDiseases: [],
+        selectedGOs: [],
+        selectedCells: [],
+        selectedNCITs: [],
+    
         interactions: [],
-
-        showSankeyChart:true,
+    
         showInteractionGraph: false,
-
-        obolevel: 3,
-        messengerobolevel: 1,
+        showFeatures: false,
         queryStarted: false,
         loadSentences: null
     };
@@ -111,17 +110,37 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
         for (var i = 0; i < this.state.selectedElements.length; ++i)
         {
-            sendData['elements'] = this.state.selectedElements;
+            let elem = this.state.selectedElements[i];
+
+            let elemGroup = elem['group'];
+            let elemName = elem['name'];
+
+            if (elemGroup in sendData)
+            {
+                sendData[elemGroup].push(elemName);
+            } else {
+                sendData[elemGroup] = [elemName];
+            }
+}
+
+        if ((this.state.selectedCells) && (this.state.selectedCells.length > 0))
+        {
+            sendData['cells'] = this.state.selectedCells;
         }
 
-        if ((this.state.selectedMessengers) && (this.state.selectedMessengers.length > 0))
+        if ((this.state.selectedDiseases) && (this.state.selectedDiseases.length > 0))
         {
-            sendData['messengers'] = this.state.selectedMessengers;
+            sendData['disease'] = this.state.selectedDiseases;
         }
 
-        if ((this.state.selectedCategories) && (this.state.selectedCategories.length > 0))
+        if ((this.state.selectedGOs) && (this.state.selectedGOs.length > 0))
         {
-            sendData['categories'] = this.state.selectedCategories;
+            sendData['go'] = this.state.selectedGOs;
+        }
+
+        if ((this.state.selectedNCITs) && (this.state.selectedNCITs.length > 0))
+        {
+            sendData['ncits'] = this.state.selectedNCITs;
         }
 
         if ((this.state.selectedOrganisms)&&(this.state.selectedOrganisms.length > 0))
@@ -161,18 +180,18 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 /*
 
 
- <Toggle
-                label="Include Predictive Interactions"
-                defaultToggled={true}
-                toggled={this.state.predictiveInteractions}
-                onToggle={(event, newValue) => this.setState({predictiveInteractions: !this.state.predictiveInteractions})}
-                />
-                <Toggle
-                label="Show Gene Structure"
-                defaultToggled={false}
-                toggled={this.state.showGeneStructure}
-                onToggle={(event, newValue) => this.setState({showGeneStructure: !this.state.showGeneStructure})}
-                />
+            <Toggle
+            label="Include Predictive Interactions"
+            defaultToggled={true}
+            toggled={this.state.predictiveInteractions}
+            onToggle={(event, newValue) => this.setState({predictiveInteractions: !this.state.predictiveInteractions})}
+            />
+            <Toggle
+            label="Show Gene Structure"
+            defaultToggled={false}
+            toggled={this.state.showGeneStructure}
+            onToggle={(event, newValue) => this.setState({showGeneStructure: !this.state.showGeneStructure})}
+            />
 
                 */
 
@@ -191,17 +210,11 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
             if (!this.state.queryStarted)
             {
-                alignResults.push(<p key={alignResults.length}>No Result Available for your query.</p>)   ;
+                alignResults.push(<p key={alignResults.length}>Press Query Specified Elements to start exploring.</p>)   ;
             }
             //alignResults.push(<pre key={1}>{JSON.stringify(this.state.selectedOrganisms, null, 2)}</pre>)   ;
 
         } else {
-
-            var obolevels = {
-                cells: this.state.obolevel,
-                messenger: this.state.messengerobolevel
-            };
-
 
             alignResults.push(
                 <QueryResult
@@ -209,12 +222,12 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                 showEvidenceTable={this.props.showEvidenceTable}
                 showShortEvidenceTable={this.props.showShortEvidenceTable}
                 showInteractionGraph={this.state.showInteractionGraph}
-                showSankeyChart={this.state.showSankeyChart}
+                showFeatures={this.state.showFeatures}
                 searchWords={this.state.selectedElements}
                 foundRelations={this.state.interactions["rels"]}
                 docInfos={this.state.interactions["pmidinfo"]}
                 searchQuery={this.state.interactions["searchquery"]}
-                obolevels={obolevels}
+                
                 />)
 
             //alignResults.push(<pre key={0}>{JSON.stringify(this.state.interactions, null, 2)}</pre>)   ;
@@ -236,8 +249,8 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
                         <OboChipAC
                             url="autocomplete"
-                            floatText="Cell-Type"
-                            hintText="Enter Cell-Type"
+                            floatText="Gene Symbol/miRNA"
+                            hintText="Enter Gene Symbol/miRNA"
                             onValueChange={(newvalues) => this.setState({selectedElements: newvalues})
                         }/>
 
@@ -248,19 +261,32 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                             onValueChange={(newvalues) => this.setState({selectedOrganisms: newvalues})
                         }/>
 
-
                         <OboChipAC
-                            url="category_ac"
-                            floatText="Categories"
-                            hintText="Enter category name"
-                            onValueChange={(newvalues) => this.setState({selectedCategories: newvalues})
+                            url="ncit_ac"
+                            floatText="Protein Class"
+                            hintText="Enter a Protein Class"
+                            onValueChange={(newvalues) => this.setState({selectedNCITs: newvalues})
                         }/>
 
                         <OboChipAC
-                            url="messengers_ac"
-                            floatText="Messengers"
-                            hintText="Enter Messenger-Term here"
-                            onValueChange={(newvalues) => this.setState({selectedMessengers: newvalues})
+                            url="go_ac"
+                            floatText="Gene Ontology"
+                            hintText="Enter GO-Name"
+                            onValueChange={(newvalues) => this.setState({selectedGOs: newvalues})
+                        }/>
+
+                        <OboChipAC
+                            url="cells_ac"
+                            floatText="Cells"
+                            hintText="Enter Cell-name here"
+                            onValueChange={(newvalues) => this.setState({selectedCells: newvalues})
+                        }/>
+
+                        <OboChipAC
+                            url="disease_ac"
+                            floatText="Diseases"
+                            hintText="Enter Disease-name here"
+                            onValueChange={(newvalues) => this.setState({selectedDiseases: newvalues})
                         }/>
 
         <FormGroup>
@@ -289,41 +315,11 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
             <FormControlLabel
             control={
                 <Switch
-                checked={this.state.showSankeyChart}
-                onChange={(newValue) => this.setState({showSankeyChart: !this.state.showSankeyChart})}
+                checked={this.state.showFeatures}
+                onChange={(newValue) => this.setState({showFeatures: !this.state.showFeatures})}
                 /> 
             }
-            label="Show Sankey Chart"
-            />
-
-            <TextField
-                id="oboinput"
-                label="Ontology Hierarchy Level"
-                value={this.state.obolevel}
-                onChange={(evt) => {console.log(evt.target.value); this.setState({obolevel: Number(evt.target.value)})}}
-                type="number"
-                helperText="For plots only: specify how many levels to go down in cell hierarchy"
-
-                InputLabelProps={{
-                shrink: true,
-
-                }}
-                margin="normal"
-            />
-
-            <TextField
-                id="messenger_obo_level"
-                label="Messengers Hierarchy Level"
-                value={this.state.messengerobolevel}
-                onChange={(evt) => {console.log(evt.target.value); this.setState({messengerobolevel: Number(evt.target.value)})}}
-                type="number"
-                helperText="For plots only: specify how many levels to go down in messengers hierarchy"
-
-                InputLabelProps={{
-                shrink: true,
-
-                }}
-                margin="normal"
+            label="Show Gene Features"
             />
 
                 <Button onClick={() => this.prepareResults()}>

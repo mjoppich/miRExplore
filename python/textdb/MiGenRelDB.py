@@ -213,9 +213,21 @@ class MiGenRelDB(DataBaseDescriptor):
     def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None, switchLR=False):
 
 
+        if switchLR:
+            ontTmp = lontology
+            typeTmp = ltype
+
+            lontology = rontology
+            ltype = rtype
+
+            rontology = ontTmp
+            rtype = typeTmp
+
+
         ret = MiGenRelDB(ltype, rtype)
         ret.lontology = lontology
         ret.rontology = rontology
+
 
         file_base = os.path.basename(filepath)
         fileDir = os.path.dirname(filepath)
