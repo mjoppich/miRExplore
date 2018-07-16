@@ -281,7 +281,26 @@ def getOboID2Major(selectedTermIDs, hitsPerOboID, obo, primaryRoots, remainingRo
                             if overwrite and child.term.id.startswith("CL"):
                                 pass#print(child.term.name, child.term.id, hitsPerOboID[child.term.id])
 
-                            oboid2majorid[child.term.id] = base.id
+                            #find best parent to assign this child to
+
+                            level2parent = child.term.getAllParentyByLevel()
+
+                            parentSet = False
+
+                            for i in range(min(level2parent), max(level2parent)):
+                                if i in level2parent:
+
+                                    for parent in level2parent[i]:
+                                        if hitsPerOboID[parent.id] > minOccurrences:
+                                            oboid2majorid[child.term.id] = parent.id
+                                            parentSet = True
+                                            break
+
+                                if parentSet:
+                                    break
+
+                            if parentSet == False:
+                                oboid2majorid[child.term.id] = base.id
 
                         if child.term.id == 'CL:1000497':
                             print("Too few hits for", child.term.name, oboid2majorid[child.term.id], hitsPerOboID[child.term.id], base.id)
@@ -437,7 +456,9 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
     else:
         selectedMessengerElems = []
 
-    messengerOboid2Major = getOboID2Major(selectedMessengerElems, messengerHitsPerOboID, messengersObo, messengersObo.getRoots(), None, messenger_obolevel, minOccurrences=int(evCount * 0.1))
+    messengerMinOccs = int(evCount * 0.1)
+    print("Messenger Minimum Occurrences", messengerMinOccs)
+    messengerOboid2Major = getOboID2Major(selectedMessengerElems, messengerHitsPerOboID, messengersObo, messengersObo.getRoots(), None, messenger_obolevel, minOccurrences=messengerMinOccs)
 
 
     oldname2newname = {}

@@ -6,6 +6,7 @@ import sys
 import os
 
 from synonymes.SynonymFile import Synfile
+from synonymes.mirnaID import miRNA, miRNAPART
 from textdb.SymbolEnsemblDB import SymbolEnsemblDB
 from textdb.featureviewer import FeatureViewer
 from textdb.rfamDB import RFamDB
@@ -35,7 +36,7 @@ from io import StringIO
 from flask import Flask, jsonify, request, redirect, url_for, send_from_directory
 import json
 import pprint
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from flask_cors import CORS
 
@@ -90,6 +91,114 @@ def help():
     res +="</body></html>"
 
     return res, 200, None
+
+
+
+@app.route('/hfi_general', methods=['POST'])
+def hfi_general():
+    interactReq = request.get_json(force=True, silent=True)
+
+    if interactReq == None:
+        return app.make_response((jsonify({'error': 'invalid json'}), 400, None))
+
+    entType = interactReq.get('type', "gene")
+
+    if not entType.upper() in ['GENE', 'MIRNA']:
+        return app.make_response((jsonify({'error': 'invalid enttity type ' + entType}), 400, None))
+
+    mirnas = []
+    genes = []
+
+    if entType.upper() == 'GENE':
+        entName = interactReq.get('name', None)
+        if entName != None:
+            genes.append(entName)
+
+    elif entType.upper() == 'MIRNA':
+
+        entName = interactReq.get('name', None)
+        if entName != None:
+            mirnas.append(entName)
+
+    if all([len(x) == 0 for x in [mirnas, genes]]):
+        return app.make_response((jsonify({'error': 'no entity names given'}), 400, None))
+
+    relObj = returnInteractions(genes, mirnas, None, loadSentences=False)
+    rels = relObj['rels']
+
+    seenInteractors = defaultdict(set)
+    seenPMIDs = set()
+    seenEvidenceTypes = Counter()
+
+    for rel in rels:
+        """
+                    allrels.append({'lid':lent[0],
+                            'rid': rent[0],
+                            'ltype': lent[1],
+                            'rtype': rent[1],
+                            'evidences': okEvs
+                            })
+        """
+
+        if entType.upper() == 'GENE':
+
+            for ev in rel['evidences']:
+
+                docid = ev.get('docid', None)
+
+                if docid != None:
+                    seenPMIDs.add(docid)
+
+                data_source = ev.get('data_source', None)
+
+                seenEvidenceTypes[data_source] += 1
+
+
+            if rel['ltype'].upper() == entType.upper():
+                seenInteractors[rel['rtype']].add( rel['rid'] )
+
+            else:
+                seenInteractors[rel['ltype']].add( rel['lid'] )
+
+
+
+    seenMirnaIDs = set()
+    if entType.upper() == 'GENE':
+
+        for x in seenInteractors['mirna']:
+
+            txtMirna = x
+
+            try:
+                mirnaID = miRNA(txtMirna)
+
+                mirID = mirnaID.getPart(miRNAPART.ID, None)
+
+                mirID = int(mirID)
+
+                seenMirnaIDs.add(mirID)
+
+            except:
+                seenMirnaIDs.add(x)
+
+
+
+
+    answer = {
+        'search': genes,
+        'interactor_count': len(seenInteractors),
+        'interactor_types': [x for x in seenInteractors],
+        'data_source_count': len(seenEvidenceTypes),
+        'data_sources': [x for x in seenEvidenceTypes],
+        'evidence_count': sum([seenEvidenceTypes[x] for x in seenEvidenceTypes]),
+        'interactors': list(seenMirnaIDs)
+    }
+
+    return app.make_response((jsonify(answer), 200, None))
+
+
+
+
 
 
 
@@ -171,7 +280,10 @@ def findInteractions():
 
     loadSentences = interactReq.get('sentences', "true").upper() == "TRUE"
 
-    return returnInteractions(gene, mirna, lncrna, organisms=organisms, diseaseRestrictions=diseases, goRestrictions=goes, cellRestrictions=cells, ncitRestrictions=ncits, loadSentences=loadSentences)
+    retObj = returnInteractions(gene, mirna, lncrna, organisms=organisms, diseaseRestrictions=diseases, goRestrictions=goes, cellRestrictions=cells, ncitRestrictions=ncits, loadSentences=loadSentences)
+
+    return app.make_response((jsonify(retObj), 200, None))
+
 
 @app.route('/status')
 def getStatus():
@@ -454,7 +566,8 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
         'pmidinfo': addInfo
     }
 
-    return app.make_response((jsonify(returnObj), 200, None))
+    return returnObj
+
 
 @app.route("/feedback_info", methods=['GET', 'POST'])
 def getFeedbackInfo():

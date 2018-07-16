@@ -244,12 +244,22 @@ class GOTerm:
     def getAllParents(self):
 
         allParents = set()
+        seenByLevel = defaultdict(set)
 
-        self.__getAllParents(allParents)
+        self.__getAllParents(seenByLevel, allParents, 0)
 
         return allParents
 
-    def __getAllParents(self, already_seen):
+    def getAllParentyByLevel(self):
+
+        allParents = set()
+        seenByLevel = defaultdict(set)
+
+        self.__getAllParents(seenByLevel, allParents, 0)
+
+        return seenByLevel
+
+    def __getAllParents(self, seenByLevel, already_seen, currentLevel):
 
         if self.is_a == None:
             return
@@ -266,8 +276,9 @@ class GOTerm:
                     continue
 
                 already_seen.add(x.term)
+                seenByLevel[currentLevel].add(x.term)
 
-                x.term.__getAllParents(already_seen)
+                x.term.__getAllParents(seenByLevel, already_seen, currentLevel+1)
 
 
     @classmethod
