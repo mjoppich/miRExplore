@@ -4,6 +4,8 @@ import pickle
 import regex
 import sys
 import os
+import shlex
+
 
 from synonymes.SynonymFile import Synfile
 from synonymes.mirnaID import miRNA, miRNAPART
@@ -871,7 +873,7 @@ featureViewer = None
 symbol2ensemblDB = None
 
 
-def loadData(args):
+def start_app_from_args(args):
 
 
     global mirFeedback
@@ -892,10 +894,10 @@ def loadData(args):
     global pmid2ncit
     global ncitObo
 
-    pmidBase = args.textmine# + '/aggregated_pmid/'
+    pmidBase = args.textmine + '/aggregated_pmid/'
     pmcBase = args.textmine + '/aggregated_pmc/'
 
-    normGeneSymbols = normalize_gene_names()
+    normGeneSymbols = normalize_gene_names(path=args.obodir + "/hgnc_no_withdrawn.syn")
 
     print("Loading Interactions")
 
@@ -930,7 +932,7 @@ def loadData(args):
     mirFeedback = feedbackDB(args.feedback)
 
     print(datetime.datetime.now(), "Loading sents")
-    sentDB = SentenceDB.loadFromFile(args.sentdir, args.textmine + "/pmid2sent")
+    sentDB = SentenceDB.loadFromFile(args.sentdir, pmidBase + "/pmid2sent")
     print(datetime.datetime.now(), "Finished sents")
 
     requiredPMIDs = set()
@@ -997,17 +999,20 @@ def loadData(args):
     featureViewer = FeatureViewer('mmu', args.obodir, rfamDB=rfDB)
 
     print(datetime.datetime.now(), "Loading finished")
-
-
-if __name__ == '__main__':
-
-
+def getCLParser():
     parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
     parser.add_argument('-t', '--textmine', type=str, help='Base for Textmining. Includes aggregated_ and results folder', required=True)
     parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
     parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
     parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
     parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
+
+    return parser
+
+if __name__ == '__main__':
+
+
+    parser = getCLParser()
 
     args = parser.parse_args()
 
@@ -1016,7 +1021,24 @@ if __name__ == '__main__':
 
     print("Starting Flask on port", args.port)
 
-    loadData(args)
+    start_app_from_args(args)
 
     print([rule.rule for rule in app.url_map.iter_rules() if rule.endpoint != 'static'])
     app.run(threaded=True, host="0.0.0.0", port=args.port)
+
+def gunicorn_start( datadir="/home/proj/biosoft/ws/projekte/dataintegration/yancDB",
+                    sentdir="/home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/pmid_sent",
+                    feedbackFile=None):
+
+    parser = getCLParser()
+
+    argstr = "--textmine {datadir} --obodir {datadir}/obodir --sentdir {sentdir} --feedback {feedbackFile}".format(datadir=datadir, sentdir=sentdir, feedbackFile=feedbackFile)
+
+    print("Starting app with")
+    print(argstr)
+
+    args = parser.parse_args(shlex.split(argstr))
+
+    start_app_from_args(args)
+
+    return app
