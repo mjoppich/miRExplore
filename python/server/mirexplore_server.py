@@ -994,7 +994,7 @@ def loadData(args):
 
     print(datetime.datetime.now(), "Loading Features")
     rfDB = RFamDB.loadFromFile(pmidBase + '/rfam.regions.mirexplore')
-    featureViewer = FeatureViewer(args.obodir, 'mmu', rfamDB=rfDB)
+    featureViewer = FeatureViewer('mmu', args.obodir, rfamDB=rfDB)
 
     print(datetime.datetime.now(), "Loading finished")
 

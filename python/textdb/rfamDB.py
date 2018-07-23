@@ -51,7 +51,7 @@ class RFamOrgDB:
 
                 #CM000663.2      hsa chr1 1
 
-                print(line)
+                #print(line)
 
                 accid = line[0]
                 orgid = line[1]

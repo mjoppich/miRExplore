@@ -4,38 +4,54 @@ import json
 
 #from textdb.rfamDB import RFamDB
 from mongodb.pymongodb import MongoDB
+from textdb.rfamDB import RFamDB
 
 
 class FeatureViewer:
 
     #def __init__(self, my_gene, my_mirna, basedir, org, rfamDB=None):
-    def __init__(self, my_gene, my_mirna, basedir, org):
+    def __init__(self, org, basedir=None, rfamDB = None):
 
-        #self.rfamDB = rfamDB
+        self.rfamDB = rfamDB
         self.org = org
-        self.gene = my_gene
-        self.mirna = my_mirna
-        self.mongo = MongoDB('minglerna')
 
-        self.df_features = self.queryDBForGeneID('assembly')
-        self.df_interactions = self.queryDBForGeneID('interactions')
+        self.mongo = None
 
-    def queryDBForGeneID(self, my_collection):
+        if basedir == None:
+            print("FeatureViewer:", "db based")
+
+
+            self.mongo = MongoDB('minglerna')
+
+
+
+        else:
+            print("FeatureViewer:", "file based")
+
+            interaction_file = os.path.join(basedir, "mm10_interactions_allDBs_and_pc.json")
+            with open(interaction_file) as interaction_input:
+                self.df_interactions = json.load(interaction_input)
+
+            gene_file = os.path.join(basedir, "mm10_primary_assembly_and_lncRNA.json")
+            with open(gene_file) as gene_input:
+                self.df_features = json.load(gene_input)
+
+    def queryDBForGeneID(self, my_collection, geneID):
 
         collection = self.mongo.getCollection(my_collection)
-        result = self.mongo.getJsonObjectForGeneID(collection, self.gene)
+        result = self.mongo.getJsonObjectForGeneID(collection, geneID)
         json_result = json.loads(result)
 
         return json_result
 
-    def getFeatures(self):
+    def getFeatures(self, gene, mirna):
 
         valid_gene = 1
         gene_type = None
-        if 'ENS' in self.gene:
+        if 'ENS' in gene:
             gene_type = 'gene'
 
-        elif 'LNC' in self.gene:
+        elif 'LNC' in gene:
             gene_type = 'lncrna'
         else:
             valid_gene = 0
@@ -48,103 +64,113 @@ class FeatureViewer:
             #print("gene: " + self.gene)
             #print("mirna: " + str(self.mirna))
 
-            container['gene_id'] = self.gene
+            container['gene_id'] = gene
             container['gene_type'] = gene_type
 
-            (geneInfo, container['transcript_list']) = self.getGeneAnnotations(gene_type)
+            (geneInfo, container['transcript_list']) = self.getGeneAnnotations(gene, gene_type, mirna)
 
             for elemID in geneInfo:
                 container[elemID] = geneInfo[elemID]
 
-            # if 'chr' in container and self.rfamDB != None:
-
-            #     rfams = self.rfamDB.get_entries(self.org, container['chr'], container['gene_start'], container['gene_stop'], container['strand'])
-            #     container['rfams'] = rfams
+            if 'chr' in container and self.rfamDB != None:
+                rfams = self.rfamDB.get_entries(self.org, container['chr'], container['gene_start'], container['gene_stop'], container['strand'])
+                container['rfams'] = rfams
 
             json_res.append(container)
         else:
-            print("ERROR: Gene ID not recognized " + self.gene)
+            print("ERROR: Gene ID not recognized " + gene)
         return json_res
 
-    def getGeneAnnotations(self, my_type):
+    def getGeneAnnotations(self, gene, my_type, mirna):
+
+        if self.mongo:
+
+            self.df_features = self.queryDBForGeneID('assembly', gene)
+            self.df_interactions = self.queryDBForGeneID('interactions', gene)
+
+
         json_transcripts = []
         gene_length = 0
 
         geneInfo = {}
 
-        for gene in self.df_features:
-            print("bla")
+        for geneElem in self.df_features:
 
-            compGeneID = self.gene
+            gene_id = geneElem["gene_id"]
+
+            compGeneID = gene_id
 
             if "." in compGeneID:
                 compGeneID = compGeneID[0:compGeneID.index(".")]
 
-            gene_start = int(gene['start']) 
-            gene_stop = int(gene['stop'])  
-            gene_length = gene_stop - gene_start
+            if compGeneID == gene:
 
-            geneInfo['gene_length'] = gene_length
-            geneInfo['gene_start'] = gene_start
-            geneInfo['gene_stop'] = gene_stop
-            geneInfo['strand'] = gene['strand']
-            geneInfo['chr'] = gene['chr']
+                gene_start = int(geneElem['start'])
+                gene_stop = int(geneElem['stop'])
+                gene_length = gene_stop - gene_start
 
-            for transcript in gene['transcripts_list']:
-                transcript_id = transcript['transcript_id']
-                transcript_start = int(transcript['start']) 
-                transcript_stop = int(transcript['stop']) 
-                transcript_length = transcript_stop - transcript_start
+                geneInfo['gene_length'] = gene_length
+                geneInfo['gene_start'] = gene_start
+                geneInfo['gene_stop'] = gene_stop
+                geneInfo['strand'] = geneElem['strand']
+                geneInfo['chr'] = geneElem['chr']
 
-                container_transcript = {}
-                container_transcript['transcript_id'] = transcript_id
-                container_transcript['start'] = transcript_start - gene_start
-                container_transcript['stop'] = transcript_stop - transcript_start
-                container_transcript['coding_list'] = []
-                container_transcript['mirnas'] = {}
-                container_transcript['other_mirnas'] = {}
-                if (type == 'gene'):
-                    if transcript['UTR']:
-                        for utr in transcript['UTR']:
-                            utr_assembly_start = int(utr['start'])
-                            utr_assembly_stop = int(utr['stop'])
-                            utr_length = utr_assembly_stop - utr_assembly_start
-                            utr_start = utr_assembly_start - transcript_start
-                            utr_stop = utr_start + utr_length
-                            container_transcript['coding_list'].append({'x': utr_start, 'y': utr_stop, 'type': 'UTR'})
-                    if transcript['CDS']:
-                        for cds in transcript['CDS']:
-                            cds_assembly_start = int(cds['start'])
-                            cds_assembly_stop = int(cds['stop'])
-                            cds_length = cds_assembly_stop - cds_assembly_start
-                            cds_start = cds_assembly_start - transcript_start
-                            cds_stop = cds_start + cds_length
-                            container_transcript['coding_list'].append({'x': cds_start, 'y': cds_stop, 'type': 'CDS'})
-                elif transcript['exon_list']:
-                    for exons in transcript['exon_list']:
-                        exon_assembly_start = int(exons['start'])
-                        exon_assembly_stop = int(exons['stop'])
-                        exox_length = exon_assembly_stop - exon_assembly_start
-                        exon_start = exon_assembly_start - transcript_start
-                        exon_stop = exon_start + exox_length
-                        container_transcript['coding_list'].append({'x': exon_start, 'y': exon_stop, 'type': 'exon'})
-                else:
-                    print("ERROR: No UTR, CDS nor Exons found")
+                for transcript in geneElem['transcripts_list']:
+                    transcript_id = transcript['transcript_id']
+                    transcript_start = int(transcript['start'])
+                    transcript_stop = int(transcript['stop'])
+                    transcript_length = transcript_stop - transcript_start
 
-                (container_transcript['mirnas'], container_transcript['other_mirnas']) = self.getTranscriptInteractions()
+                    container_transcript = {}
+                    container_transcript['transcript_id'] = transcript_id
+                    container_transcript['start'] = transcript_start - gene_start
+                    container_transcript['stop'] = transcript_stop - transcript_start
+                    container_transcript['coding_list'] = []
+                    container_transcript['mirnas'] = {}
+                    container_transcript['other_mirnas'] = {}
 
-                json_transcripts.append(container_transcript)
+                    if (my_type == 'gene'):
+                        if transcript['UTR']:
+                            for utr in transcript['UTR']:
+                                utr_assembly_start = int(utr['start'])
+                                utr_assembly_stop = int(utr['stop'])
+                                utr_length = utr_assembly_stop - utr_assembly_start
+                                utr_start = utr_assembly_start - transcript_start
+                                utr_stop = utr_start + utr_length
+                                container_transcript['coding_list'].append({'x': utr_start, 'y': utr_stop, 'type': 'UTR'})
+                        if transcript['CDS']:
+                            for cds in transcript['CDS']:
+                                cds_assembly_start = int(cds['start'])
+                                cds_assembly_stop = int(cds['stop'])
+                                cds_length = cds_assembly_stop - cds_assembly_start
+                                cds_start = cds_assembly_start - transcript_start
+                                cds_stop = cds_start + cds_length
+                                container_transcript['coding_list'].append({'x': cds_start, 'y': cds_stop, 'type': 'CDS'})
+                    elif transcript['exon_list']:
+                        for exons in transcript['exon_list']:
+                            exon_assembly_start = int(exons['start'])
+                            exon_assembly_stop = int(exons['stop'])
+                            exox_length = exon_assembly_stop - exon_assembly_start
+                            exon_start = exon_assembly_start - transcript_start
+                            exon_stop = exon_start + exox_length
+                            container_transcript['coding_list'].append({'x': exon_start, 'y': exon_stop, 'type': 'exon'})
+                    else:
+                        print("ERROR: No UTR, CDS nor Exons found")
+
+                    (container_transcript['mirnas'], container_transcript['other_mirnas']) = self.getTranscriptInteractions(mirna)
+
+                    json_transcripts.append(container_transcript)
         return (geneInfo, json_transcripts)
 
 
-    def getTranscriptInteractions(self):
+    def getTranscriptInteractions(self, mirna):
         interaction_list = {}
         other_interaction_list = {}
         for interaction in self.df_interactions:
             for transcript in interaction['transcript_list']:
                 for inter in transcript['interaction_list']:
                     interaction_mirna = inter['mirna'] 
-                    if interaction_mirna == self.mirna:
+                    if interaction_mirna == mirna:
                         interaction_list[interaction_mirna] = []
                         for alignment in inter['alignment_list']:
                             x = alignment['lnc_start']
@@ -167,12 +193,12 @@ if __name__ == '__main__':
         input_gene = "ENSMUSG00000045382"
         input_mirna = "" 
 
-    #rfDB = RFamDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmid/rfam.regions.mirexplore')
+    rfDB = RFamDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/textmine/aggregated_pmid/rfam.regions.mirexplore')
 
-    #fv = FeatureViewer(input_gene, input_mirna, "/home/mjoppich/ownCloud/data/miRExplore/obodir/", "mmu", rfamDB=rfDB)
-    fv = FeatureViewer(input_gene, input_mirna, "/home/mjoppich/ownCloud/data/miRExplore/obodir/", "mmu")
+    fv = FeatureViewer( "mmu", "/home/mjoppich/ownCloud/data/miRExplore/obodir/", rfamDB=rfDB)
+    #fv = FeatureViewer(input_gene, input_mirna, "/home/mjoppich/ownCloud/data/miRExplore/obodir/", "mmu")
 
-    json_result = fv.getFeatures()
+    json_result = fv.getFeatures(input_gene, input_mirna,)
 
     print(json.dumps(json_result, indent=4))
 
