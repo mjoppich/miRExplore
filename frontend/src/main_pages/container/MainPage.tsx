@@ -109,8 +109,8 @@ export class WelcomePage extends React.Component<{ switchTab?: any },{}> {
             <div>
             <Card style={{marginBottom: "20px"}}>
                 <CardTitle
-                    title="neutrophINT - Welcome!"
-                    subtitle="neutrophil INTeractions v1.0"
+                    title="yancDB - Welcome!"
+                    subtitle="Yet Another Non-Coding DataBase v1.0"
                 />
                 <CardText >
                     <p>Explore the database in the explore tab.</p>

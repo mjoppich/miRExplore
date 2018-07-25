@@ -171,7 +171,8 @@ export default class MEFeatureViewer extends React.Component<MEFeatureViewerProp
             zoomMax:50 //define the maximum range of the zoom
         });
 
-         var allMirnaBS = {};
+         var allMirnaBS = new Array<any>();
+         var addedMirnaNames = new Array<any>();
 
          for (var i = 0; i < transcripts.length; ++i)
          {
@@ -213,33 +214,93 @@ export default class MEFeatureViewer extends React.Component<MEFeatureViewerProp
 
                 var relKeys = Object.keys(allMirnas);
 
+                console.log("Total amount of mirnas:");
+                console.log(relKeys.length)
+
+                var allMirnaLengths = relKeys.length;
+
                 for (var m= 0; m < relKeys.length; ++m)
                 {
                     var mirnaID = relKeys[m];
                     var mirnaBS = allMirnas[ mirnaID ];
 
-                    console.log("mirnaBS");
-                    console.log(mirnaBS);
-
-                    if (mirnaBS)
+                    if (addedMirnaNames.indexOf(mirnaID) >= 0)
                     {
-                        mirnaBS.forEach(element => {
+                        continue;
+                    }
 
-                            if (mirnaID in allMirnaBS)
-                            {
-                                var idx = (allMirnaBS[mirnaID] as Array<any>).indexOf(element);
+                    // do these mirnaBS fit into a single existing bin?
+                    var added = false;
+
+                    if (allMirnaLengths > 30)
+                    {
+                        for (var ibins = 0; ibins < allMirnaBS.length; ++ibins)
+                        {
+                            var fitInBin = true;
+                            var bin = allMirnaBS[i];
     
-                                if (idx >= 0)
+                            for (var ibs=0; ibs < mirnaBS.length; ++ibs)
+                            {
+                                
+                                for (var ibinElem; ibinElem < bin.length; ++ibinElem)
                                 {
-                                    allMirnaBS[mirnaID].push(element);
+                                    if ( (( elem.x <= mirnaBS[ibs].x) && (mirnaBS[ibs].x <= elem.y)) || (( elem.x <= mirnaBS[ibs].y) && (mirnaBS[ibs].y <= elem.y  )))
+                                    {
+                                        fitInBin = false;
+                                    }
                                 }
-                            } else {
-                                allMirnaBS[mirnaID] = [element];
+                            }
+    
+                            if (fitInBin)
+                            {
+                                for (var ibs = 0; ibs < mirnaBS.length; ++ibs)
+                                {
+                                    var element = mirnaBS[i];
+                                    bin.push( 
+                                        {
+                                            x: element.x,
+                                            y: element.y,
+                                            id: mirnaID,
+                                            description: mirnaID
+                                        }
+                                     )
+                                }
+                                added=true;
+    
+                                addedMirnaNames.push(mirnaID);
+    
+                                allMirnaBS[i] = bin;
+    
+                                break;
                             }
     
     
-                        });
+                        }
                     }
+                    
+
+                    if (!added)
+                    {
+                        var newbin = new Array<any>();
+                        for (var ibs = 0; ibs < mirnaBS.length; ++ibs)
+                        {
+                            var element = mirnaBS[i];
+                            newbin.push( 
+                                {
+                                    x: element.x,
+                                    y: element.y,
+                                    id: mirnaID,
+                                    description: mirnaID
+                                }
+                             )
+                        }
+                        addedMirnaNames.push(mirnaID);
+
+                        allMirnaBS.push(newbin);
+                    }
+
+
+
                 }
 
                 var transcriptID = transcript['transcript_id'];
@@ -256,14 +317,32 @@ export default class MEFeatureViewer extends React.Component<MEFeatureViewerProp
 
          }
 
+        console.log("Need to add bins")
+        console.log(allMirnaBS.length);
 
-         var selMirnaBS = Object.keys(allMirnaBS);
-
-         for (var i = 0; i < selMirnaBS.length; ++i)
+         for (var i = 0; i < allMirnaBS.length; ++i)
          {
+
+            var allNames = [];
+            var allPositions = []
+
+            for (var j = 0; j < allMirnaBS[i].length; ++j)
+            {
+                var elem = allMirnaBS[i][j];
+                var elemID = elem.id;
+
+                if (allNames.indexOf(elemID) < 0)
+                {
+                    allNames.push(elemID);
+                }
+
+                allPositions.push(elem);
+                
+            }
+
             ft.addFeature({
-                data: allMirnaBS[selMirnaBS[i]],
-                name: selMirnaBS[i],
+                data: allPositions,
+                name: allNames.join(", "),
                 className: "test1",
                 color: "#378aFF",
                 type: "rect",
@@ -273,39 +352,39 @@ export default class MEFeatureViewer extends React.Component<MEFeatureViewerProp
 
 
         var rfamFeatures = [];
-         for (var i = 0; i < rfams.length; ++i)
-         {
-             // {'rfam_id': 'RF00005', 'orgid': 'mmu', 'chr': 'chr1', 'rfam_start': 4913784, 'rfam_end': 4913856, 'strand': '+', 'bit_score': 36.0, 'evalue_score': 0.44, 'cm_start': 1, 'cm_end': 71, 'truncated': 0, 'type': 'full'}
-            var rfamElem = rfams[i];
+        for (var i = 0; i < rfams.length; ++i)
+        {
+            // {'rfam_id': 'RF00005', 'orgid': 'mmu', 'chr': 'chr1', 'rfam_start': 4913784, 'rfam_end': 4913856, 'strand': '+', 'bit_score': 36.0, 'evalue_score': 0.44, 'cm_start': 1, 'cm_end': 71, 'truncated': 0, 'type': 'full'}
+        var rfamElem = rfams[i];
 
-            var rfamStart = rfamElem.rfam_start;
-            var rfamEnd = rfamElem.rfam_end;
-            var rfamName = rfamElem.rfam_id;
+        var rfamStart = rfamElem.rfam_start;
+        var rfamEnd = rfamElem.rfam_end;
+        var rfamName = rfamElem.rfam_id;
 
-            if (geneStrand == '+')
-            {
-                rfamStart = rfamStart-geneStart;
-                rfamEnd = rfamEnd-geneStart;
-            } else { // neg strand
-                var tmpStart = geneStop - rfamEnd;
-                var tmpEnd = geneStop - rfamStart;
+        if (geneStrand == '+')
+        {
+            rfamStart = rfamStart-geneStart;
+            rfamEnd = rfamEnd-geneStart;
+        } else { // neg strand
+            var tmpStart = geneStop - rfamEnd;
+            var tmpEnd = geneStop - rfamStart;
 
-                rfamStart = tmpStart;
-                rfamEnd = tmpEnd;
-            }
+            rfamStart = tmpStart;
+            rfamEnd = tmpEnd;
+        }
 
-            rfamFeatures.push({x: rfamStart, y: rfamEnd, description: rfamName});
-         }
+        rfamFeatures.push({x: rfamStart, y: rfamEnd, description: rfamName});
+        }
 
 
-         ft.addFeature({
-            data: rfamFeatures,
-            name: selMirnaBS[i],
-            className: "test1",
-            color: "#FF8a72",
-            type: "rect",
-            filter: "type1"  
-        })
+        ft.addFeature({
+        data: rfamFeatures,
+        name: "Rfam",
+        className: "test1",
+        color: "#FF8a72",
+        type: "rect",
+        filter: "type1"  
+    })
 
 
     }

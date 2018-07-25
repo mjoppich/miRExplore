@@ -2,9 +2,9 @@
 
 export default class config {
 
-    static restServer = 'http://127.0.0.1'//'https://turingwww.bio.ifi.lmu.de'
-    static restPort = '5000'
-    static restFolder = '';//'neutrophils'
+    static restServer = 'https://turingwww.bio.ifi.lmu.de'
+    static restPort = ''
+    static restFolder = 'yancDB';//'neutrophils'
 
     static getRestAddress()
     {
