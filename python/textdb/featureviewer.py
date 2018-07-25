@@ -166,7 +166,12 @@ class FeatureViewer:
     def getTranscriptInteractions(self, mirna):
         interaction_list = {}
         other_interaction_list = {}
+
         for interaction in self.df_interactions:
+
+
+
+
             for transcript in interaction['transcript_list']:
                 for inter in transcript['interaction_list']:
                     interaction_mirna = inter['mirna'] 

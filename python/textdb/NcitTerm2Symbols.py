@@ -162,4 +162,26 @@ class NcitTermSymbolDB:
 
 if __name__ == '__main__':
 
-    NcitTermSymbolDB.loadFromFolder()
+    db = NcitTermSymbolDB.loadFromFolder()
+
+    genes2name = defaultdict(set)
+
+    for ncit in open('/mnt/c/ownCloud/data/miRExplore/obodir/chemokines.list', 'r'):
+
+        ncit = ncit.strip().split("_")[1]#.replace('_', ':')
+
+        print(ncit, db.org_term2symbol['hsa'][ncit], db.org_term2symbol['mmu'][ncit])
+
+        hsaSyms = list(db.org_term2symbol['hsa'][ncit])
+        mmuSyms = list(db.org_term2symbol['mmu'][ncit])
+
+        if len(hsaSyms) == 0 and len(mmuSyms) == 0:
+            continue
+
+        allSyms = hsaSyms + mmuSyms
+
+        name = allSyms[0]
+
+        genes2name[name] = set([x.upper() for x in allSyms])
+
+    print(genes2name)
