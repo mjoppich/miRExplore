@@ -2214,9 +2214,6 @@ export default class FeatureViewer {
             if (this.SVGOptions.verticalLine) d3.selectAll(".Vline").style("height", (this.Yposition + 50) + "px");
 
             var allElems = d3.selectAll(".element").nodes();
-            console.log("Add Feature");
-            console.log(object);
-            console.log(allElems);
 
             if ((allElems) && (allElems.length > 1500)) this.animation = false;
 

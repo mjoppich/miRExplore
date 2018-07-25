@@ -157,16 +157,20 @@ class FeatureViewer:
                     else:
                         print("ERROR: No UTR, CDS nor Exons found")
 
-                    (container_transcript['mirnas'], container_transcript['other_mirnas']) = self.getTranscriptInteractions(mirna)
+                    (container_transcript['mirnas'], container_transcript['other_mirnas']) = self.getTranscriptInteractions(gene_id, mirna)
 
                     json_transcripts.append(container_transcript)
         return (geneInfo, json_transcripts)
 
 
-    def getTranscriptInteractions(self, mirna):
+    def getTranscriptInteractions(self, gene, mirna):
         interaction_list = {}
         other_interaction_list = {}
         for interaction in self.df_interactions:
+
+            if not interaction["gene_id"] == gene:
+                continue
+
             for transcript in interaction['transcript_list']:
                 for inter in transcript['interaction_list']:
                     interaction_mirna = inter['mirna'] 
@@ -182,6 +186,9 @@ class FeatureViewer:
                             x = alignment['lnc_start']
                             y = alignment['lnc_end']
                             other_interaction_list[interaction_mirna].append({'x': x, 'y': y})  
+
+            break
+
         return (interaction_list, other_interaction_list)
 
 if __name__ == '__main__':

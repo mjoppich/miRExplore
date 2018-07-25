@@ -497,10 +497,10 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
         allowedIDs['disease'] = getAllowedTermIDs(diseaseRestrictions, diseaseObo)
 
     if goRestrictions != None:
-        allowedIDs['go'] = getAllowedTermIDs(diseaseRestrictions, goObo)
+        allowedIDs['go'] = getAllowedTermIDs(goRestrictions, goObo)
 
     if cellRestrictions != None:
-        allowedIDs['cells'] = getAllowedTermIDs(diseaseRestrictions, cellObo)
+        allowedIDs['cells'] = getAllowedTermIDs(cellRestrictions, cellObo)
 
     if ncitRestrictions != None:
         allowedIDs['ncits'] = getAllowedTermIDs(ncitRestrictions, ncitObo)
