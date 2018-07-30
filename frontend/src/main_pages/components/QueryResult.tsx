@@ -247,7 +247,14 @@ export interface QueryResultState {
                         Header: "Gene/lncRNA",
                         id: "lid",
                         accessor: d => d.lid,
-                        filterMethod: (filter, rows) => matchSorter(rows, filter.value, { keys: ["lid"] }),
+                        filterMethod: (filter, rows) => 
+                        {
+                            var elems = [ rows['lid'] ];
+                            
+                            var retval = matchSorter(elems, filter.value);
+
+                            return retval.length > 0;
+                        },
                         Cell: (row) => {
 
                             //https://www.genecards.org/cgi-bin/carddisp.pl?gene=RUNX3
@@ -265,7 +272,15 @@ export interface QueryResultState {
                         Header: "miRNA/lncRNA",
                         id: "rid",
                         accessor: d => d.rid,
-                        filterMethod: (filter, rows) => matchSorter(rows, filter.value, { keys: ["rid"] }),
+                        filterMethod: (filter, rows) => 
+                        {
+                             var elems = [ rows['rid'] ];
+                            
+                            var retval = matchSorter(elems, filter.value);
+
+
+                            return retval.length > 0;
+                        },
                         filterAll: true
                       }
                     ]
@@ -289,6 +304,18 @@ export interface QueryResultState {
                                 );
                             }
                             return <div>{rows}</div>;
+                        },
+                        filterMethod: (filter, row) => {
+                            var filterID = filter.id;
+                            var rowData = row[filterID];
+
+                            console.log(row);
+                            console.log(filter);
+
+                            var retval = matchSorter(rowData, filter.value);
+                            console.log(retval);
+
+                            return retval.length > 0;
                         }
                       },
                       {
@@ -754,14 +781,52 @@ export interface QueryResultState {
 
         //console.log(sortedHighlight);
 
+        console.log(sortedHighlight);
+        console.log(sentence);
+        console.log(sentence.length);
+
+        var utfChars = [];
+
+        for (var i = 0; i < sentence.length; ++i)
+        {
+            if (sentence.charCodeAt(i) > 127)
+            {
+                utfChars.push(i);
+            }
+        }
+
+        console.log(utfChars)
+
+        var utfCharsBelow = function(pos) {
+            var ret = 0;
+
+            for (var i = 0; i < utfChars.length; ++i)
+            {
+                if (utfChars[i] < pos)
+                {
+                    ret += 1
+                }
+            }
+
+            return ret;
+        }
+
+
+
         for (var i = 0; i < sortedHighlight.length; ++i)
         {
             var intStart = sortedHighlight[i][0];
             var intStop = sortedHighlight[i][1];
             var highColor = sortedHighlight[i][2];
 
-            var rightPart = sentence.substr(intStop, lastLeft-intStop)
             var highlightPart = sentence.substr(intStart, intStop-intStart)
+            intStart = intStart - 2*utfCharsBelow(intStart);
+            intStop = intStop - 2*utfCharsBelow(intStop);
+
+            highlightPart = sentence.substr(intStart, intStop-intStart)
+
+            var rightPart = sentence.substr(intStop, lastLeft-intStop)
+            
 
             allParts.push(<span key={allParts.length}>{rightPart}</span>);
             allParts.push(<span style={{color:highColor, fontWeight:"bold"}} key={allParts.length}>{highlightPart}</span>);
