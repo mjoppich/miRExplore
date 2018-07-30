@@ -1,8 +1,0 @@
-{
-  "verbose": true,
-  "debug": true,
-  "exec": "npm run build:dev && babel-node src/server-es5.js",
-  "watch": "src",
-  "ext": "js,tsx",
-  "ignore": ["src/server-es5.js", "src/server-es5.js.map", "src/static/js/bundle.js", "src/static/js/bundle.js.map"]
-}
