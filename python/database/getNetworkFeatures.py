@@ -20,7 +20,7 @@ class Network:
     ### files and folders
 
     BIOCLIENT = 'Linux-4.4.140-94.42-default-x86_64-with-SuSE-12-x86_64'
-    MARKUS = ''
+    MARKUS = 'Linux-4.4.0-17713-Microsoft-x86_64-with-Ubuntu-18.04-bionic'
     dict_species = {
         MM10: ['Mouse', 'Mus musculus', MM10],
         HG38: ['Human', 'Homo sapiens', HG38]
@@ -32,7 +32,7 @@ class Network:
         elif platform.platform() == Network.BIOCLIENT:
             self.ABS_ROOT = '/home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/Noncoding/data/integration/'
         elif platform.platform() == Network.MARKUS:
-            self.ABS_ROOT = '/home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/Noncoding/data/integration/'
+            self.ABS_ROOT = '/home/mjoppich/ownCloud/data/miRExplore/obodir/expression/'
         else:
             pass
 
@@ -294,15 +294,18 @@ class Network:
 
 if __name__ == "__main__":
 
+
+    netw = Network()
+
     # call expression
     print(datetime.datetime.utcnow())
-    print((Network()).getExpressionOrthoHubs("ENSMUSG00000012848.15","Mouse"))
+    print(netw.getExpressionOrthoHubs("ENSMUSG00000012848.15","Mouse"))
     print(datetime.datetime.utcnow())
-    print((Network()).getExpressionOrthoHubs("ENSG00000178015.4","Human"))
+    print(netw.getExpressionOrthoHubs("ENSG00000178015.4","Human"))
     print(datetime.datetime.utcnow())
-    print((Network()).getExpressionOrthoHubs("LNC_GE_hg38_00044140","Human"))
+    print(netw.getExpressionOrthoHubs("LNC_GE_hg38_00044140","Human"))
     print(datetime.datetime.utcnow())
-    print((Network()).getExpressionOrthoHubs("ENSG00000106366.8","Human"))
+    print(netw.getExpressionOrthoHubs("ENSG00000106366.8","Human"))
 
     # call edges features in network
 

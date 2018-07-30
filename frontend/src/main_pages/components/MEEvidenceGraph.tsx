@@ -155,7 +155,7 @@ export default class MEEvidenceGraph extends React.Component<MEEvidenceGraphProp
         console.log(graphData);
 
         return (<div>
-            <D3SVGParallelLinesGraph graph={graphData}/>
+            <D3SVGParallelLinesGraph graph={graphData} graphInfo={{}}/>
         </div>);
     }
 

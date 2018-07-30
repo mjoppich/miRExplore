@@ -23,7 +23,9 @@ class GeneNeighbourDB:
 
         tree = self.chr2neighbours[pos[0]]
 
-        return tree[pos[1]-offset:pos[2]+offset]
+        elems = tree[pos[1]-offset:pos[2]+offset]
+
+        return [x.data for x in elems]
 
 
     @classmethod
