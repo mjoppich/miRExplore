@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 
+from synonymes.mirnaID import miRNA
+
 
 class DataBaseRel(ABC):
 
@@ -127,6 +129,15 @@ class DataBaseDescriptor(ABC):
             if mirna.startswith(x + "-"):
                 mirna = mirna.replace(x, "miR", 1)
                 break
+
+        try:
+            oMirna = miRNA(mirna)
+
+            mirna = oMirna.normalized_str()
+
+        except:
+            pass
+
 
         return (recOrg, mirna)
 

@@ -300,7 +300,7 @@ class MiGenRelDB(DataBaseDescriptor):
                             geneSymbolsNormalized += 1
 
                     elif rtype == 'gene':
-                        rid == rid.upper()
+                        rid = rid.upper()
                         if rid in normGeneSymbols:
                             rid = normGeneSymbols[rid]
                             geneSymbolsNormalized += 1

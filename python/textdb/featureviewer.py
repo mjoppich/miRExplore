@@ -171,7 +171,7 @@ class FeatureViewer:
 
             if not interaction["gene_id"] == gene:
                 continue
-                
+
             for transcript in interaction['transcript_list']:
                 for inter in transcript['interaction_list']:
                     interaction_mirna = inter['mirna'] 

@@ -191,7 +191,7 @@ class miRNA:
                 thisElems[x] = 'miR'
 
 
-        return '-'.join([str(thisElems) for x in thisElems])
+        return '-'.join([str(thisElems[x]) for x in thisElems])
 
     def __str__(self):
         return '-'.join([str(self.parts[x]) for x in self.parts])

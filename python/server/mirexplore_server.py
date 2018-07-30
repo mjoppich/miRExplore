@@ -268,8 +268,6 @@ def findInteractions():
     if not 'gene' in interactReq and not 'mirna' in interactReq:
         return app.make_response((jsonify( {'error': 'must include gene or mirna'} ), 400, None))
 
-    print(interactReq)
-
 
     gene = interactReq.get('gene', None)
     mirna = interactReq.get('mirna', None)
@@ -396,8 +394,6 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
     allRels = sorted(allRels, key=lambda x: x.docid)
     print("Loading", len(allRels), "relations")
 
-    loadedSents = 0
-
     if organisms != None:
 
         organisms = [x['termid'] for x in organisms]
@@ -429,19 +425,10 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
         evJSON = rel.toJSON()
 
-        evSent = evJSON.get('rel_sentence', None)
-
-        if evSent != None and loadSentences:
-            evSentTxt = sentDB.get_sentence(evSent)
-
-            if evSentTxt != None:
-
-                loadedSents += 1
-                evJSON['sentence'] = evSentTxt[1]
-
         foundRels[(rel.l_id_type, rel.r_id_type)].append(evJSON)
 
-    print("Loaded Sentences", loadedSents)
+
+
 
     addInfo = {}
 
@@ -550,6 +537,15 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
             if ncitRestrictions != None and not checkEvID('ncits'):
                 continue
+
+            evSent = jsonEV.get('rel_sentence', None)
+
+            if evSent != None and loadSentences:
+                evSentTxt = sentDB.get_sentence(evSent)
+
+                if evSentTxt != None:
+                    jsonEV['sentence'] = evSentTxt[1]
+
 
             okEvs.append(jsonEV)
 

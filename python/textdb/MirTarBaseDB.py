@@ -101,10 +101,6 @@ class MirTarBaseDB(DataBaseDescriptor):
 
             lid = mirtEntry['Target Gene'].upper()
 
-            if lid == 'CHODL':
-                print(mirtEntry)
-                print(cls.harmonizeMIRNA(rid))
-
             if lid in normGeneSymbols:
                 lid = normGeneSymbols[lid]
                 geneSymbolsNormalized = 0
