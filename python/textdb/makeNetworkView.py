@@ -6,6 +6,110 @@ import json
 
 from utils.cytoscape_grapher import CytoscapeGrapher
 
+class DataBasePlotter:
+
+    @classmethod
+    def makePlotForGenes(cls, path, name, gene2name, add=None, cv=False):
+
+
+        allGenes = set()
+
+        for x in gene2name:
+
+            allGenes.add(x)
+            allGenes.add(gene2name[x])
+
+        allGenes = list(allGenes)
+
+
+
+        if cv:
+            requestData = {
+            'disease': [{'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'}],
+            'gene': allGenes, 'sentences': "false"}
+        else:
+            requestData = {'gene': allGenes, 'sentences': "false"}
+
+
+        if add != None:
+
+            for x in add:
+                requestData[x] = add[x]
+
+        print(requestData)
+
+        serverAddress = "https://turingwww.bio.ifi.lmu.de"
+        serverPort = None
+        serverPath = "yancDB"
+
+        def makeServerAddress(address, port, path):
+
+            ret = address
+
+            if port != None:
+                ret += ":" + str(port)
+
+            if path != None:
+                ret += "/" + path + "/"
+
+            return ret
+
+        r = requests.post(makeServerAddress(serverAddress, serverPort, serverPath) + "/find_interactions",
+                          data=json.dumps(requestData))
+
+        print(r)
+
+        jsonRes = r.json()
+
+        graph = networkx.Graph()
+
+        nodeCounter = Counter()
+
+        print(len(jsonRes['rels']))
+
+        for rel in jsonRes['rels']:
+
+            source = rel['lid']
+            target = rel['rid']
+
+            if source.upper() in gene2name:
+                source = gene2name[source]
+
+            if target.upper() in gene2name:
+                target = gene2name[target]
+
+            graph.add_node(source, {'color': 'red'})
+            graph.add_node(target, {'color': 'blue'})
+
+            graph.add_edge(source, target)
+
+            nodeCounter[source] += 1
+            nodeCounter[target] += 1
+
+        newNodes = []
+
+        for (node, nodeAttr) in graph.nodes(data=True):
+
+            if node in nodeCounter:
+                nodeAttr['size'] = 20 + nodeCounter[node]
+
+            newNodes.append((node, nodeAttr))
+
+        seenNodes = set()
+
+        for (node, nodeAttr) in newNodes:
+
+            if nodeCounter[node] > 0:
+                seenNodes.add(node)
+            graph.add_node(node, nodeAttr)
+
+        print(set(allGenes).difference(seenNodes))
+
+        mygraph = CytoscapeGrapher.showGraph(graph, location=path,
+                                             name=name)
+
+
+
 if __name__ == '__main__':
 
     interactions = {
@@ -36,51 +140,119 @@ if __name__ == '__main__':
 
     }
 
-    genes = [x for x in interactions if not x in ['CXCR4', 'CXCL12']]
+    genes = [x for x in interactions]
     #genes = ['CCL2', 'CCL3']
 
+    genes2name = {'CXCL12': {'CXCL12'}, 'CXCL13': {'CXCL13'}, 'CXCL14': {'CXCL14'}, 'PPBP': {'PPBP'}, 'XCL1': {'XCL1'},
+     'CCL2': {'CCL2'}, 'PF4': {'PF4'}, 'CXCL10': {'CXCL10'}, 'CXCL5': {'CXCL5'}, 'CCL3': {'CCL3'},
+     'XCL2': {'XCL1', 'XCL2'}, 'CXCL1': { 'CXCL1'}, 'CCL13': {'CCL13'}, 'CXCL11': {'CXCL11'},
+     'CXCL8': {'CXCL8'}, 'CCL14': {'CCL14'}, 'CCL3': {'CCL3', 'CCL3L3'}, 'CCL5': {'CCL5'},
+     'CXCL2': { 'CXCL2'}, 'CCL15': {'CCL15'}, 'CXCL3': {'CXCL3'},
+     'CCL21': {'CCL21C', 'CCL21A', 'CCL21', 'GM10591', 'GM13304', 'GM21541', 'CCL21B'}, 'CCL17': {'CCL17'},
+     'CXCL6': {'CXCL6'}, 'CCL11': {'CCL11'}, 'CCL7': {'CCL7'}, 'CCL4': {'CCL4'}, 'CCL1': {'CCL1'},
+     'CXCL16': {'CXCL16'}, 'CCL18': {'CCL18'}, 'CCL19': {'GM2564', 'CCL19'}, 'CXCL9': {'CXCL9'},
+     'CCL8': {'CCL8', 'CCL12'}, 'CCL20': {'CCL20'}, 'C5': {'C5', 'HC'}, 'CCL22': {'CCL22'}, 'CCL24': {'CCL24'},
+     'CX3CL1': {'CX3CL1'}, 'CCL25': {'CCL25'}, 'CCL28': {'CCL28'}, 'CCL23': {'CCL23'},
+     'CCL26': {'CCL26'}, 'CCL27': {'CCL27A', 'CCL27', 'CCL27B', 'GM13306'}, 'CCL6': {'CCL6'}, 'CCL9':{'CCL9'}, 'CCL3': {'CCL3'}}
 
-    requestData = {'disease': [{'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'}], 'gene': genes}
-    requestData = {'gene': genes}
-
-    print(requestData)
-
-    r = requests.post("http://localhost:5000/find_interactions", data=json.dumps(requestData))
-
-    print(r)
-
-    jsonRes = r.json()
-
-    graph = networkx.Graph()
-
-    nodeCounter = Counter()
-
-    for rel in jsonRes['rels']:
-
-        source = rel['lid']
-        target = rel['rid']
-
-        graph.add_node(source, {'color': 'red'})
-        graph.add_node(target, {'color': 'blue'})
-
-        graph.add_edge(source, target)
-
-        nodeCounter[source] += 1
-        nodeCounter[target] += 1
+    gene2name = {}
 
 
-    newNodes = []
+    allGenes = set()
 
-    for (node, nodeAttr) in graph.nodes(data=True):
+    for x in genes2name:
+        allGenes.add(x)
 
-        if node in nodeCounter:
-            nodeAttr['size'] = 20 + nodeCounter[node]
+        for g in genes2name[x]:
+            allGenes.add(g)
 
-        newNodes.append((node, nodeAttr))
+            gene2name[g] = x
 
 
-    for (node, nodeAttr) in newNodes:
+    for x in interactions:
 
-        graph.add_node(node, nodeAttr)
+        if x not in allGenes:
+            gene2name[x] = x
+            allGenes.add(x)
 
-    mygraph = CytoscapeGrapher.showGraph(graph, location='/home/mjoppich/win/Desktop/', name="chem_interact_athero_full")
+            print("Manual add", x)
+
+
+    allGenes = list(allGenes)
+
+
+    print(len(allGenes), allGenes)
+
+    DataBasePlotter.makePlotForGenes('/mnt/c/Users/mjopp/Desktop/yanc_network/', 'all_chemokines', gene2name)
+
+
+
+
+
+
+    def subsetGene2Name(newgenes):
+        sgene2name = {}
+
+        for x in gene2name:
+
+            if x in newgenes or gene2name[x] in newgenes:
+                sgene2name[x] = gene2name[x]
+
+                if x in newgenes:
+                    newgenes.remove(x)
+                else:
+                    newgenes.remove(gene2name[x])
+
+        for gene in newgenes:
+            sgene2name[gene] = gene
+
+        return sgene2name
+
+
+
+    subPlot = ['CCL2', 'CXCL1', 'CXCL12']
+    subPlot += ['CXCR4', 'RGS16', 'HUR', 'ETS1', 'IRAK1', 'TRAF6']
+    subPlot += ['SOCS5', 'KLF2', 'KLF4', 'TAK1', 'SIRT1', 'THBS1', 'TGFBR1', 'SMAD2', 'JUN']
+    subPlot += ['KPNA4', 'BTRC', 'PPARA']
+
+    sgene2name = subsetGene2Name(subPlot)
+
+    addRestrict = {
+        'cells': [{ "group": "cells", "name": "endothelial cell", "termid": "CL:0000115" }]
+    }
+
+    DataBasePlotter.makePlotForGenes('/mnt/c/Users/mjopp/Desktop/yanc_network/', 'chemokines_sp1', sgene2name, add=addRestrict, cv=True)
+
+    subPlot = ['CCL2', 'CXCL1', 'CXCL12']
+    subPlot += ['CXCR4', 'RGS16', 'HUR', 'ETS1', 'IRAK1', 'TRAF6']
+    subPlot += ['SOCS5', 'KLF2', 'KLF4', 'TAK1', 'SIRT1', 'THBS1', 'TGFBR1', 'SMAD2', 'JUN']
+    subPlot += ['KPNA4', 'BTRC', 'PPARA']
+
+    sgene2name = subsetGene2Name(subPlot)
+
+    addRestrict = {
+        'cells': [{ "group": "cells", "name": "endothelial cell", "termid": "CL:0000115" }]
+    }
+
+    DataBasePlotter.makePlotForGenes('/mnt/c/Users/mjopp/Desktop/yanc_network/', 'chemokines_sp1_all_cv', sgene2name, add=None, cv=True)
+
+
+    subPlot = ['KLF2', 'CHI3L1', 'TLR4', 'TRAF6', 'IRAK1', 'BMPR2', 'AKT1', 'BCL6', 'LPL', 'CCL2']
+
+    sgene2name = subsetGene2Name(subPlot)
+
+    addRestrict = {
+        'cells': [{ 'group': "cells", 'name': "monocyte", 'termid': "CL:0000576" }]
+    }
+
+    DataBasePlotter.makePlotForGenes('/mnt/c/Users/mjopp/Desktop/yanc_network/', 'chemokines_sp2', sgene2name, add=addRestrict, cv=True)
+
+    subPlot = ['KLF2', 'CHI3L1', 'TLR4', 'TRAF6', 'IRAK1', 'BMPR2', 'AKT1', 'BCL6', 'LPL', 'CCL2']
+
+    sgene2name = subsetGene2Name(subPlot)
+
+    addRestrict = {
+        'cells': [{ 'group': "cells", 'name': "monocyte", 'termid': "CL:0000576" }]
+    }
+
+    DataBasePlotter.makePlotForGenes('/mnt/c/Users/mjopp/Desktop/yanc_network/', 'chemokines_sp2_all_cv', sgene2name, add=None, cv=True)

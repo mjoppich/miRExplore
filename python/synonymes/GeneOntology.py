@@ -1031,16 +1031,17 @@ if __name__ == '__main__':
     #print(oTest.getID('GO:0002281'))
     #print(oTest.getGenes({9606}, 'GO:0002281'))
 
-    #oterm = oTest.dTerms['NCIT:C20027']
-    #allchildren = oterm.getAllChildren()
+    oterm = oTest.dTerms['NCIT:C20466']
+    allchildren = oterm.getAllChildren()
 
     #print(len(allchildren))
 
     #oRet = GeneOntology()
 
 
-    #for rel in allchildren:
-    #    print(rel.term.id, rel.term.name)
+    for rel in allchildren:
+        #print(rel.term.id, rel.term.name)
+        print(rel.term.id.replace(":", "_"))
     #    oRet.dTerms[rel.term.id] = rel.term
 
     #oRet.saveFile("/mnt/c/Users/mjopp/Desktop/ncit.obo")
