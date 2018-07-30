@@ -44,9 +44,9 @@ class Network:
             Network.HG38: {
                 'mirTrap mir103': self.ABS_ROOT + 'expression/H103/mirtrap_human_103.txt_confident.json',
                 'mirTrap let7': self.ABS_ROOT + 'expression/Hlet7/mirtrap_human_let7.txt_confident.json',
-                'SRR20546 control/IL1a': self.ABS_ROOT + 'expression/SRR20546_control_IL1a/ ena_SRR20546_control_IL1a.txt_confident.json',
-                'SRR20546 control/both': self.ABS_ROOT + 'expression/SRR20546_control_both/ ena_SRR20546_control_both.txt_confident.json',
-                'SRR20546 control/PDGF1': self.ABS_ROOT + 'expression/SRR20546_control_PDGF1/ ena_SRR20546_control_PDGF1.txt_confident.json'
+                'SRR20546 control/IL1a': self.ABS_ROOT + 'expression/SRR20546_control_IL1a/ena_SRR20546_control_IL1a.txt_confident.json',
+                'SRR20546 control/both': self.ABS_ROOT + 'expression/SRR20546_control_both/ena_SRR20546_control_both.txt_confident.json',
+                'SRR20546 control/PDGF1': self.ABS_ROOT + 'expression/SRR20546_control_PDGF1/ena_SRR20546_control_PDGF1.txt_confident.json'
                 }
         }
 
@@ -115,12 +115,13 @@ class Network:
         dict[gene]['expression'] = {}
         for exp_alias in self.dict_expression[species_id]:
             exp_dict = self.__loadJson(self.dict_expression[species_id][exp_alias])
-            if gene in exp_dict:
-                for exp_name in exp_dict[gene]:  # gene diff exp in the experiment
-                    if len(exp_dict[gene]) > 1:  # check if one or more experiments in the dictionary
-                        dict[gene]['expression'][exp_name] = exp_dict[gene][exp_name]
-                    else:
-                        dict[gene]['expression'][exp_alias] = exp_dict[gene][exp_name]
+            if exp_dict:
+                if gene in exp_dict:
+                    for exp_name in exp_dict[gene]:  # gene diff exp in the experiment
+                        if len(exp_dict[gene]) > 1:  # check if one or more experiments in the dictionary
+                            dict[gene]['expression'][exp_name] = exp_dict[gene][exp_name]
+                        else:
+                            dict[gene]['expression'][exp_alias] = exp_dict[gene][exp_name]
 
         # get hubs information
         dict_index = self.__loadJson(self.dict_lncDetails[species_id])
@@ -288,7 +289,7 @@ class Network:
         # check if mirtrap data
         edges.extend(self.__getMirTrap(lnc,miRNA,species_id))
 
-        print(edges)
+        return edges
 
 
 if __name__ == "__main__":
@@ -297,11 +298,16 @@ if __name__ == "__main__":
     print(datetime.datetime.utcnow())
     print((Network()).getExpressionOrthoHubs("ENSMUSG00000012848.15","Mouse"))
     print(datetime.datetime.utcnow())
+    print((Network()).getExpressionOrthoHubs("ENSG00000178015.4","Human"))
+    print(datetime.datetime.utcnow())
+    print((Network()).getExpressionOrthoHubs("LNC_GE_hg38_00044140","Human"))
+    print(datetime.datetime.utcnow())
+    print((Network()).getExpressionOrthoHubs("ENSG00000106366.8","Human"))
 
     # call edges features in network
 
     # print(datetime.datetime.utcnow())
-    # Network().getEdgesFeature(['LNC_GE_hg38_00125866','ENSG00000163735.6','LNC_GE_hg38_00056231',
+    # print(Network().getEdgesFeature(['LNC_GE_hg38_00125866','ENSG00000163735.6','LNC_GE_hg38_00056231',
     #                            "LNC_GE_hg38_00111342",
     #                             "LNC_GE_hg38_00025954",
     #                             "LNC_GE_hg38_00106589",
@@ -309,11 +315,9 @@ if __name__ == "__main__":
     #                             "LNC_GE_hg38_00151536",
     #                             "LNC_GE_hg38_00058485",
     #                             "ENSG00000147206.16"
-    #                                 ],'Human')
-    #
+    #                                 ],'Human'))    #
     # print(datetime.datetime.utcnow())
-    # Network().getEdgesFeature(['MI0000587','LNC_GE_mm10_00514627'],'Mouse')
-    #
+    # print(Network().getEdgesFeature(['MI0000587','LNC_GE_mm10_00514627'],'Mouse'))    #
     # print(datetime.datetime.utcnow())
 
 
