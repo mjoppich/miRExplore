@@ -4,7 +4,7 @@ import platform
 import os
 import datetime
 
-class Network:
+class ExpressionNetwork:
 
     MIRNA = 'mirna'
     PROTEIN_CODING = 'protein_coding'
@@ -29,19 +29,19 @@ class Network:
     def __init__(self):
         if sys.platform == 'win32':
             self.ABS_ROOT = 'E:\\masterpraktikum\\DiffExp\\integration\\'
-        elif platform.platform() == Network.BIOCLIENT:
+        elif platform.platform() == ExpressionNetwork.BIOCLIENT:
             self.ABS_ROOT = '/home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/Noncoding/data/integration/'
-        elif platform.platform() == Network.MARKUS:
+        elif platform.platform() == ExpressionNetwork.MARKUS:
             self.ABS_ROOT = '/home/mjoppich/ownCloud/data/miRExplore/obodir/expression/'
         else:
             pass
 
         self.dict_expression = {
-            Network.MM10: {
+            ExpressionNetwork.MM10: {
                 'mirTrap mir103': self.ABS_ROOT + 'expression/M103/mirtrap_mouse_103.txt_confident.json',
                 'mirTrap let7': self.ABS_ROOT + 'expression/Mlet7/mirtrap_mouse_let7.txt_confident.json'
             },
-            Network.HG38: {
+            ExpressionNetwork.HG38: {
                 'mirTrap mir103': self.ABS_ROOT + 'expression/H103/mirtrap_human_103.txt_confident.json',
                 'mirTrap let7': self.ABS_ROOT + 'expression/Hlet7/mirtrap_human_let7.txt_confident.json',
                 'SRR20546 control/IL1a': self.ABS_ROOT + 'expression/SRR20546_control_IL1a/ena_SRR20546_control_IL1a.txt_confident.json',
@@ -51,24 +51,24 @@ class Network:
         }
 
         self.dict_coexpression = {
-            Network.MM10: {},
-            Network.HG38: {
+            ExpressionNetwork.MM10: {},
+            ExpressionNetwork.HG38: {
                 'coexpression SRR20546': self.ABS_ROOT + 'coexpression/ena.txt.json_protein_coding_coexpression_scoring.txt'}
             }
 
         self.dict_lncDetails = {
-            Network.MM10: self.ABS_ROOT + 'neighbors/neighbor_protein_coding_mm10_index.json',
-            Network.HG38: self.ABS_ROOT + 'neighbors/neighbor_protein_coding_hg38_index.json'
+            ExpressionNetwork.MM10: self.ABS_ROOT + 'neighbors/neighbor_protein_coding_mm10_index.json',
+            ExpressionNetwork.HG38: self.ABS_ROOT + 'neighbors/neighbor_protein_coding_hg38_index.json'
         }
 
         self.dict_anno = {
-            Network.MM10: {
-                Network.PROTEIN_CODING:self.ABS_ROOT + 'anno/mm10_protein_coding.json_new',
-                Network.MIRNA:self.ABS_ROOT + 'anno/mm10_miRNA.json_new'
+            ExpressionNetwork.MM10: {
+                ExpressionNetwork.PROTEIN_CODING:self.ABS_ROOT + 'anno/mm10_protein_coding.json_new',
+                ExpressionNetwork.MIRNA:self.ABS_ROOT + 'anno/mm10_miRNA.json_new'
             },
-            Network.HG38: {
-                Network.PROTEIN_CODING:self.ABS_ROOT + 'anno/hg38_protein_coding.json_new',
-                Network.MIRNA:self.ABS_ROOT + 'anno/hg38_miRNA.json_new'
+            ExpressionNetwork.HG38: {
+                ExpressionNetwork.PROTEIN_CODING:self.ABS_ROOT + 'anno/hg38_protein_coding.json_new',
+                ExpressionNetwork.MIRNA:self.ABS_ROOT + 'anno/hg38_miRNA.json_new'
             }
         }
     ########################################## Aux methods #######################################################
@@ -86,11 +86,11 @@ class Network:
     # private method
     def __getSpecies(self,name):
         species_id = ''
-        if name in Network.dict_species:
+        if name in ExpressionNetwork.dict_species:
             species_id = name
         else:
-            for key in Network.dict_species:
-                if name in Network.dict_species[key]:
+            for key in ExpressionNetwork.dict_species:
+                if name in ExpressionNetwork.dict_species[key]:
                     species_id = key
                     break
         return species_id
@@ -116,30 +116,38 @@ class Network:
         for exp_alias in self.dict_expression[species_id]:
             exp_dict = self.__loadJson(self.dict_expression[species_id][exp_alias])
             if exp_dict:
-                if gene in exp_dict:
-                    for exp_name in exp_dict[gene]:  # gene diff exp in the experiment
-                        if len(exp_dict[gene]) > 1:  # check if one or more experiments in the dictionary
-                            dict[gene]['expression'][exp_name] = exp_dict[gene][exp_name]
-                        else:
-                            dict[gene]['expression'][exp_alias] = exp_dict[gene][exp_name]
+
+                for expGene in exp_dict:
+
+                    if expGene.startswith(gene):
+
+                        for exp_name in exp_dict[expGene]:  # gene diff exp in the experiment
+                            if len(exp_dict[expGene]) > 1:  # check if one or more experiments in the dictionary
+                                dict[gene]['expression'][exp_name] = exp_dict[expGene][exp_name]
+                            else:
+                                dict[gene]['expression'][exp_alias] = exp_dict[expGene][exp_name]
 
         # get hubs information
         dict_index = self.__loadJson(self.dict_lncDetails[species_id])
 
-        if gene in dict_index:
+        for elem in dict_index:
 
-            dict_hubs_ortho = self.__loadJson(self.ABS_ROOT + "neighbors/" + dict_index[gene])
-            dict[gene].update(dict_hubs_ortho[gene])
+            if elem.startswith(gene):
 
-        return json.dumps(dict,sort_keys=True,indent=4)
+                dict_hubs_ortho = self.__loadJson(self.ABS_ROOT + "neighbors/" + dict_index[elem])
+                dict[gene].update(dict_hubs_ortho[elem])
+
+        return dict
 
     ########################################## Network connections #######################################################
 
     def __splitGeneByType(self, geneList, species):
 
-        dict_ens = self.__loadJson(self.dict_anno[species][Network.PROTEIN_CODING])
+        dict_ens = self.__loadJson(self.dict_anno[species][ExpressionNetwork.PROTEIN_CODING])
 
-        proteinCodingList = [item for item in geneList if item in dict_ens]
+        allGenes = [x[:x.index(".")] for x in dict_ens]
+
+        proteinCodingList = [item for item in geneList if item in allGenes]
         lncList = [item for item in geneList if item.startswith('LNC')]
         mirnaList = list(set(geneList)-set(proteinCodingList)-set(lncList))
 
@@ -162,6 +170,10 @@ class Network:
                         score = float(arr[0])
                         lnc_id = arr[1]
                         ens_id = arr[5]
+
+                        if "." in ens_id:
+                            ens_id = ens_id[:ens_id.index(".")]
+
                         if lnc_id in lnc and ens_id in protein_coding:
                             # add tuple (LNCID, ENSID, 'coexpression SRR20546', 19)
                             edges_aux.append((lnc_id,ens_id,file,score))
@@ -173,24 +185,24 @@ class Network:
     def __getMirTrap(self, lncList, mirnaList, species):
 
         mirna_dict = {
-            Network.MM10:{
+            ExpressionNetwork.MM10:{
                 'miR-103':{
-                    'alias':['ENSMUSG00000065563','MI0000587','ENSMUSG00000065553','MI0000587','mmu-miR-103'],
-                    'source':[self.dict_expression[Network.MM10]['mirTrap mir103']]
+                    'alias':['ENSMUSG00000065563','MI0000587','ENSMUSG00000065553','MI0000587','mmu-miR-103', "miR-103", "MI0007262"],
+                    'source':[self.dict_expression[ExpressionNetwork.MM10]['mirTrap mir103']]
                 },
                 'let-7':{
                     'alias':['ENSMUSG00000105621','Mirlet7f-1','Mirlet7i','ENSMUSG00000065406','Mirlet7d','ENSMUSG00000065453'],
-                    'source':[self.dict_expression[Network.MM10]['mirTrap let7']]
+                    'source':[self.dict_expression[ExpressionNetwork.MM10]['mirTrap let7']]
                 },
             },
-            Network.HG38:{
+            ExpressionNetwork.HG38:{
                 'miR-103':{
                     'alias':['hsa-miR-103'],
-                    'source':[self.dict_expression[Network.HG38]['mirTrap mir103']]
+                    'source':[self.dict_expression[ExpressionNetwork.HG38]['mirTrap mir103']]
                 },
                 'let-7':{
                     'alias':['hsa-let-7'],
-                    'source':[self.dict_expression[Network.HG38]['mirTrap let7']]
+                    'source':[self.dict_expression[ExpressionNetwork.HG38]['mirTrap let7']]
                 }
             }
         }
@@ -210,7 +222,7 @@ class Network:
                     for lnc in lncList:
                         if lnc in dict:
                             for exp in dict[lnc]:
-                                edges_mirtrap.append((lnc,mirna,exp,dict[lnc][exp][Network.LOG2FC]))
+                                edges_mirtrap.append((lnc,mirna,exp,dict[lnc][exp][ExpressionNetwork.LOG2FC]))
 
         return edges_mirtrap
 
@@ -240,12 +252,12 @@ class Network:
                     if lnc not in aux_list and lnc in dict:
                         aux_list.append(lnc)
 
-                        if dict[lnc][Network.RIGHT] < Network.INF: # check if dist to right gene ist smaller than 1000000
-                            edges_neigh.append((lnc,dict[lnc][Network.RIGHT_gene],Network.RIGHT_gene,dict[lnc][Network.RIGHT]))
-                            protein_coding_list.append(dict[lnc][Network.RIGHT_gene])
-                        if dict[lnc][Network.LEFT] > (-1)*Network.INF: # check if dist to left gene ist greater than -1000000
-                            edges_neigh.append((lnc,dict[lnc][Network.LEFT_gene],Network.LEFT_gene,dict[lnc][Network.LEFT]))
-                            protein_coding_list.append(dict[lnc][Network.LEFT_gene])
+                        if dict[lnc][ExpressionNetwork.RIGHT] < ExpressionNetwork.INF: # check if dist to right gene ist smaller than 1000000
+                            edges_neigh.append((lnc,dict[lnc][ExpressionNetwork.RIGHT_gene],ExpressionNetwork.RIGHT_gene,dict[lnc][ExpressionNetwork.RIGHT]))
+                            protein_coding_list.append(dict[lnc][ExpressionNetwork.RIGHT_gene])
+                        if dict[lnc][ExpressionNetwork.LEFT] > (-1)*ExpressionNetwork.INF: # check if dist to left gene ist greater than -1000000
+                            edges_neigh.append((lnc,dict[lnc][ExpressionNetwork.LEFT_gene],ExpressionNetwork.LEFT_gene,dict[lnc][ExpressionNetwork.LEFT]))
+                            protein_coding_list.append(dict[lnc][ExpressionNetwork.LEFT_gene])
 
                 if len(aux_list) == len(lncList):
                     break
@@ -289,38 +301,65 @@ class Network:
         # check if mirtrap data
         edges.extend(self.__getMirTrap(lnc,miRNA,species_id))
 
-        return edges
+        retedges = []
+        for elem in edges:
+
+            newelem = {
+                "source": elem[0],
+                "target": elem[1]
+            }
+
+            for i in range(2, len(elem), 2):
+                newelem[elem[i]] = elem[i+1]
+
+            if "." in newelem["source"]:
+                newelem["source"] = newelem["source"][:newelem["source"].index(".")]
+
+            if "." in newelem["target"]:
+                newelem["target"] = newelem["target"][:newelem["target"].index(".")]
+
+            retedges.append(newelem)
+
+
+        return retedges
 
 
 if __name__ == "__main__":
 
 
-    netw = Network()
+    netw = ExpressionNetwork()
 
     # call expression
     print(datetime.datetime.utcnow())
-    print(netw.getExpressionOrthoHubs("ENSMUSG00000012848.15","Mouse"))
+    #print(netw.getExpressionOrthoHubs("ENSMUSG00000012848","Mouse"))
     print(datetime.datetime.utcnow())
-    print(netw.getExpressionOrthoHubs("ENSG00000178015.4","Human"))
+    #print(netw.getExpressionOrthoHubs("ENSG00000178015.4","Human"))
     print(datetime.datetime.utcnow())
-    print(netw.getExpressionOrthoHubs("LNC_GE_hg38_00044140","Human"))
+    #print(netw.getExpressionOrthoHubs("LNC_GE_hg38_00044140","Human"))
     print(datetime.datetime.utcnow())
-    print(netw.getExpressionOrthoHubs("ENSG00000106366.8","Human"))
+    print(netw.getExpressionOrthoHubs("ENSMUSG00000012848","Mouse"))
+
+
 
     # call edges features in network
 
-    # print(datetime.datetime.utcnow())
-    # print(Network().getEdgesFeature(['LNC_GE_hg38_00125866','ENSG00000163735.6','LNC_GE_hg38_00056231',
-    #                            "LNC_GE_hg38_00111342",
-    #                             "LNC_GE_hg38_00025954",
-    #                             "LNC_GE_hg38_00106589",
-    #                             "LNC_GE_hg38_00097816",
-    #                             "LNC_GE_hg38_00151536",
-    #                             "LNC_GE_hg38_00058485",
-    #                             "ENSG00000147206.16"
-    #                                 ],'Human'))    #
-    # print(datetime.datetime.utcnow())
-    # print(Network().getEdgesFeature(['MI0000587','LNC_GE_mm10_00514627'],'Mouse'))    #
-    # print(datetime.datetime.utcnow())
+    print(datetime.datetime.utcnow())
+    print(netw.getEdgesFeature(['LNC_GE_hg38_00125866','ENSG00000163735','LNC_GE_hg38_00056231',
+                               "LNC_GE_hg38_00111342",
+                               "LNC_GE_hg38_00025954",
+                                "LNC_GE_hg38_00106589",
+                                "LNC_GE_hg38_00097816",
+                                "LNC_GE_hg38_00151536",
+                                "LNC_GE_hg38_00058485",
+                                "ENSG00000147206"
+                                    ],'Human'))
 
+    print(netw.getEdgesFeature(['LNC_GE_hg38_00016618', 'LNC_GE_hg38_00018475', 'LNC_GE_hg38_00075136', 'LNC_GE_hg38_00074648', 'ENSG00000181374', 'LNC_GE_hg38_00018474', 'MI0007262', 'LNC_GE_hg38_00016546'], "human"))
+    #
+    print(datetime.datetime.utcnow())
+    print(netw.getEdgesFeature(['MI0000587','LNC_GE_mm10_00514627'],'Mouse'))    #
+    print(datetime.datetime.utcnow())
+
+    print("bla")
+    print(netw.getEdgesFeature(['LNC_GE_hg38_00016618', 'LNC_GE_hg38_00018475', 'LNC_GE_hg38_00075136', 'LNC_GE_hg38_00074648', 'ENSG00000181374', 'LNC_GE_hg38_00018474', "MI0007262", 'miR-103', 'LNC_GE_hg38_00016546'],'Human'))    #
 

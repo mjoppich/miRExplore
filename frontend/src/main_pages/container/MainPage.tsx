@@ -109,7 +109,7 @@ export class WelcomePage extends React.Component<{ switchTab?: any },{}> {
             <div>
             <Card style={{marginBottom: "20px"}}>
                 <CardTitle
-                    title="yancDB - Welcome!"
+                    title="mingleRNA - Welcome!"
                     subtitle="Yet Another Non-Coding DataBase v1.0"
                 />
                 <CardText >

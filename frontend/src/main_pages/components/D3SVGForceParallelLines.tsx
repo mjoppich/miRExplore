@@ -149,6 +149,12 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         .append("line")
         .attr("class", "link");
 
+    var group3Link = this.svg.selectAll(".g3-link")
+        .data(theprops.graph.links)
+        .enter()
+        .append("line")
+        .attr("class", "link");
+
     var node = this.svg.selectAll(".node")
         .data(theprops.graph.nodes)
         .enter().append("g")
@@ -161,9 +167,73 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
         node.append('circle')
         .attr('r', 13)
         .attr('fill', function (d) {
-            return color(d.group);
+
+            if (d.id in self.props.graphInfo)
+            {
+                var nodeInfos = self.props.graphInfo[d.id];
+                var addedFC = 0;
+                var expCount = 0;
+
+                nodeInfos.forEach(
+                    element => {
+                        var expLF = element["expression"];
+
+                        console.log(expLF);
+
+                        Object.keys(expLF).forEach( exp => {
+
+                            console.log(exp);
+                            console.log(expLF[exp]);
+                            console.log(expLF[exp]["log2fc"]);
+
+                            var expData = expLF[exp];
+                            var expLog2FC = expData["log2fc"];
+
+                            console.log(expLog2FC);
+
+                            if (expLog2FC != null)
+                            {
+                                addedFC += expLog2FC;
+                                expCount += 1;
+                            }
+                        })
+                    }
+                );
+
+                console.log("d.id,addedFC,expCount")
+                console.log(d.id)
+                console.log(nodeInfos)
+                console.log(addedFC)
+                console.log(expCount)
+
+                if (expCount == 0)
+                {
+                    return color(d.group);
+                }
+
+                var frac = addedFC/expCount;
+
+                if (frac > 0)
+                {
+                    return "#00AF00";
+
+                } else {
+                    return "#AF0000";
+                }
+
+            } else {
+                return color(d.group);
+            }
+
+
         });
 
+
+    var allNodes = {};
+
+    this.props.graph.nodes.forEach(element => {
+        allNodes[element.id] = element;
+    })
 
     node.append("text")
         .attr("dx", 20)
@@ -176,46 +246,162 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
         var tip;
         self.svg.on("click", function(){
-          if (tip) tip.remove();
+          if (tip)
+          {
+              tip.remove();
+              tip = null;
+          }
         });
         node.on("click", function(d){
           d3.event.stopPropagation(); 
         
-          if (tip) tip.remove();
+          if (tip){
+              tip.remove();
+              tip = null;
+
+              return;
+          }
+
+          if (d.id in self.props.graphInfo)
+          {
+
+
+
+            /*
+
+        "expression": {
+            "SRR20546 control/IL1a": {
+                "log2fc": 2.474267023982545,
+                "qval": 0.00677616,
+                "species": "hg38",
+                "tools": {
+                    "CuffDiff": {
+                        "log2fc": 2.49838,
+                        "qval": 0.00355232
+                    },
+                    "NOISeq": {
+                        "log2fc": 2.45015404796509,
+                        "qval": 0.01
+                    }
+                }
+            },
+            "SRR20546 control/PDGF1": {
+                "log2fc": 1.88257421606002,
+                "qval": 0.008039005,
+                "species": "hg38",
+                "tools": {
+                    "CuffDiff": {
+                        "log2fc": 2.03108,
+                        "qval": 0.00607801
+                    },
+                    "NOISeq": {
+                        "log2fc": 1.73406843212004,
+                        "qval": 0.01
+                    }
+                }
+            },
+            "SRR20546 control/both": {
+                "log2fc": 2.1456717437560253,
+                "qval": 0.016557004859871768,
+                "species": "hg38",
+                "tools": {
+                    "Ballgown": {
+                        "log2fc": 0.843563367308456,
+                        "qval": 0.0370959045796153
+                    },
+                    "CuffDiff": {
+                        "log2fc": 2.83724,
+                        "qval": 0.00257511
+                    },
+                    "NOISeq": {
+                        "log2fc": 2.75621186395962,
+                        "qval": 0.01
+                    }
+                }
+            },
+            "mirTrap let7": {
+                "log2fc": -0.5616664183785784,
+                "qval": 0.011494879226957449,
+                "species": "hg38",
+                "tools": {
+                    "Ballgown": {
+                        "log2fc": 0.168871332010503,
+                        "qval": 0.0118806584539149
+                    },
+                    "NOISeq": {
+                        "log2fc": -1.29220416876766,
+                        "qval": 0.0111091
+                    }
+                }
+            }
+        },
+
+
+
+            */
+
+           var nodeInfos = self.props.graphInfo[d.id];
+
+
+
           
-          tip  = self.svg.append("g")
+            tip  = self.svg.append("g")
             .attr("transform", "translate(" + d.x  + "," + d.y + ")");
-            
-          var rect = tip.append("rect")
+
+            var rect = tip.append("rect")
             .style("fill", "white")
             .style("stroke", "steelblue");
-          
-          tip.append("text")
-            .text("Name: " + d.name)
+
+            tip.append("text")
+            .text("Name: " + d.name + "("+d.group+")")
             .attr("dy", "1em")
             .attr("x", 5);
-            
-          tip.append("text")
-            .text("Info: " + d.info)
-            .attr("dy", "2em")
-            .attr("x", 5);
+        
       
-          var con = self.props.graph.links
-            .filter(function(d1){
-              return d1.source.id === d.id;
-            })
-            .map(function(d1){
-              return d1.target.name + " with weight " + d1.weight;
-            })
+            var exprInfo = ""
+
+            for (var e = 0; e < nodeInfos.length; ++e)
+            {
+                var expresionInfo = nodeInfos[e]['expression'];
+
+                console.log(expresionInfo);
+
+                var expKeys = Object.keys(expresionInfo);
+
+                for (var i = 0; i < expKeys.length; ++i)
+                {
+                    var expName = expKeys[i];
+                    var expInfo = expresionInfo[expName];
+    
+                    var sampleInfo = expName + ": logFC= " + expInfo['log2fc'].toFixed(5) + " q-val=" + expInfo['qval'].toFixed(5) + " in " + expInfo['species'] + "\n";
+    
+                    exprInfo += sampleInfo;
+                }
+            }
+
+
             
           tip.append("text")
-            .text("Connected to: " + con.join(","))
+            .text("Experimental Info:\n" + exprInfo)
             .attr("dy", "3em")
-            .attr("x", 5);
+            .attr("x", 5)
+            .style("white-space", "pre-line"); //  white-space: pre-line;
+
+
+            var bbox = tip.node().getBBox();
+
+
+        tip.append("text")
+            .text("Nonstop you.")
+            .attr("dy", bbox.height+ 20)
+            .attr("x", 5)
+            .style("white-space", "pre-line"); //  white-space: pre-line;
           
-          var bbox = tip.node().getBBox();
+          bbox = tip.node().getBBox();
           rect.attr("width", bbox.width + 5)
               .attr("height", bbox.height + 5)
+
+            }
         });
 
 
@@ -228,6 +414,12 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
    group2Link
     .style("stroke-width", function stroke(d)  {return self.group2_link_width(d) })
     .style("stroke", "#438DCA")
+    //.style("stroke-width", "3.5px")
+    .style("stroke-opacity", "1.0")
+
+    group3Link
+    .style("stroke-width", function stroke(d)  {return d.group3*10; })
+    .style("stroke", function stroke(d)  {return d.group3color; })
     //.style("stroke-width", "3.5px")
     .style("stroke-opacity", "1.0")
 
@@ -244,6 +436,12 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
             .attr("y1", function(d) { return d.source.y-self.line_shift(d,-1)[1]; })
             .attr("x2", function(d) { return d.target.x-self.line_shift(d,-1)[0]; })
             .attr("y2", function(d) { return d.target.y-self.line_shift(d,-1)[1]; });
+
+        group3Link
+            .attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
 
         node.attr("transform", function (d) {
             return "translate(" + d.x + "," + d.y + ")";
@@ -292,7 +490,7 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
     total_width(d)
     {
         // or add d.evidence+d.predicted
-        return 20;
+        return 30;
     }
 
     line_shift(d, direction) {
@@ -319,14 +517,14 @@ export default class D3SVGParallelLinesGraph extends React.Component<D3SVGParall
 
     group1_link_width(d)
     {
-        var baseWidth = Math.max(20.0, d.group1) / this.maxGroup1Value;
-        return 5.0 + 5.0*baseWidth;
+        var baseWidth = d.group1 / this.maxGroup1Value;
+        return 5.0 + 10.0*baseWidth;
     }
 
     group2_link_width(d)
     {
-        var baseWidth = Math.max(20.0, d.group2) / this.maxGroup2Value;
-        return 5.0 + 5.0*baseWidth;
+        var baseWidth = d.group2 / this.maxGroup2Value;
+        return 5.0 + 10.0*baseWidth;
     }
 
     dragstarted(d) {

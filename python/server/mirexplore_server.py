@@ -6,11 +6,13 @@ import sys
 import os
 import shlex
 
-
+from database.getNetworkFeatures import ExpressionNetwork
 from synonymes.SynonymFile import Synfile
 from synonymes.mirnaID import miRNA, miRNAPART
+from textdb.GeneNeighbourDB import GeneNeighbourDB
 from textdb.SymbolEnsemblDB import SymbolEnsemblDB
 from textdb.featureviewer import FeatureViewer
+from textdb.mi2mirna import MI2Mirna
 from textdb.rfamDB import RFamDB
 from utils.tmutils import normalize_gene_names
 
@@ -200,6 +202,213 @@ def hfi_general():
 
 
 
+@app.route('/get_coexpression', methods=["POST"])
+def getCoExpression():
+
+    global geneNeighbourHoods
+    global symbol2ensemblDB
+    global mi2mirna
+
+    interactReq = request.get_json(force=True, silent=True)
+
+    if interactReq == None:
+        return app.make_response((jsonify({'error': 'invalid json'}), 400, None))
+
+    allGenes = interactReq['genes']
+
+    if allGenes == None or len(allGenes) == 0:
+        return app.make_response((jsonify({'error': 'no genes'}), 400, None))
+
+    netw = ExpressionNetwork()
+
+    org2networg = {
+        'mmu': "Mouse",
+        'hsa': "Human"
+    }
+
+    genesByOrg = defaultdict(set)
+
+    for gene in allGenes:
+
+        ensGenes = symbol2ensemblDB.get_all_genes(gene)
+
+        if ensGenes == None or len(ensGenes) == 0:
+
+            ensGenes = {}
+
+            if gene.startswith("LNC"):
+
+                if "mm10" in gene:
+                    ensGenes['mmu'] = {gene}
+                elif "hg38" in gene:
+                    ensGenes["hsa"] = {gene}
+            else:
+
+                try:
+
+                    miobj = miRNA(gene)
+                    minum = miobj.getPart(miRNAPART.ID, None)
+
+                    if minum != None:
+                        mmuMI = mi2mirna.mirnaNum2mi.get(("mmu", minum), None)
+                        hsaMI = mi2mirna.mirnaNum2mi.get(("hsa", minum), None)
+
+                        if mmuMI != None:
+                            ensGenes['mmu'] = {mmuMI}
+
+                        if hsaMI != None:
+                            ensGenes['hsa'] = {hsaMI}
+
+                except:
+                    pass
+
+
+        for org in ensGenes:
+            for ensGeneID in ensGenes[org]:
+
+                genesByOrg[org2networg[org]].add(ensGeneID)
+
+
+    print("Genes by org")
+    for x in genesByOrg:
+        print(x, genesByOrg[x])
+
+
+
+
+    allEdges = []
+    for org in genesByOrg:
+
+        ensGenes = genesByOrg[org]
+
+        edges = netw.getEdgesFeature(ensGenes, org)
+
+        for edge in edges:
+
+            src = edge['source']
+            tgt = edge['target']
+
+            newsrc = symbol2ensemblDB.get_symbol_for_ensembl(src)
+
+            if newsrc == None and src.startswith("MI"):
+                newsrc = mi2mirna.mi2mirna.get(src, None)
+
+            if newsrc != None:
+                edge['source'] = newsrc
+
+
+            newtgt = symbol2ensemblDB.get_symbol_for_ensembl(tgt)
+
+            if newtgt == None and tgt.startswith("MI"):
+                newtgt = mi2mirna.mi2mirna.get(tgt, None)
+
+            if newtgt != None:
+                edge['target'] = newtgt
+
+            allEdges.append(edge)
+
+    print(allEdges)
+
+
+    return app.make_response((jsonify(allEdges), 200, None))
+
+
+
+
+
+
+@app.route('/get_expression', methods=["POST"])
+def getExpression():
+
+    global geneNeighbourHoods
+    global symbol2ensemblDB
+
+    interactReq = request.get_json(force=True, silent=True)
+
+    if interactReq == None:
+        return app.make_response((jsonify({'error': 'invalid json'}), 400, None))
+
+    allGenes = interactReq['genes']
+
+    if allGenes == None or len(allGenes) == 0:
+        return app.make_response((jsonify({'error': 'no genes'}), 400, None))
+
+    netw = ExpressionNetwork()
+
+    org2networg = {
+        'mmu': "Mouse",
+        'hsa': "Human"
+    }
+
+    allExpressionData = defaultdict(list)
+
+    for gene in allGenes:
+
+        ensGenes = symbol2ensemblDB.get_all_genes(gene)
+
+        if ensGenes == None or len(ensGenes) == 0:
+            continue
+
+
+        print(ensGenes)
+
+        for org in ensGenes:
+
+            for ensGeneID in ensGenes[org]:
+
+                print(ensGeneID)
+
+                resnw = netw.getExpressionOrthoHubs(ensGeneID, org2networg[org])
+
+                print(resnw)
+
+                for elemid in resnw:
+                    allExpressionData[gene].append(resnw[elemid])
+
+
+    return app.make_response((jsonify(allExpressionData), 200, None))
+
+@app.route('/get_neighbours/<geneID>')
+def getGeneNeighbours(geneID):
+
+    global geneNeighbourHoods
+    global symbol2ensemblDB
+
+
+
+    if geneID == None:
+        return app.make_response((jsonify( {'error': 'invalid geneid'} ), 400, None))
+
+
+    res = {}
+
+    for org in geneNeighbourHoods:
+
+        orgDB = geneNeighbourHoods[org]
+
+        collectGenes = symbol2ensemblDB.get_all_genes(geneID)
+
+        if collectGenes == None:
+            continue
+
+        if len(collectGenes) == 0:
+            continue
+
+        if not org in collectGenes:
+            continue
+
+        orgCollectGenes = collectGenes[org]
+
+        if orgCollectGenes == None or len(orgCollectGenes) == 0:
+            continue
+
+        orgRet = orgDB.get_neighbour_regions( orgCollectGenes, name=geneID, sym2ensDB=symbol2ensemblDB )
+
+        if orgRet != None:
+            res[orgDB.orgid] = orgRet
+
+
+    return app.make_response((jsonify(res), 200, None))
 
 
 
@@ -868,6 +1077,13 @@ sentDB=None
 featureViewer = None
 symbol2ensemblDB = None
 
+mouseGeneNeighbourDB = None
+humanGeneNeighbourDB = None
+
+mi2mirna = None
+
+geneNeighbourHoods = {}
+
 
 def start_app_from_args(args):
 
@@ -890,16 +1106,27 @@ def start_app_from_args(args):
     global pmid2ncit
     global ncitObo
 
+    global humanGeneNeighbourDB
+    global mouseGeneNeighbourDB
+    global geneNeighbourHoods
+
+    global mi2mirna
+
     pmidBase = args.textmine + '/aggregated_pmid/'
     pmcBase = args.textmine + '/aggregated_pmc/'
 
     normGeneSymbols = normalize_gene_names(path=args.obodir + "/hgnc_no_withdrawn.syn")
+
+    mouseGeneNeighbourDB = GeneNeighbourDB.loadFromFile("mmu", inputgff=args.obodir + "/mm10_primary_assembly_and_lncRNA.gtf")
+
+    geneNeighbourHoods[mouseGeneNeighbourDB.orgid] = mouseGeneNeighbourDB
 
     print("Loading Interactions")
 
     # allInteractions = defaultdict(list)
 
     symbol2ensemblDB = SymbolEnsemblDB.loadFromFile(args.obodir + "/sym2ens/")
+    mi2mirna = MI2Mirna.loadFromFile(args.obodir + "mirnas_mirbase.csv")
 
     mirandaDB_mm10 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/mm10_interactionsAllGenes.txt", symbol2ens=symbol2ensemblDB)
     # mirandaDB_hg38 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/hg38_interactionsAllGenes.txt")
@@ -992,7 +1219,8 @@ def start_app_from_args(args):
 
     print(datetime.datetime.now(), "Loading Features")
     rfDB = RFamDB.loadFromFile(pmidBase + '/rfam.regions.mirexplore')
-    featureViewer = FeatureViewer('mmu', args.obodir, rfamDB=rfDB)
+    featureViewerMMU = FeatureViewer('mmu', args.obodir, rfamDB=rfDB)
+    featureViewerHSA = FeatureViewer('hsa', args.obodir, rfamDB=rfDB)
 
     print(datetime.datetime.now(), "Loading finished")
 def getCLParser():

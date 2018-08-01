@@ -28,11 +28,16 @@ class FeatureViewer:
         else:
             print("FeatureViewer:", "file based")
 
-            interaction_file = os.path.join(basedir, "mm10_interactions_allDBs_and_pc.json")
+            org2prefix = {
+                'hsa': "hg38",
+                'mmu': "mm10"
+            }
+
+            interaction_file = os.path.join(basedir, org2prefix[self.org]+"_interactions_allDBs_and_pc.json")
             with open(interaction_file) as interaction_input:
                 self.df_interactions = json.load(interaction_input)
 
-            gene_file = os.path.join(basedir, "mm10_primary_assembly_and_lncRNA.json")
+            gene_file = os.path.join(basedir, org2prefix[self.org]+"_primary_assembly_and_lncRNA.json")
             with open(gene_file) as gene_input:
                 self.df_features = json.load(gene_input)
 
