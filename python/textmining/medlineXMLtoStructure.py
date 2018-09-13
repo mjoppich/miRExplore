@@ -1,12 +1,16 @@
 import glob
-import os
+import os, sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
 
 from collections import defaultdict
 from lxml import etree
-from porestat.utils.Parallel import MapReduce
 
 from utils.idutils import eprint
 import logging
+
+from utils.parallel import MapReduce
+
 logger = logging.getLogger('convertJatsToText')
 
 import nltk.data
@@ -238,7 +242,7 @@ class PubmedEntry:
                 continue
 
             label = atext.attrib.get('Label', 'GENERAL').upper()
-            text = atext.text
+            text = "".join([x for x in atext.itertext()])#atext.text
 
             if text != None:
                 text = cls.removeLinebreaks(text)
@@ -387,7 +391,7 @@ if __name__ == '__main__':
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-    storagePath = '/local/storage/pubmed18/'
+    storagePath = '/mnt/raidtmpbio/joppich/pmid/'
     baseFileName = 'pubmed18n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
@@ -410,66 +414,68 @@ if __name__ == '__main__':
 
     print(len(allfiles), allfiles)
 
-    def senteniceFile(filename, env):
-
-        print(filename)
-
-        basefile = os.path.basename(filename)
-        sentfile = basefile.replace(".xml.gz", ".sent")
-
-        titlefile = basefile.replace(".xml.gz", ".title")
-        authorfile = basefile.replace(".xml.gz", ".author")
-        citationfile = basefile.replace(".xml.gz", ".citation")
-
-        pmid2title = {}
-        pmid2authors = defaultdict(set)
-        pmid2citations = defaultdict(set)
-
-        with open(storagePath + sentfile, 'w') as outfile:
-
-            pubmedParser = PubmedXMLParser()
-            pubmedParser.parseXML(filename)
-
-            for elem in PubmedArticleIterator(pubmedParser):
-
-                try:
-                    entry = PubmedEntry.fromXMLNode(elem)
-                    sents = entry.to_sentences(tokenizer)
-
-                    for x in sents:
-                        outfile.write(x + "\n")
-
-                    pmidID = entry.getID()
-
-                    if entry.title != None:
-                        pmid2title[pmidID] = entry.title
-
-                    if entry.authors != None and len(entry.authors) > 0:
-                        for author in entry.authors: #first, initials, last
-                            pmid2authors[pmidID].add( (author[1], author[2], author[0]) )
-
-                    if entry.cites != None and len(entry.cites) > 0:
-                        for cite in entry.cites:
-
-                            try:
-                                val = int(cite)
-                                pmid2citations[pmidID].add( val )
-                            except:
-                                continue
+    def senteniceFile(filenames, env):
 
 
-                except:
+        for filename in filenames:
+            print(filename)
 
-                    eprint("Exception", sentfile)
+            basefile = os.path.basename(filename)
+            sentfile = basefile.replace(".xml.gz", ".sent")
+
+            titlefile = basefile.replace(".xml.gz", ".title")
+            authorfile = basefile.replace(".xml.gz", ".author")
+            citationfile = basefile.replace(".xml.gz", ".citation")
+
+            pmid2title = {}
+            pmid2authors = defaultdict(set)
+            pmid2citations = defaultdict(set)
+
+            with open(storagePath + sentfile, 'w') as outfile:
+
+                pubmedParser = PubmedXMLParser()
+                pubmedParser.parseXML(filename)
+
+                for elem in PubmedArticleIterator(pubmedParser):
+
                     try:
+                        entry = PubmedEntry.fromXMLNode(elem)
+                        sents = entry.to_sentences(tokenizer)
 
-                        pmid = elem.find('MedlineCitation/PMID').text
-                        eprint(pmid)
+                        for x in sents:
+                            outfile.write(x + "\n")
+
+                        pmidID = entry.getID()
+
+                        if entry.title != None:
+                            pmid2title[pmidID] = entry.title
+
+                        if entry.authors != None and len(entry.authors) > 0:
+                            for author in entry.authors: #first, initials, last
+                                pmid2authors[pmidID].add( (author[1], author[2], author[0]) )
+
+                        if entry.cites != None and len(entry.cites) > 0:
+                            for cite in entry.cites:
+
+                                try:
+                                    val = int(cite)
+                                    pmid2citations[pmidID].add( val )
+                                except:
+                                    continue
+
 
                     except:
-                        pass
 
-                    continue
+                        eprint("Exception", sentfile)
+                        try:
+
+                            pmid = elem.find('MedlineCitation/PMID').text
+                            eprint(pmid)
+
+                        except:
+                            pass
+
+                        continue
 
         with open(storagePath + titlefile, 'w') as outfile:
 
@@ -515,7 +521,7 @@ if __name__ == '__main__':
                     outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(4)
+    ll = MapReduce(6)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)
 
     print("Done")
