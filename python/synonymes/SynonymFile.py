@@ -1,11 +1,33 @@
 import codecs
 from collections import OrderedDict, Counter
 
+from synonymes.GeneOntology import GeneOntology, GOTerm, GOSynonyme, GOSynonymeScope
 from synonymes.Synonym import Synonym
 
 
 
 class Synfile:
+
+
+    @classmethod
+    def syn2goterm(cls, syn, termid):
+
+        ret = GOTerm()
+
+        ret.id = termid
+        ret.name = syn.id
+        ret.synonym = set()
+
+        for synWord in syn.syns:
+
+            goSyn = GOSynonyme( synWord, GOSynonymeScope.EXACT)
+
+            ret.synonym.add(goSyn)
+
+
+        return ret
+
+
 
     def __init__(self, sFileLocation):
 
@@ -32,6 +54,27 @@ class Synfile:
             for line in infile:
                 addSyn(line, idx)
                 idx += 1
+
+    def export_flat_obo(self, filepath, termPrefix):
+
+        go = GeneOntology()
+
+        newterms = []
+
+        for synid in self.mSyns:
+
+            syn = self.mSyns[synid]
+
+            got = self.syn2goterm(syn, synid)#termPrefix + str(len(go.dTerms) + len(newterms)))
+
+            if got != None:
+                newterms.append(got)
+
+        go.addterms(newterms)
+
+        go.saveFile(filepath)
+
+
 
     def __iter__(self):
 
@@ -117,3 +160,11 @@ class AssocSynfile(Synfile):
             for line in infile:
                 addSyn(line, idx)
                 idx += 1
+
+
+
+if __name__ == '__main__':
+
+    synfile = Synfile("/mnt/c/dev/data/tm_soehnlein/synonyms/messenger.syn")
+
+    synfile.export_flat_obo("/mnt/c/dev/data/tm_soehnlein/obos/messenger.obo", "MSG:")

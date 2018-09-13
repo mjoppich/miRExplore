@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
 
 
-    threads = 6
+    threads = 4
 
     if __debug__:
         threads = 1

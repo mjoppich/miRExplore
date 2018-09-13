@@ -280,8 +280,9 @@ def findCooccurrences(pubmed, hgncHits, mirnaHits, sentDB, relHits):
             else:
                 foundCooc.idtype = 'UNKNOWN'
 
-            foundCooc.gene = y.synonym.id
             foundCooc.mirna = x.synonym.id
+            foundCooc.gene = y.synonym.id
+
             foundCooc.mirnadesc = str(x.synonym)
 
             foundCooc.mirnaFound = x.hitSyn

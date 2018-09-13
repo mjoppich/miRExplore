@@ -10,15 +10,22 @@ import sys
 
 class SentenceDB:
 
-    def __init__(self, basepath):
+    def __init__(self):
 
-        self.basepath = basepath
         self.docid2file= {}
 
         self.loadedSentFilePath = None
         self.loadedSentFile = None
 
         self.recent_elements = deque([])
+
+    def add_database(self, odb):
+
+        assert(isinstance(odb, SentenceDB))
+
+        for docid in odb.docid2file:
+            self.docid2file[docid] = odb.docid2file[docid]
+
 
 
     def get_sentence(self, docid):
@@ -42,7 +49,7 @@ class SentenceDB:
         if filename != self.loadedSentFilePath:
 
             sys.stderr.write("Loading file: " + filename  + " for docid " + docid + "\n")
-            self.loadedSentFile = self.loadFile(self.basepath + "/" + filename + ".sent")
+            self.loadedSentFile = self.loadFile(filename + ".sent")
             self.loadedSentFilePath = filename
 
         allDocSents = self.loadedSentFile[adocid[0]]
@@ -52,7 +59,7 @@ class SentenceDB:
 
                 self.recent_elements.append( sent )
 
-                if len(self.recent_elements) > 1000:
+                if len(self.recent_elements) > 10000:
                     self.recent_elements.popleft() # if too large, pop
 
                 return sent
@@ -89,21 +96,23 @@ class SentenceDB:
     @classmethod
     def prepareDB(cls, basepath, outpath):
 
-        docid2filename = defaultdict(list)
+        docid2filename = defaultdict(set)
 
-        for file in glob.glob(basepath + "/pubmed18*.title"):
+        for file in glob.glob(basepath + "/*.sent"):
 
 
             filename, fileExt = os.path.splitext(os.path.basename(file))
             with open(file, 'r') as fin:
 
+                print(file)
+
                 for line in fin:
 
                     aline = line.split("\t")
 
-                    pmid = aline[0]
+                    pmid = ".".join(aline[0].split(".")[0:-2])
 
-                    docid2filename[filename].append(pmid)
+                    docid2filename[filename].add(pmid)
 
 
 
@@ -118,7 +127,7 @@ class SentenceDB:
     @classmethod
     def loadFromFile(cls, basepath, infile):
 
-        ret = SentenceDB(basepath)
+        ret = SentenceDB()
 
         with open(infile, 'r') as fin:
 
@@ -129,18 +138,21 @@ class SentenceDB:
                 pmids = line[1].split(",")
 
                 for docid in pmids:
-                    ret.docid2file[docid] = line[0]
+                    ret.docid2file[docid] = basepath + "/" + line[0]
 
         return ret
 
 
 if __name__ == '__main__':
 
-    #SentenceDB.prepareDB("/home/mjoppich/dev/data/pubmed/", "/home/mjoppich/ownCloud/data/miRExplore/textmine/aggregated_pmid/pmid2sent")
+    sentenceLocation = "/mnt/c/dev/data/pmc/allsent/"
+    x2sentFile = "/mnt/c/dev/data/pmc2sent"
 
-    sentDB = SentenceDB.loadFromFile("/home/mjoppich/dev/data/pubmed/", "/home/mjoppich/ownCloud/data/miRExplore/textmine/aggregated_pmid/pmid2sent")
+    SentenceDB.prepareDB(sentenceLocation, x2sentFile)
 
-    senttxt = sentDB.get_sentence("28783539.2.8")
+    sentDB = SentenceDB.loadFromFile(sentenceLocation, x2sentFile)
+
+    senttxt = sentDB.get_sentence("28295230.2.6")
 
     print(senttxt)
 

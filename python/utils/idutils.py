@@ -12,6 +12,7 @@ miRExploreDir = dataDir + "miRExplore/"
 class ParseObject(object):
     pass
 
+
 def isNumber(sText):
     """
 

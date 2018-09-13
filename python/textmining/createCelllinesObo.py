@@ -1,6 +1,6 @@
 from collections import defaultdict
-from nertoolkit.geneontology.GeneOntology import GeneOntology, GOTerm, GOSynonymeScope, GOSynonyme
 
+from synonymes.GeneOntology import GeneOntology
 from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID
@@ -53,10 +53,11 @@ for oboID in xref2cello:
         pass
         #print(oboID)
 
-celllObo = GeneOntology(dataDir + "miRExplore/cellline_ontology/clo.obo")
+celllObo = GeneOntology(dataDir + "miRExplore/cellline_ontology/clo.new.obo")
+cellObo = GeneOntology(dataDir + "miRExplore/cell_ontology/cl.obo")
 newid = 0
 
-metaObo = GeneOntology.mergeOntologies([celloObo, celllObo])
+metaObo = GeneOntology.mergeOntologies([celloObo, celllObo, cellObo])
 metaObo.saveFile("/tmp/test.obo")
 
 
@@ -107,4 +108,6 @@ for termID in originalTermIDs:
 
 metaObo.linkChildren()
 
-metaObo.saveFile(dataDir + "/miRExplore/meta_cells.obo")
+metaObo.saveFile(dataDir + "/miRExplore/meta_cells_cl.obo")
+
+print("THERE IS SOMEWHERE IN ERROR IN WRITING OUT SYNONYMS WITH XREF!")

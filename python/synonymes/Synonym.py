@@ -26,13 +26,17 @@ class Synonym:
 
         return retSyn
 
-    def __init__(self, id):
+    def __init__(self, id,idIsSyn=True):
 
         id = id.strip()
         id = id.replace(':', '_')
         self.id = id
         self.currentIdx = 0
-        self.syns = []
+
+        if idIsSyn:
+            self.syns = [self.id]
+        else:
+            self.syns = []
 
     def get(self, synIdx):
 

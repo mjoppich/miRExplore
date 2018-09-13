@@ -16,6 +16,20 @@ class PMID2XDB:
                 oterm = assocObo.dTerms[termid]
                 self.all_term_names.append((oterm.name, oterm.id))
 
+
+    def add_database(self, obase):
+
+        assert(isinstance(obase, PMID2XDB))
+
+        for docid in obase.docid2info:
+
+            for elem in obase.docid2info[docid]:
+                self.docid2info[docid].append(elem)
+
+        self.all_term_names += obase.all_term_names
+
+
+
     def hasDOC(self, docid):
 
         if docid in self.docid2info:
@@ -63,8 +77,8 @@ class PMID2XDB:
                 termid = aline[1]
                 termname = aline[2]
 
-                #loc = eval(aline[3])
-                loc = aline[3]
+                loc = eval(aline[3])
+                #loc = aline[3]
 
 
                 info = {

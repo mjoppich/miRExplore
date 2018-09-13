@@ -21,6 +21,7 @@ def handleCommonExcludeWords(synList, excludeWords, mostCommonCount=66, maxCommo
 
     vPrintSyns = []
 
+
     for synonym in synList:
 
         synonym.removeCommonSynonymes(setCommonWords)

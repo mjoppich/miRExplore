@@ -290,6 +290,12 @@ class PubmedEntry:
 
         pmid = cls.get_value_from_node(node, 'MedlineCitation/PMID')
 
+
+        if pmid == "28295230":
+            print(pmid)
+        else:
+            return None
+
         date_created = cls.get_inner_text_from_path(node, 'MedlineCitation/DateCreated')
 
         articleNode = cls.get_node(node, 'MedlineCitation/Article')
@@ -391,7 +397,11 @@ if __name__ == '__main__':
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
+<<<<<<< HEAD
     storagePath = '/mnt/raidtmpbio/joppich/pmid/'
+=======
+    storagePath = '/mnt/c/ownCloud/data/miRExplore/xmltest/'
+>>>>>>> cd3f3788a9b92a815ac8ca201c1e034f2574b811
     baseFileName = 'pubmed18n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
@@ -419,6 +429,7 @@ if __name__ == '__main__':
 
         for filename in filenames:
             print(filename)
+<<<<<<< HEAD
 
             basefile = os.path.basename(filename)
             sentfile = basefile.replace(".xml.gz", ".sent")
@@ -462,8 +473,42 @@ if __name__ == '__main__':
                                     pmid2citations[pmidID].add( val )
                                 except:
                                     continue
+=======
+
+            basefile = os.path.basename(filename)
+            sentfile = basefile.replace(".xml.gz", ".sent")
+
+            titlefile = basefile.replace(".xml.gz", ".title")
+            authorfile = basefile.replace(".xml.gz", ".author")
+            citationfile = basefile.replace(".xml.gz", ".citation")
+
+            pmid2title = {}
+            pmid2authors = defaultdict(set)
+            pmid2citations = defaultdict(set)
+
+            with open(storagePath + sentfile, 'w') as outfile:
+
+                pubmedParser = PubmedXMLParser()
+                pubmedParser.parseXML(filename)
+
+                for elem in PubmedArticleIterator(pubmedParser):
+
+                    try:
 
 
+
+                        entry = PubmedEntry.fromXMLNode(elem)
+
+                        if entry == None:
+                            continue
+
+                        sents = entry.to_sentences(tokenizer)
+>>>>>>> cd3f3788a9b92a815ac8ca201c1e034f2574b811
+
+                        for x in sents:
+                            outfile.write(x + "\n")
+
+<<<<<<< HEAD
                     except:
 
                         eprint("Exception", sentfile)
@@ -476,49 +521,82 @@ if __name__ == '__main__':
                             pass
 
                         continue
+=======
+                        pmidID = entry.getID()
 
-        with open(storagePath + titlefile, 'w') as outfile:
+                        if entry.title != None:
+                            pmid2title[pmidID] = entry.title
 
-            print(titlefile)
+                        if entry.authors != None and len(entry.authors) > 0:
+                            for author in entry.authors: #first, initials, last
+                                pmid2authors[pmidID].add( (author[1], author[2], author[0]) )
 
-            for pmid in pmid2title:
-                title = pmid2title[pmid]
-                if title == None or len(title) == 0:
-                    continue
+                        if entry.cites != None and len(entry.cites) > 0:
+                            for cite in entry.cites:
 
-                outfile.write(str(pmid) + "\t" + str(title) + "\n")
+                                try:
+                                    val = int(cite)
+                                    pmid2citations[pmidID].add( val )
+                                except:
+                                    continue
 
-        with open(storagePath + authorfile, 'w') as outfile:
 
-            print(authorfile)
+                    except:
 
-            for pmid in pmid2authors:
-                authors = pmid2authors[pmid]
+                        eprint("Exception", sentfile)
+                        try:
+>>>>>>> cd3f3788a9b92a815ac8ca201c1e034f2574b811
 
-                if authors == None or len(authors) == 0:
-                    continue
+                            pmid = elem.find('MedlineCitation/PMID').text
+                            eprint(pmid)
 
-                for author in authors:
+                        except:
+                            pass
 
-                    first = author[0] if author[0] != None else ''
-                    initials = author[1] if author[1] != None else ''
-                    last = author[2] if author[2] != None else ''
+                        continue
 
-                    outfile.write(str(pmid) + "\t" + "\t".join([first, initials, last]) + "\n")
+            with open(storagePath + titlefile, 'w') as outfile:
 
-        with open(storagePath + citationfile, 'w') as outfile:
+                print(titlefile)
 
-            print(citationfile)
+                for pmid in pmid2title:
+                    title = pmid2title[pmid]
+                    if title == None or len(title) == 0:
+                        continue
 
-            for pmid in pmid2citations:
-                citations = pmid2citations[pmid]
+                    outfile.write(str(pmid) + "\t" + str(title) + "\n")
 
-                if citations == None or len(citations) == 0:
-                    continue
+            with open(storagePath + authorfile, 'w') as outfile:
 
-                for quote in citations:
+                print(authorfile)
 
-                    outfile.write(str(pmid) + "\t" + str(quote) + "\n")
+                for pmid in pmid2authors:
+                    authors = pmid2authors[pmid]
+
+                    if authors == None or len(authors) == 0:
+                        continue
+
+                    for author in authors:
+
+                        first = author[0] if author[0] != None else ''
+                        initials = author[1] if author[1] != None else ''
+                        last = author[2] if author[2] != None else ''
+
+                        outfile.write(str(pmid) + "\t" + "\t".join([first, initials, last]) + "\n")
+
+            with open(storagePath + citationfile, 'w') as outfile:
+
+                print(citationfile)
+
+                for pmid in pmid2citations:
+                    citations = pmid2citations[pmid]
+
+                    if citations == None or len(citations) == 0:
+                        continue
+
+                    for quote in citations:
+
+                        outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
     ll = MapReduce(6)

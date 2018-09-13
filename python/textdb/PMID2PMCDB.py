@@ -6,7 +6,8 @@ class PMID2PMCDB:
 
     def __init__(self):
 
-        self.pmid2pmc = defaultdict(list)
+        self.pmid2pmc = defaultdict(set)
+        self.pmc2pmid = defaultdict(set)
 
     def hasID(self, sid):
 
@@ -49,7 +50,8 @@ class PMID2PMCDB:
                 pmid = aline[0]
                 pmc = aline[1]
 
-                ret.pmid2pmc[pmid] = pmc
+                ret.pmid2pmc[pmid].add(pmc)
+                ret.pmc2pmid[pmc].add(pmid)
 
 
         return ret

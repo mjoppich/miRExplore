@@ -84,7 +84,6 @@ class miRNA:
                 if normalized and part == miRNAPART.MATURE and self.parts[part].upper() in ['MIR', 'MIRNA', 'MICRORNA']:
                     collectedParts.append('miR')
                 else:
-
                     collectedParts.append(self.parts[part])
 
         return "-".join(collectedParts)
@@ -192,7 +191,7 @@ class miRNA:
                 thisElems[x] = 'miR'
 
 
-        return '-'.join([str(thisElems) for x in thisElems])
+        return '-'.join([str(thisElems[x]) for x in thisElems])
 
     def __str__(self):
         return '-'.join([str(self.parts[x]) for x in self.parts])
@@ -223,9 +222,13 @@ class miRNA:
                     amirna[0] = abbrev
                     amirna.append(origval[abbrevLen:])
 
-        self.validMature = ['MIR', 'LET']
+        self.validMature = ['MIR', 'LET', 'MICRORNA']
 
         if amirna[0].upper() in self.validMature:
+
+            if amirna[0].upper() != 'LET':
+                amirna[0] = 'miR'
+
             self.part2idx.pop(miRNAPART.ORGANISM)
 
             for key in self.part2idx:
@@ -375,6 +378,16 @@ if __name__ == '__main__':
         print()
         print()
 
+        testStr = testMirna.getStringFromParts(
+                [miRNAPART.ORGANISM, miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR,
+                 miRNAPART.MATURE_SEQS,
+                 miRNAPART.ARM], normalized=True)
+
+        print(testStr)
+
+        print()
+        print()
+
         allMirnaComps = miRNA.compositions()
 
         for task in allMirnaComps:
@@ -390,6 +403,9 @@ if __name__ == '__main__':
 
         print(testMirna.accept("miR-126"))
 
+
+
+    testMIRNA('microRNA-106b')
 
     testMIRNA('miRUS')
 

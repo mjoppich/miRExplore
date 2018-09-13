@@ -1,4 +1,5 @@
 import codecs
+import re
 from enum import Enum
 import shlex
 import sys
@@ -31,12 +32,37 @@ class GOSynonyme:
         self.scope = scope
         self.xrefs = xrefs
 
+        self.original_syn = None
+
+        if self.scope == GOSynonymeScope.NARROW:
+            if any([x in synonyme for x in ['NARROW', 'EXACT', 'BRROAD', 'RELATED']]):
+                try:
+                    syn = GOTerm.handleSynonyme(self.syn)
+
+                    if syn != None:
+
+                        self.original_syn = self.syn
+
+                        self.type = syn.type
+                        self.syn = syn.syn
+                        self.scope = syn.scope
+                        self.xrefs = syn.xrefs
+
+
+                except:
+                    pass
+
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
 
         xreflist = [] if self.xrefs == None else self.xrefs
+
+        if isinstance(xreflist, str):
+            if xreflist.endswith("]") and not xreflist.startswith("["):
+                print("Strange xreflist", xreflist, self.original_syn)
+                xreflist = "[" + xreflist
 
         return "\"{text}\" {scope} {xrefs}".format(text=self.syn, scope=self.scope.name, xrefs=str(xreflist))
 
@@ -185,15 +211,46 @@ class GOTerm:
 
         return str(self.id) + " " + str(self.name)
 
-    def getAllChildren(self, maxLevel = -1):
+
+    def __children_at_level(self, already_seen, level, withLevel=False):
+
+        if self.children == None or level == 0:
+
+            if not withLevel:
+                already_seen.add(self)
+            else:
+                already_seen.add( (self, level) )
+
+            return
+
+        for x in self.children:
+            x.term.__children_at_level(already_seen, level-1, withLevel)
+
+    def getChildrenAtLevel(self, level, withLevel=False):
 
         allchildren = set()
 
-        self.__addAllChildrenRec(allchildren, maxLevel)
+        self.__children_at_level(allchildren, level, withLevel=withLevel)
+
+        if withLevel:
+            allchildren = set([(x, level-l) for x,l in allchildren])
+
 
         return allchildren
 
-    def __addAllChildrenRec(self, already_seen, maxLevel):
+
+    def getAllChildren(self, maxLevel=-1, withLevel=False):
+
+        allchildren = set()
+
+        self.__addAllChildrenRec(allchildren, maxLevel, withLevel=withLevel)
+
+        if withLevel:
+            allchildren = set([(x, maxLevel-l) for x,l in allchildren])
+
+        return allchildren
+
+    def __addAllChildrenRec(self, already_seen, maxLevel, withLevel=False):
 
         if self.children == None or maxLevel == 0:
             return
@@ -202,30 +259,51 @@ class GOTerm:
 
             if not x in already_seen:
 
-                already_seen.add(x)
+                if not withLevel:
+                    already_seen.add(x)
+                else:
+                    already_seen.add((x, maxLevel))
 
-                childchildren = x.term.__addAllChildrenRec(already_seen, maxLevel-1)
+                childchildren = x.term.__addAllChildrenRec(already_seen, maxLevel-1, withLevel=withLevel)
 
     def getAllParents(self):
 
         allParents = set()
+        seenByLevel = defaultdict(set)
 
-        self.__getAllParents(allParents)
+        self.__getAllParents(seenByLevel, allParents, 0)
 
         return allParents
 
-    def __getAllParents(self, already_seen):
+    def getAllParentyByLevel(self):
+
+        allParents = set()
+        seenByLevel = defaultdict(set)
+
+        self.__getAllParents(seenByLevel, allParents, 0)
+
+        return seenByLevel
+
+    def __getAllParents(self, seenByLevel, already_seen, currentLevel):
 
         if self.is_a == None:
             return
+
+        if None in self.is_a:
+            print("oboterm with none parent ...", self.id, self.name)
 
         for x in self.is_a:
 
             if not x.term in already_seen:
 
-                already_seen.add(x.term)
+                if x.term == None:
+                    print("None observed", x, x.termid)
+                    continue
 
-                x.term.__getAllParents(already_seen)
+                already_seen.add(x.term)
+                seenByLevel[currentLevel].add(x.term)
+
+                x.term.__getAllParents(seenByLevel, already_seen, currentLevel+1)
 
 
     @classmethod
@@ -248,6 +326,26 @@ class GOTerm:
 
     @classmethod
     def splitSynonymValue(cls, search, delimeter=' ', quotedText={'(': ')', '[': ']', '\"': '\"', '\'': '\''}):
+
+        aval = shlex.split(search)
+
+
+        if aval[0].startswith("\"") and aval[0].endswith("\""):
+            aval[0] = aval[0][1:len(aval[0])-1]
+
+
+        if len(aval) < 4:
+            return aval
+
+        rval = []
+        rval.append(aval[0])
+        rval.append(aval[1])
+        rval.append(aval[2])
+        rval.append(" ".join(aval[3:]))
+
+
+        return rval
+
 
         splitPos = []
         i = 0
@@ -306,6 +404,9 @@ class GOTerm:
 
             sLine = sLine.strip()
 
+            if sLine.startswith("#"):
+                continue
+
             if sLine[0] == '[' and sLine[len(sLine)-1] == ']':
 
                 sType = sLine[1:len(sLine)-1]
@@ -331,6 +432,11 @@ class GOTerm:
                     term.synonym = set()
 
                 elem = cls.handleSynonyme(value)
+
+                if elem == None:
+                    print(value)
+                    print(term.id)
+                    print(sLine)
 
                 term.synonym.add(elem)
 
@@ -429,7 +535,7 @@ class GOTerm:
                     if len(aValue[i]) > 0 and aValue[i][0] == "\"" and aValue[i][len(aValue[i]) - 1] == "\"":
                         aValue[i] = aValue[i][1:len(aValue[i]) - 2]
 
-                if cls.compareIDs("synonymExact", aValue[0]) or cls.compareIDs("synonymRelated", aValue[0]) or cls.compareIDs("synonymNarrow", aValue[0]):
+                if cls.compareIDs("synonymExact", aValue[0]) or cls.compareIDs("synonymRelated", aValue[0]) or cls.compareIDs("synonymNarrow", aValue[0]) or cls.compareIDs("IAO:0000118", aValue[0]):
 
                     if term.synonym == None:
                         term.synonym = set()
@@ -449,6 +555,8 @@ class GOTerm:
                     for splitval in aSplitVals:
                         syn = GOSynonyme(splitval, scopeT, GOSynonymeType.UNKNOWN, None)
 
+                        if syn == None:
+                            print(aValue)
                         term.synonym.add(syn)
 
 
@@ -458,6 +566,10 @@ class GOTerm:
                         term.synonym = set()
 
                     syn = GOSynonyme(aValue[1], GOSynonymeScope.EXACT, GOSynonymeType.UNKNOWN, None)
+
+                    if syn == None:
+                        print(aValue)
+
                     term.synonym.add(syn)
 
             else:
@@ -496,18 +608,29 @@ class GOTerm:
             synxrefs = None
             syntypet = GOSynonymeType.UNKNOWN
 
+            scopet = GOSynonymeScope[aval[scope]]
+            syntext = aval[syn]
+            synxrefs = aval[xrefs]
+
             if syntype > 0:
                 syntypett = aval[syntype].upper()
-                syntypet = GOSynonymeType[syntypett]
 
-            scopet = GOSynonymeScope[aval[scope]]
+                try:
+                    syntypet = GOSynonymeType[syntypett]
 
-            syntext = aval[syn]
+                except:
+                    # apparently not a type.
 
-            synxrefs = aval[xrefs]
+                    if not ((synxrefs.startswith("[") and synxrefs.endswith("]")) or (synxrefs.startswith("{") and synxrefs.endswith("}"))):
+                        synxrefs = aval[syntype] + " " + aval[xrefs]
+
+                    syntypet = GOSynonymeType.UNKNOWN #GOSynonymeType[syntypett]
 
             if synxrefs == '':
                 synxrefs = None
+
+            if synxrefs != None and not ((synxrefs.startswith("[") and synxrefs.endswith("]")) or (synxrefs.startswith("{") and synxrefs.endswith("}"))):
+                print(value, aval, syntypet, synxrefs)
 
             syn = GOSynonyme( syntext, scopet, syntypet, synxrefs )
             if syn == None:
@@ -530,6 +653,10 @@ class GOTerm:
 
         sRefTerm = value.split("!")
         sRefTerm = sRefTerm[0].strip()
+
+        if "{" in sRefTerm:
+            sRefTerm = sRefTerm[0:sRefTerm.index("{")-1]
+
 
         if len(sRefTerm) == 0:
             return None
@@ -742,6 +869,23 @@ class GeneOntology:
 
         self.linkChildren()
 
+    def addterm(self, other):
+
+        return self.addterms([other])
+
+    def addterms(self, others):
+
+        assert(isinstance(others, (list, set)))
+
+        for x in others:
+            assert(isinstance(x, GOTerm))
+
+        for x in others:
+            self.dTerms[x.id] = x
+
+        self.linkChildren()
+
+
     def linkChildren(self):
 
         for x in self.dTerms:
@@ -905,7 +1049,7 @@ class GeneOntology:
 
                     newid = 'META:' + str(iCnt)
 
-                    sys.stderr.write(" ".join(("Merging: ", term.id, newOnto[id], " into ", newid)))
+                    sys.stderr.write(" ".join(("Merging: ", term.id, str(newOnto[id]), " into ", newid))+"\n")
 
                     mergedTerm = GOTerm.merge(term, newOnto.dTerms[id], newid)
                     iCnt += 1
@@ -918,13 +1062,37 @@ class GeneOntology:
 
 if __name__ == '__main__':
 
+    #GOTerm.handleSynonyme("\"Kenya baboon\" EXACT common_name []")
+
     #oTest = GeneOntology("/home/proj/projekte/textmining/FBN_ATOL_Dummerstorf/Daten-Ontologien/MethodOntology_MZ1.obo") #"C:/ownCloud/data/biomodels/go.obo"
     #oTest.loadGeneAnnotation("/home/users/joppich/ownCloud/data/biomodels/gene2go.9606", {9606})
     #oTest = GeneOntology("/home/proj/projekte/textmining/FBN_ATOL_Dummerstorf/Daten-Ontologien/synonymes/modified/atol_v6_MZ.prot.obo")
-    oTest = GeneOntology('/mnt/c/dev/data/fbn_textmine/mom_new.obo')
+    #oTest = GeneOntology('/mnt/c/dev/data/fbn_textmine/mom_new.obo')
+    #oTest = GeneOntology('/mnt/c/Users/mjopp/Downloads/ncit.obo')
+    #oTest = GeneOntology('/home/mjoppich/ownCloud/data/miRExplore/obodir/ncit.obo')
+    oTest = GeneOntology('/mnt/c/ownCloud/data/miRExplore/cellline_ontology/clo.new.owl.obo')
+
+    oTest.saveFile("/mnt/c/ownCloud/data/miRExplore/cellline_ontology/clo.new.obo")
 
     #print(oTest.getID('GO:0002281'))
     #print(oTest.getGenes({9606}, 'GO:0002281'))
+
+    oterm = oTest.dTerms['NCIT:C20466']
+    allchildren = oterm.getAllChildren()
+
+    #print(len(allchildren))
+
+    #oRet = GeneOntology()
+
+
+    for rel in allchildren:
+        #print(rel.term.id, rel.term.name)
+        print(rel.term.id.replace(":", "_"))
+    #    oRet.dTerms[rel.term.id] = rel.term
+
+    #oRet.saveFile("/mnt/c/Users/mjopp/Desktop/ncit.obo")
+
+    #oTest = GeneOntology('/mnt/c/Users/mjopp/Desktop/ncit.obo')
 
 
     print( oTest.getRoots() )

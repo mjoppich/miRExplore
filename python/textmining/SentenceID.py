@@ -23,6 +23,16 @@ class SentenceID:
         else:
             return "{docID}.{parID}".format(docID=self.docID, parID=self.parID)
 
+
+    @classmethod
+    def fromArray(cls, arr):
+
+        retObj = SentenceID()
+        retObj.docID = str(arr[0])
+        retObj.parID = str(arr[1])
+        retObj.senID = str(arr[2])
+
+
     @classmethod
     def fromStr(cls, line):
 

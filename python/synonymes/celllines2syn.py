@@ -18,6 +18,8 @@ for cellID in celloObo.dTerms:
     oboID = oboNode.id
     oboName = oboNode.name
 
+
+
     if oboID.startswith('GO'):
         continue
 
@@ -37,9 +39,22 @@ for cellID in celloObo.dTerms:
     newSyn = Synonym(oboID)
     newSyn.addSyn(oboName)
 
+    if "-" in oboName:
+        newSyn.addSyn(oboName.replace("-", ""))
+
+    isHela = False
+
     if oboSyns != None:
         for x in oboSyns:
+
+            if x == None:
+                print(oboNode)
+
             newSyn.addSyn(x.syn)
+
+            if "-" in x.syn:
+
+                newSyn.addSyn(x.syn.replace("-", ""))
 
 
     if oboNode.id.startswith('CL:'):
@@ -52,7 +67,6 @@ for cellID in celloObo.dTerms:
                 toadd.add(short)
 
         if len(toadd) > 0:
-            print(oboNode.id)
 
             for x in toadd:
                 newSyn.addSyn(x)
@@ -63,15 +77,24 @@ for cellID in celloObo.dTerms:
         for x in allsyn:
             newSyn.addSyn(x + "s")
 
+    if isHela:
+        print(newSyn)
+
+    if oboID == "CVCL_B478":
+        print(newSyn)
+
     for taxid in taxID:
         tax2cells[taxid].add(newSyn)
 
     #print(str(taxID) + " " + str(newSyn))
 
-globalKeywordExcludes = loadExludeWords(cell_co=False)
+globalKeywordExcludes = loadExludeWords(common=False,cell_co=False)
+
 
 for taxid in tax2cells:
     taxSyns = tax2cells[taxid]
 
-    vPrintSyns = handleCommonExcludeWords(taxSyns, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=5)
+    vPrintSyns = handleCommonExcludeWords(taxSyns, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=15)
     printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/celllines."+taxid+".syn")
+
+    print("Wrote", dataDir + "/miRExplore/textmine/synonyms/celllines."+taxid+".syn")

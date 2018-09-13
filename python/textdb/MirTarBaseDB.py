@@ -2,9 +2,9 @@ from collections import defaultdict
 
 import os
 
-from porestat.utils.DataFrame import DataFrame
-
+from synonymes.SynonymFile import Synfile
 from textdb.AbstractDBClasses import DataBaseRel, DataBaseDescriptor
+from utils.DataFrame import DataFrame
 
 
 class MirTarBaseRel(DataBaseRel):
@@ -21,7 +21,7 @@ class MirTarBaseRel(DataBaseRel):
         self.funcType = funcType
         self.pubmedRef = pubmedRef
 
-        self.organism = organism
+        self.orgs = tuple(organism)
 
     @property
     def lid(self):
@@ -61,8 +61,8 @@ class MirTarBaseRel(DataBaseRel):
         if self.pubmedRef != None:
             retJSON['docid']= self.pubmedRef
 
-        if self.organism != None:
-            retJSON['organism']= self.organism
+        if self.orgs != None:
+            retJSON['orgs'] = tuple(self.orgs)
 
         return retJSON
 
@@ -85,7 +85,7 @@ class MirTarBaseDB(DataBaseDescriptor):
         return self.rtyped
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna'):
+    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna',normGeneSymbols=None):
 
 
         ret = MirTarBaseDB(ltype, rtype)
@@ -94,16 +94,42 @@ class MirTarBaseDB(DataBaseDescriptor):
         mirtarbaseEvidences = DataFrame.parseFromFile(filepath,
                                                       bConvertTextToNumber=False)
 
+        seenMirnas = {}
+        geneSymbolsNormalized=0
+
         for mirtEntry in mirtarbaseEvidences:
 
-            lid = mirtEntry['Target Gene']
+            lid = mirtEntry['Target Gene'].upper()
+
+            if lid in normGeneSymbols:
+                lid = normGeneSymbols[lid]
+                geneSymbolsNormalized = 0
+
             rid = mirtEntry['miRNA']
-            org, rid = cls.harmonizeMIRNA(rid)
+
+            if rid in seenMirnas:
+                org, rid = seenMirnas[rid]
+            else:
+                origRid = rid
+                org, rid = cls.harmonizeMIRNA(rid)
+                seenMirnas[origRid] = (org, rid)
 
             if not org in ['hsa', 'mmu']:
                 continue
 
             organism = mirtEntry['Species (miRNA)']
+
+
+            orgs = set()
+
+            orgs.add(org)
+
+            if organism == 'Homo sapiens':
+                orgs.add('hsa')
+            elif organism == 'Mus musculus':
+                orgs.add('mmu')
+
+
             dataID = mirtEntry['miRTarBase ID']
             dataSource = 'miRTarBase'
 
@@ -114,7 +140,7 @@ class MirTarBaseDB(DataBaseDescriptor):
             supType = mirtEntry['Support Type']
 
             relations = set([
-                MirTarBaseRel((lid, ltype), (rid, rtype), dataSource, dataID, expSupport, supType, docID, organism)
+                MirTarBaseRel((lid, ltype), (rid, rtype), dataSource, dataID, expSupport, supType, docID, orgs)
                 ])
 
             for rel in relations:
@@ -124,6 +150,9 @@ class MirTarBaseDB(DataBaseDescriptor):
 
             ret.all_ltypes.add(lid)
             ret.all_rtypes.add(rid)
+
+        print("Gene Symbols Normalized", geneSymbolsNormalized)
+
 
         return ret
 

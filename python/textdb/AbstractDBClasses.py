@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 
+from synonymes.mirnaID import miRNA
+
 
 class DataBaseRel(ABC):
 
@@ -29,6 +31,14 @@ class DataBaseRel(ABC):
     def rid(self):
         pass
 
+    @property
+    def l_id_type(self):
+        return (self.lid, self.ltype)
+
+    @property
+    def r_id_type(self):
+        return (self.rid, self.rtype)
+
     @abstractmethod
     def toJSON(self):
         pass
@@ -38,6 +48,15 @@ class DataBaseRel(ABC):
 
     def __hash__(self):
         return hash(tuple([(x, self.__dict__[x]) for x in sorted(self.__dict__)]))
+
+    def get_interactor(self, type):
+
+        if self.ltype == type:
+            return self.lid
+        elif self.rtype == type:
+            return self.rid
+
+        return None
 
 class DataBaseDescriptor(ABC):
 
@@ -49,13 +68,26 @@ class DataBaseDescriptor(ABC):
         self.all_ltypes = set()
         self.all_rtypes = set()
 
+        self.lontology = None
+        self.rontology = None
+
+    @property
+    def l_ont_based(self):
+        return self.lontology != None
+
+    @property
+    def r_ont_based(self):
+        return self.lontology != None
+
     def get_evidence_docids(self):
 
         docIDs = set()
 
         for lid in self.ltype2rel:
             for ev in self.ltype2rel[lid]:
-                docIDs.add(ev.docid)
+
+                if ev.docid != None:
+                    docIDs.add(ev.docid)
 
         return docIDs
 
@@ -100,6 +132,15 @@ class DataBaseDescriptor(ABC):
                 mirna = mirna.replace(x, "miR", 1)
                 break
 
+        try:
+            oMirna = miRNA(mirna)
+
+            mirna = oMirna.normalized_str()
+
+        except:
+            pass
+
+
         return (recOrg, mirna)
 
 
@@ -124,10 +165,32 @@ class DataBaseDescriptor(ABC):
 
 
     def get_lid_rels(self, geneID):
-        return self.ltype2rel.get(geneID, None)
 
-    def get_rid_rels(self, mirnaID):
-        return self.rtype2rel.get(mirnaID, None)
+        if not self.l_ont_based:
+            return self.ltype2rel.get(geneID, None)
+        else:
+            allRels = self.ltype2rel.get(geneID, None)
+
+            if allRels == None:
+                return None
+
+            return self.undoOntID(allRels)
+
+    def get_rid_rels(self, geneID):
+
+        if not self.r_ont_based:
+            return self.rtype2rel.get(geneID, None)
+        else:
+            allRels = self.rtype2rel.get(geneID, None)
+
+            if allRels == None:
+                return None
+
+            return self.undoOntID(allRels)
+
+
+    def undoOntID(self, rels):
+        return rels
 
     @classmethod
     @abstractmethod
