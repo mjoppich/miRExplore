@@ -238,7 +238,7 @@ class PubmedEntry:
                 continue
 
             label = atext.attrib.get('Label', 'GENERAL').upper()
-            text = atext.text
+            text = "".join([x for x in atext.itertext()])#atext.text
 
             if text != None:
                 text = cls.removeLinebreaks(text)
@@ -285,6 +285,12 @@ class PubmedEntry:
 
 
         pmid = cls.get_value_from_node(node, 'MedlineCitation/PMID')
+
+
+        if pmid == "28295230":
+            print(pmid)
+        else:
+            return None
 
         date_created = cls.get_inner_text_from_path(node, 'MedlineCitation/DateCreated')
 
@@ -387,7 +393,7 @@ if __name__ == '__main__':
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-    storagePath = '/local/storage/pubmed18/'
+    storagePath = '/mnt/c/ownCloud/data/miRExplore/xmltest/'
     baseFileName = 'pubmed18n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
@@ -410,109 +416,118 @@ if __name__ == '__main__':
 
     print(len(allfiles), allfiles)
 
-    def senteniceFile(filename, env):
-
-        print(filename)
-
-        basefile = os.path.basename(filename)
-        sentfile = basefile.replace(".xml.gz", ".sent")
-
-        titlefile = basefile.replace(".xml.gz", ".title")
-        authorfile = basefile.replace(".xml.gz", ".author")
-        citationfile = basefile.replace(".xml.gz", ".citation")
-
-        pmid2title = {}
-        pmid2authors = defaultdict(set)
-        pmid2citations = defaultdict(set)
-
-        with open(storagePath + sentfile, 'w') as outfile:
-
-            pubmedParser = PubmedXMLParser()
-            pubmedParser.parseXML(filename)
-
-            for elem in PubmedArticleIterator(pubmedParser):
-
-                try:
-                    entry = PubmedEntry.fromXMLNode(elem)
-                    sents = entry.to_sentences(tokenizer)
-
-                    for x in sents:
-                        outfile.write(x + "\n")
-
-                    pmidID = entry.getID()
-
-                    if entry.title != None:
-                        pmid2title[pmidID] = entry.title
-
-                    if entry.authors != None and len(entry.authors) > 0:
-                        for author in entry.authors: #first, initials, last
-                            pmid2authors[pmidID].add( (author[1], author[2], author[0]) )
-
-                    if entry.cites != None and len(entry.cites) > 0:
-                        for cite in entry.cites:
-
-                            try:
-                                val = int(cite)
-                                pmid2citations[pmidID].add( val )
-                            except:
-                                continue
+    def senteniceFile(filenames, env):
 
 
-                except:
+        for filename in filenames:
+            print(filename)
 
-                    eprint("Exception", sentfile)
+            basefile = os.path.basename(filename)
+            sentfile = basefile.replace(".xml.gz", ".sent")
+
+            titlefile = basefile.replace(".xml.gz", ".title")
+            authorfile = basefile.replace(".xml.gz", ".author")
+            citationfile = basefile.replace(".xml.gz", ".citation")
+
+            pmid2title = {}
+            pmid2authors = defaultdict(set)
+            pmid2citations = defaultdict(set)
+
+            with open(storagePath + sentfile, 'w') as outfile:
+
+                pubmedParser = PubmedXMLParser()
+                pubmedParser.parseXML(filename)
+
+                for elem in PubmedArticleIterator(pubmedParser):
+
                     try:
 
-                        pmid = elem.find('MedlineCitation/PMID').text
-                        eprint(pmid)
+
+
+                        entry = PubmedEntry.fromXMLNode(elem)
+
+                        if entry == None:
+                            continue
+
+                        sents = entry.to_sentences(tokenizer)
+
+                        for x in sents:
+                            outfile.write(x + "\n")
+
+                        pmidID = entry.getID()
+
+                        if entry.title != None:
+                            pmid2title[pmidID] = entry.title
+
+                        if entry.authors != None and len(entry.authors) > 0:
+                            for author in entry.authors: #first, initials, last
+                                pmid2authors[pmidID].add( (author[1], author[2], author[0]) )
+
+                        if entry.cites != None and len(entry.cites) > 0:
+                            for cite in entry.cites:
+
+                                try:
+                                    val = int(cite)
+                                    pmid2citations[pmidID].add( val )
+                                except:
+                                    continue
+
 
                     except:
-                        pass
 
-                    continue
+                        eprint("Exception", sentfile)
+                        try:
 
-        with open(storagePath + titlefile, 'w') as outfile:
+                            pmid = elem.find('MedlineCitation/PMID').text
+                            eprint(pmid)
 
-            print(titlefile)
+                        except:
+                            pass
 
-            for pmid in pmid2title:
-                title = pmid2title[pmid]
-                if title == None or len(title) == 0:
-                    continue
+                        continue
 
-                outfile.write(str(pmid) + "\t" + str(title) + "\n")
+            with open(storagePath + titlefile, 'w') as outfile:
 
-        with open(storagePath + authorfile, 'w') as outfile:
+                print(titlefile)
 
-            print(authorfile)
+                for pmid in pmid2title:
+                    title = pmid2title[pmid]
+                    if title == None or len(title) == 0:
+                        continue
 
-            for pmid in pmid2authors:
-                authors = pmid2authors[pmid]
+                    outfile.write(str(pmid) + "\t" + str(title) + "\n")
 
-                if authors == None or len(authors) == 0:
-                    continue
+            with open(storagePath + authorfile, 'w') as outfile:
 
-                for author in authors:
+                print(authorfile)
 
-                    first = author[0] if author[0] != None else ''
-                    initials = author[1] if author[1] != None else ''
-                    last = author[2] if author[2] != None else ''
+                for pmid in pmid2authors:
+                    authors = pmid2authors[pmid]
 
-                    outfile.write(str(pmid) + "\t" + "\t".join([first, initials, last]) + "\n")
+                    if authors == None or len(authors) == 0:
+                        continue
 
-        with open(storagePath + citationfile, 'w') as outfile:
+                    for author in authors:
 
-            print(citationfile)
+                        first = author[0] if author[0] != None else ''
+                        initials = author[1] if author[1] != None else ''
+                        last = author[2] if author[2] != None else ''
 
-            for pmid in pmid2citations:
-                citations = pmid2citations[pmid]
+                        outfile.write(str(pmid) + "\t" + "\t".join([first, initials, last]) + "\n")
 
-                if citations == None or len(citations) == 0:
-                    continue
+            with open(storagePath + citationfile, 'w') as outfile:
 
-                for quote in citations:
+                print(citationfile)
 
-                    outfile.write(str(pmid) + "\t" + str(quote) + "\n")
+                for pmid in pmid2citations:
+                    citations = pmid2citations[pmid]
+
+                    if citations == None or len(citations) == 0:
+                        continue
+
+                    for quote in citations:
+
+                        outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
     ll = MapReduce(4)

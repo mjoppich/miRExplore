@@ -7,8 +7,10 @@ import os
 
 import spacy
 
+
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
+from neutrophils.RelexParser import RelexParser
 
 from collections import Counter, defaultdict
 from porestat.utils.DataFrame import DataFrame
@@ -24,7 +26,7 @@ from textmining.SyngrepHitFile import SyngrepHitFile
 from utils.parallel import MapReduce
 from enum import Enum
 
-nlp = spacy.load('en')  # create blank Language class
+nlp = spacy.load('en_core_web_lg')  # create blank Language class
 
 
 class Cooccurrence:
@@ -69,7 +71,101 @@ def findAssocs(assocs, text, textLoc):
     return res
 
 
+def getStack(t):
+    h = t
+    stack = []
+    while h != None:
+        stack.append( (h, h.dep_, h.pos_) )
+
+        h = h.head if h != h.head else None
+
+    return stack
+
+def getAllChildren(gen):
+
+    allBase = [x for x in gen]
+    allElems = []
+
+    for x in allBase:
+
+        allElems += getAllChildren(x.children)
+
+    return allBase + allElems
+
+
+def analyseStacks(stackL, stackR):
+
+    tokensL = [x[0] for x in stackL]
+    tokensR = [x[0] for x in stackR]
+
+    intersection = set(tokensL).intersection(set(tokensR))
+
+    ret = []
+
+    for elem in intersection:
+
+        if elem.pos_ == "VERB":
+
+            lBase = stackL[0][0]
+            rBase = stackR[0][0]
+
+            allLefts = getAllChildren(elem.lefts)
+            allRights = getAllChildren(elem.rights)
+
+            lPart = lBase in allLefts
+            rPart = rBase in allRights
+
+            if lPart == True and rPart == True:
+                ret.append((lPart, rPart, elem))
+
+    return ret
+
+def analyseVerbs(doc, lWord, rWord):
+
+    ret = []
+    for verb in [x for x in doc if x.pos_ == "VERB"]:
+
+        lelems = getAllChildren(verb.lefts)
+        relems = getAllChildren(verb.rights)
+
+        if lWord in lelems and rWord in relems:
+            ret.append(verb)
+
+    return ret
+
+def analyseConjunction(stackL, stackR):
+
+    tokensL = [x[0] for x in stackL]
+    tokensR = [x[0] for x in stackR]
+
+    ret = []
+
+    for elem in stackL:
+
+        if elem[0].dep_ == "conj":
+            if elem[0].head in tokensL:
+                if not elem in ret:
+                    ret.append(elem)
+
+        if elem[0] in tokensR:
+            break
+
+    for elem in stackR:
+
+        if elem[0].dep_ == "conj":
+            if elem[0].head in tokensR:
+
+                if not elem in ret:
+                    ret.append(elem)
+
+        if elem[0] in tokensL:
+            break
+
+    return ret
+
+
 def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
+    global relexParser
 
     sentHits = relHits[str(ent1Hit.documentID)]
 
@@ -80,10 +176,18 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
 
     allRelations = []
 
+    relexRes = 0
+    if relexParser != None:
+
+        relexHits = relexParser.sent2res.get(str(ent1Hit.documentID), [])
+        relexRes = len(relexHits)
+
+
+
     if len(sentHits) > 0:
 
         doc = nlp(sentence.text)
-        alldeps = [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]
+        alldeps = [(t.i, t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]
         verbDeps = [x for x in alldeps if x[3] == 'VERB']
 
         assocRelDeps = []
@@ -136,6 +240,47 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
                     discoveredBy = "all_rels"
 
 
+        lWord = None
+        rWord = None
+
+        for dep in alldeps:
+            lWord = dep[0]
+
+            if ent1Hit.position[0] <= dep[1]:
+                break
+
+        for dep in alldeps:
+            rWord = dep[0]
+
+            if dep[1] >= ent2Hit.position[0]:
+                break
+
+
+        stacks = []
+        for token in [doc[lWord], doc[rWord]]:
+            stack = getStack(token)
+            stacks.append(stack)
+
+
+
+        stackRes = analyseStacks(stacks[0], stacks[1])
+        #analyseConjugation(doc[22], doc[27])
+        verbRes = analyseVerbs(doc, doc[lWord], doc[rWord])
+        conjRes = analyseConjunction(stacks[0], stacks[1])
+
+        if (len(stackRes) > 0 or len(verbRes) > 0) and False:
+            print(sentence.text, file=sys.stderr)
+            print(lWord, doc[lWord], file=sys.stderr)
+            print(rWord, doc[rWord], file=sys.stderr)
+
+            print("analyseStacks", stackRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (l, r, t) in stackRes], file=sys.stderr)
+            print("analyseVerbs", verbRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in verbRes], file=sys.stderr)
+            print("analyseConjunction", conjRes,
+                  [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (t, s, r) in conjRes], file=sys.stderr)
+
+            print( file=sys.stderr)
+
+
 
         for rel in depHits:
             assocDir = None
@@ -180,7 +325,11 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
                     ent1Hit.position,
                     ent2Hit.position,
                     rel.position,
-                    discoveredBy
+                    discoveredBy,
+                    len(stackRes),
+                    len(verbRes),
+                    len(conjRes),
+                    relexRes
                 )
             )
 
@@ -203,7 +352,8 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
                 ent1Hit.position,
                 ent2Hit.position,
                 None,
-                None
+                None,
+                0,0,0,relexRes
             )
         )
 
@@ -466,6 +616,8 @@ def analyseFile(splitFileIDs, env):
     return None
 
 
+relexParser = None
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='aggregate tm results', add_help=False)
@@ -481,6 +633,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--same-sentence', dest='same_sentence', action="store_true", required=False, default=False)
     parser.add_argument('--accept_pmids', type=argparse.FileType('r'), required=False, default=None)
+
+    parser.add_argument('--relex', type=argparse.FileType('r'), required=False, default=None)
 
     args = parser.parse_args()
 
@@ -512,6 +666,10 @@ if __name__ == '__main__':
             if len(line) > 0:
                 accept_pmids.add(line)
 
+    relexParser = None
+
+    if args.relex:
+        relexParser = RelexParser.loadFromFile(args.relex.name)
 
 
     idTuple2Pubmed = defaultdict(set)

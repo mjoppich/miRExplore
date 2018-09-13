@@ -12,7 +12,7 @@ class MirandaRel(DataBaseRel):
 
     def __init__(self, lent, rent, datasource, transcript, align_score, energy, mirna_start, mirna_end, 
                     lnc_start, lnc_end, align_length, mirna_identity, lncrna_identity, mirna_alignment, 
-                    alignment, lncrna_alignment):
+                    alignment, lncrna_alignment, orgs):
 
         self.lent = lent
         self.rent = rent
@@ -31,6 +31,8 @@ class MirandaRel(DataBaseRel):
         self.mirna_alignment = mirna_alignment
         self.alignment = alignment
         self.lncrna_alignment = lncrna_alignment
+
+        self.orgs = tuple(orgs)
 
     @property
     def lid(self):
@@ -73,7 +75,8 @@ class MirandaRel(DataBaseRel):
             'lncrna_identity': self.lncrna_identity,
             'mirna_alignment': self.mirna_alignment,
             'alignment': self.alignment,
-            'lncrna_alignment': self.lncrna_alignment
+            'lncrna_alignment': self.lncrna_alignment,
+            'organism': tuple(self.orgs)
         }
 
         return retJSON
@@ -97,7 +100,7 @@ class MirandaRelDB(DataBaseDescriptor):
         return self.rtyped
 
     @classmethod
-    def loadFromFile(cls, filepath, symbol2ens, ltype='mirna', rtype='lncrna'):
+    def loadFromFile(cls, filepath, symbol2ens, ltype='mirna', rtype='lncrna', org="mmu"):
 
         ret = MirandaRelDB(ltype, rtype)
         file_base = os.path.basename(filepath)
@@ -144,10 +147,11 @@ class MirandaRelDB(DataBaseDescriptor):
                 alignment = mirtEntry['alignment']
                 lncrna_alignment = mirtEntry['lncrna_alignment']
                 dataSource = 'miranda'
+                orgs = [org]
 
                 relations = set([
                     MirandaRel((lid, ltype), (rid, rtype), dataSource, transcript, align_score, energy, mirna_start, mirna_end,
-                        lnc_start, lnc_end, align_length, mirna_identity, lncrna_identity, mirna_alignment, alignment, lncrna_alignment)
+                        lnc_start, lnc_end, align_length, mirna_identity, lncrna_identity, mirna_alignment, alignment, lncrna_alignment), orgs
                     ])
 
 

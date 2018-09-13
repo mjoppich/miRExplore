@@ -9,7 +9,9 @@ import shlex
 from database.getNetworkFeatures import ExpressionNetwork
 from synonymes.SynonymFile import Synfile
 from synonymes.mirnaID import miRNA, miRNAPART
+from textdb.DIANATarbaseDB import DIANATarbaseDB
 from textdb.GeneNeighbourDB import GeneNeighbourDB
+from textdb.MirWalkDB import MirWalkDB
 from textdb.SymbolEnsemblDB import SymbolEnsemblDB
 from textdb.featureviewer import FeatureViewer
 from textdb.mi2mirna import MI2Mirna
@@ -567,14 +569,30 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
         for relDB in relDBs:
 
-            for gene in genes:
+            if len(genes) == 0:
 
-                dbrels = relDB.get_rels('gene', gene)
+                if relDB.ltype == "gene":
 
-                if dbrels == None:
-                    continue
+                    for gene in relDB.all_ltypes:
+                        dbrels = relDB.get_rels('gene', gene)
+                        allRelsByType['gene'] += dbrels
 
-                allRelsByType['gene'] += dbrels
+                elif relDB.rtype == "gene":
+
+                    for gene in relDB.all_rtypes:
+                        dbrels = relDB.get_rels('gene', gene)
+                        allRelsByType['gene'] += dbrels
+
+            else:
+
+                for gene in genes:
+
+                    dbrels = relDB.get_rels('gene', gene)
+
+                    if dbrels == None:
+                        continue
+
+                    allRelsByType['gene'] += dbrels
 
             for mirna in mirnas:
 
@@ -599,9 +617,10 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
             allRels += allRelsByType[etype]
 
-
-    allRels = sorted(allRels, key=lambda x: x.docid)
     print("Loading", len(allRels), "relations")
+    if len(allRels) < 100000:
+        allRels = sorted(allRels, key=lambda x: str(x.docid) if x.docid != None else str(x.data_id))
+
 
     if organisms != None:
 
@@ -619,6 +638,7 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
         print("Must include any organism", organisms)
 
+
     for rel in allRels:
 
         if organisms != None:
@@ -635,8 +655,6 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
         evJSON = rel.toJSON()
 
         foundRels[(rel.l_id_type, rel.r_id_type)].append(evJSON)
-
-
 
 
     addInfo = {}
@@ -718,7 +736,10 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
                 if len(addInfo[infoID]) == 0:
                     return True
 
-                docID = jsonEV['docid']
+                docID = jsonEV.get('docid', None)
+
+                if docID == None:
+                    return False
 
                 infoIDInfos = addInfo[infoID].get(docID, [])
 
@@ -848,6 +869,32 @@ def getOrganisms():
 
     return app.make_response((jsonify(jsonResult), 200, None))
 
+
+@app.route('/genes', methods=['GET', 'POST'])
+def getGenes():
+
+    global relDBs
+    global testRels
+
+    allGenes = set()
+
+    for relDB in relDBs:
+
+        if relDB.ltype == "gene":
+
+            for gene in relDB.all_ltypes:
+                allGenes.add(gene)
+
+        elif relDB.rtype == "gene":
+
+            for gene in relDB.all_rtypes:
+                allGenes.add(gene)
+
+    return app.make_response((jsonify( {
+        'gene': list(allGenes)
+    } ), 200, None))
+
+
 @app.route('/autocomplete', methods=['GET', 'POST'])
 def findID():
 
@@ -952,7 +999,7 @@ def ncit_autocomplete():
                 {
                     'name': termName,
                     'termid': termID,
-                    'group': 'go'
+                    'group': 'ncit'
                 }
             )
 
@@ -1117,22 +1164,35 @@ def start_app_from_args(args):
 
     normGeneSymbols = normalize_gene_names(path=args.obodir + "/hgnc_no_withdrawn.syn")
 
-    mouseGeneNeighbourDB = GeneNeighbourDB.loadFromFile("mmu", inputgff=args.obodir + "/mm10_primary_assembly_and_lncRNA.gtf")
 
-    geneNeighbourHoods[mouseGeneNeighbourDB.orgid] = mouseGeneNeighbourDB
 
-    print("Loading Interactions")
+    #mouseGeneNeighbourDB = GeneNeighbourDB.loadFromFile("mmu", inputgff=args.obodir + "/mm10_primary_assembly_and_lncRNA.gtf")
+    #geneNeighbourHoods[mouseGeneNeighbourDB.orgid] = mouseGeneNeighbourDB
+
+    print(datetime.datetime.now(), "Loading PMID2PMC")
 
     # allInteractions = defaultdict(list)
 
+    print(datetime.datetime.now(), "Loading Sym2Ens")
+
     symbol2ensemblDB = SymbolEnsemblDB.loadFromFile(args.obodir + "/sym2ens/")
+
+    print(datetime.datetime.now(), "Loading MI2Mirna")
     mi2mirna = MI2Mirna.loadFromFile(args.obodir + "mirnas_mirbase.csv")
+    print(datetime.datetime.now(), "Loading miranda interactions mm10")
+    # mirandaDB_mm10 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/mm10_interactionsAllGenes.txt", symbol2ens=symbol2ensemblDB, org="mmu")
+    # mirandaDB_hg38 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/hg38_interactionsAllGenes.txt", org="hsa")
 
-    mirandaDB_mm10 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/mm10_interactionsAllGenes.txt", symbol2ens=symbol2ensemblDB)
-    # mirandaDB_hg38 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/hg38_interactionsAllGenes.txt")
+    mirandaDB_mm10 = None
+    mirandaDB_hg38 = None
 
+    print(datetime.datetime.now(), "Loading miRecords")
     recordsDB = miRecordDB.loadFromFile(filelocation=args.obodir + "/mirecords_v4.xlsx", normGeneSymbols=normGeneSymbols)
+    print(datetime.datetime.now(), "Loading miRTarBase")
     mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=args.obodir + "/miRTarBase.csv", normGeneSymbols=normGeneSymbols)
+    print(datetime.datetime.now(), "Loading hsa_mmu.diana")
+    dianaDB, celllInfos = DIANATarbaseDB.loadFromFile(args.obodir+"/hsa_mmu.diana.csv", normGeneSymbols=normGeneSymbols)
+
 
     allDBS = None
 
@@ -1142,15 +1202,22 @@ def start_app_from_args(args):
 
     testRels = None  # TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
 
-    mirelPMID = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
+    mirelPMIDhsa = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
+    mirelPMIDmmu = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
     lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.pmid", ltype="lncrna", rtype="mirna")
     geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.pmid", ltype="gene", rtype="lncrna")
 
-    relDBs = [recordsDB, mirtarbaseDB, mirelPMID, lncMirPMID, geneLncPMID, mirandaDB_mm10]
+    print(datetime.datetime.now(), "Finished mirel")
+
+
+    print(datetime.datetime.now(), "Loading mirWalk")
+    mirWalkMMU3UTRDB = MirWalkDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/mirwalk/mmu_miRWalk_3UTR.txt', org="mmu",
+                                              bindSite="3UTR", normGeneSymbols=normGeneSymbols)
+    print(datetime.datetime.now(), "Loading mirWalk finished")
+    relDBs = [recordsDB, mirtarbaseDB, dianaDB, mirelPMIDhsa, mirelPMIDmmu, lncMirPMID, geneLncPMID, mirandaDB_mm10, mirWalkMMU3UTRDB]
 
     relDBs = [x for x in relDBs if x != None]
 
-    print(datetime.datetime.now(), "Finished mirel")
 
     mirFeedback = feedbackDB(args.feedback)
 
@@ -1216,6 +1283,15 @@ def start_app_from_args(args):
             pickle.dump(allDBS, fout)
 
         print(datetime.datetime.now(), "Finished Writing Pickle")
+
+
+    print(datetime.datetime.now(), "Adding CelllInfo Features")
+
+    if celllInfos != None:
+        for celllInfo in celllInfos:
+            pmid2cell.docid2info[celllInfo['docid']].append(celllInfo)
+
+    print(datetime.datetime.now(), "Finished Adding CelllInfo Features")
 
     print(datetime.datetime.now(), "Loading Features")
     rfDB = RFamDB.loadFromFile(pmidBase + '/rfam.regions.mirexplore')

@@ -964,6 +964,27 @@ export interface QueryResultState {
 
                 var infoRows =this.prepareInfoRowMirTarBase(tev, evStuff.length);
                 evStuff = evStuff.concat(infoRows);
+            } else if(tev['data_source'] == "DIANA")
+            {
+                if (beforeEvType != 'DIANA')
+                {
+                    // add header
+                    var headRow = <tr key={evStuff.length}>
+                    <th>Gene/Organism</th>
+                    <th>miRNA</th>
+                    <th>Measurement Method/Type</th>
+                    <th>Tissue/Cell</th>
+                    <th>Link To DIANA TarBase</th>
+                    </tr>;
+            
+                    evStuff.push(headRow);
+
+                    beforeEvType = 'DIANA';
+                }
+
+                var infoRows = this.prepareInfoRowDiana(tev, evStuff.length);
+                evStuff = evStuff.concat(infoRows);
+
             }
 
 
@@ -1013,6 +1034,67 @@ export interface QueryResultState {
                             {
                                 tev['exp_support'].map((exptype, nsi) => <span key={nsi}  style={{display: "block"}}>{exptype}</span>)
                             }
+                        </td>
+                      </tr>;
+
+        outRows.push(infoRow);
+
+        return outRows;
+    }
+
+    prepareInfoRowDiana(tev, idx)
+    {
+
+        /*
+                {
+                    data_id: 156905
+                    ​​​​​​data_source: "DIANA"
+                    ​​​​​​direction: "DOWN"
+                    ​​​​​​lid: "CXCR4"
+                    ​​​​​​lontid: "CXCR4"
+                    ​​​​​​ltype: "gene"
+                    ​​​​​​measure: "DIRECT"
+                    ​​​​​​method: "HITS-CLIP"
+                    ​​​​​​orgs: Array [ "hsa" ]
+                    ​​​​​​rid: "miR-1226-5p"
+                    ​​​​​​rontid: "miR-1226-5p"
+                    ​​rtype: "mirna"
+                    ​​​tissue: "Kidney"
+                },
+
+
+                                    var headRow = <tr key={evStuff.length}>
+                    <th>Gene/Organism</th>
+                    <th>miRNA</th>
+                    <th>Measurement Method/Type</th>
+                    <th>Tissue/Cell</th>
+                    </tr>;
+                */
+
+        var outRows = [];
+
+        var self = this;
+        var longOrg = tev['orgs'].map(x => self.orgTLC2Long[x])
+
+        var lowerGene = tev['lid'].toLowerCase()
+        var upperGene = tev['lid'].toUpperCase()
+
+        var dianaLink = "http://carolina.imis.athena-innovation.gr/diana_tools/web/index.php?r=tarbasev8%2Findex&miRNAs%5B%5D=&genes%5B%5D="+upperGene+"&genes%5B%5D="+lowerGene+"&sources%5B%5D=1&sources%5B%5D=7&sources%5B%5D=9&publication_year=&prediction_score=&sort_field=&sort_type=&query=1"
+
+        var infoRow = <tr key={idx+1}>
+                        <td>{tev['lid']} ({tev['ltype']})<br/>{longOrg.join(", ")}</td>
+                        <td>{tev['rid']} ({tev['rtype']})</td>
+                        <td>{tev['method']}<br/>{tev['measure']}</td>
+                        <td>
+                            {
+                                tev['tissue']
+                            }<br/>
+                            {
+                                tev['cellline']
+                            }
+                        </td>
+                        <td>
+                            <a href={dianaLink} target="_blank">DIANA</a>
                         </td>
                       </tr>;
 

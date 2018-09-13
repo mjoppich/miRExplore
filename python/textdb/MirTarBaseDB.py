@@ -21,7 +21,7 @@ class MirTarBaseRel(DataBaseRel):
         self.funcType = funcType
         self.pubmedRef = pubmedRef
 
-        self.organism = tuple(organism)
+        self.orgs = tuple(organism)
 
     @property
     def lid(self):
@@ -61,8 +61,8 @@ class MirTarBaseRel(DataBaseRel):
         if self.pubmedRef != None:
             retJSON['docid']= self.pubmedRef
 
-        if self.organism != None:
-            retJSON['orgs'] = tuple(self.organism)
+        if self.orgs != None:
+            retJSON['orgs'] = tuple(self.orgs)
 
         return retJSON
 
@@ -94,7 +94,7 @@ class MirTarBaseDB(DataBaseDescriptor):
         mirtarbaseEvidences = DataFrame.parseFromFile(filepath,
                                                       bConvertTextToNumber=False)
 
-
+        seenMirnas = {}
         geneSymbolsNormalized=0
 
         for mirtEntry in mirtarbaseEvidences:
@@ -106,7 +106,13 @@ class MirTarBaseDB(DataBaseDescriptor):
                 geneSymbolsNormalized = 0
 
             rid = mirtEntry['miRNA']
-            org, rid = cls.harmonizeMIRNA(rid)
+
+            if rid in seenMirnas:
+                org, rid = seenMirnas[rid]
+            else:
+                origRid = rid
+                org, rid = cls.harmonizeMIRNA(rid)
+                seenMirnas[origRid] = (org, rid)
 
             if not org in ['hsa', 'mmu']:
                 continue

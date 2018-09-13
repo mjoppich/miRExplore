@@ -37,6 +37,7 @@ class MiRGeneRel(DataBaseRel):
 
         self.data_source=datasource
         self.data_id = dataID
+        self.trustv = None
 
 
         if intuple != None:
@@ -80,6 +81,14 @@ class MiRGeneRel(DataBaseRel):
 
     def toJSON(self):
 
+        trust = {}
+
+        if self.trustv != None and len(self.trustv) == 4:
+            trust['stack'] = self.trustv[-4]
+            trust['verb'] = self.trustv[-3]
+            trust['conj'] = self.trustv[-2]
+            trust['relex'] = self.trustv[-1]
+
         retJSON =  {
             'rel_direction': self.assocDir,
             'rel_direction_verb': self.assocDirV,
@@ -100,7 +109,8 @@ class MiRGeneRel(DataBaseRel):
             'lontid': self.lontent[0],
             'rontid': self.rontent[0],
             'data_source': self.data_source,
-            'data_id': self.data_id
+            'data_id': self.data_id,
+            'trust': trust
         }
 
         if self.orgs != None:
@@ -125,6 +135,19 @@ class MiGenRelDB(DataBaseDescriptor):
     @property
     def rtype(self):
         return self.rtyped
+
+    def types(self):
+        return set([self.ltype, self.rtype])
+
+    def getOntologyForType(self, ontType):
+
+        if ontType == self.ltype:
+            return self.lontology
+
+        if ontType == self.rtype:
+            return self.rontology
+
+        return None
 
     @classmethod
     def choices(cls, elems, k=1, excluded = []):
@@ -210,7 +233,7 @@ class MiGenRelDB(DataBaseDescriptor):
 
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None, switchLR=False):
+    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None, switchLR=False, lReplaceSc=True, rReplaceSc=True, ignoreDocIDs=None):
 
 
         if switchLR:
@@ -237,6 +260,11 @@ class MiGenRelDB(DataBaseDescriptor):
         seenRels = set()
 
         geneSymbolsNormalized = 0
+
+        seenMirnas = {}
+
+        ignoredDocs = set()
+        takenDocs = set()
 
         with open(filepath, 'r') as fin:
 
@@ -269,10 +297,10 @@ class MiGenRelDB(DataBaseDescriptor):
                 lid = aline[0]
                 rid = aline[3]
 
-                if ret.l_ont_based:
+                if ret.l_ont_based and lReplaceSc:
                     lid = lid.replace('_', ':', 1)
 
-                if ret.r_ont_based:
+                if ret.r_ont_based and rReplaceSc:
                     rid = rid.replace('_', ':', 1)
 
                 if ltype == rtype and lid > rid:
@@ -308,15 +336,35 @@ class MiGenRelDB(DataBaseDescriptor):
 
                 org = None
                 if ltype == 'mirna':
-                    (org, lid) = cls.harmonizeMIRNA(lid)
+
+                    if lid in seenMirnas:
+                        org, lid = seenMirnas[lid]
+                    else:
+                        origRid = lid
+                        org, lid = cls.harmonizeMIRNA(lid)
+                        seenMirnas[origRid] = (org, lid)
+
                 elif rtype == 'mirna':
-                    (org, rid) = cls.harmonizeMIRNA(rid)
+
+                    if rid in seenMirnas:
+                        org, rid = seenMirnas[rid]
+                    else:
+                        origRid = rid
+                        org, rid = cls.harmonizeMIRNA(rid)
+                        seenMirnas[origRid] = (org, rid)
+
 
                 docOrgs = set()
                 if org != None:
                     docOrgs.add(org)
 
                 docid = aline[6]
+
+                if ignoreDocIDs != None and docid in ignoreDocIDs:
+                    ignoredDocs.add(docid)
+                    continue
+
+                takenDocs.add(docid)
 
                 docOrgRes = docOrgDB.getDocOrgs(docid)
 
@@ -358,6 +406,8 @@ class MiGenRelDB(DataBaseDescriptor):
                                 newrel.assocDirV = nAssocDirV
                                 newrel.assocDir = nAssocDirV.replace('V', '')
 
+                        if isinstance(rel[-4], int):
+                            newrel.trustv = rel[-4:]
 
                         relCopy = copy.deepcopy(newrel)
 
@@ -425,6 +475,10 @@ class MiGenRelDB(DataBaseDescriptor):
 
 
 
+
+        print("Loaded file", filepath)
+        print("Accepted Doc IDs", len(takenDocs))
+        print("Rejected Doc IDs", len(ignoredDocs))
 
         return ret
 

@@ -32,12 +32,37 @@ class GOSynonyme:
         self.scope = scope
         self.xrefs = xrefs
 
+        self.original_syn = None
+
+        if self.scope == GOSynonymeScope.NARROW:
+            if any([x in synonyme for x in ['NARROW', 'EXACT', 'BRROAD', 'RELATED']]):
+                try:
+                    syn = GOTerm.handleSynonyme(self.syn)
+
+                    if syn != None:
+
+                        self.original_syn = self.syn
+
+                        self.type = syn.type
+                        self.syn = syn.syn
+                        self.scope = syn.scope
+                        self.xrefs = syn.xrefs
+
+
+                except:
+                    pass
+
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
 
         xreflist = [] if self.xrefs == None else self.xrefs
+
+        if isinstance(xreflist, str):
+            if xreflist.endswith("]") and not xreflist.startswith("["):
+                print("Strange xreflist", xreflist, self.original_syn)
+                xreflist = "[" + xreflist
 
         return "\"{text}\" {scope} {xrefs}".format(text=self.syn, scope=self.scope.name, xrefs=str(xreflist))
 
@@ -379,6 +404,9 @@ class GOTerm:
 
             sLine = sLine.strip()
 
+            if sLine.startswith("#"):
+                continue
+
             if sLine[0] == '[' and sLine[len(sLine)-1] == ']':
 
                 sType = sLine[1:len(sLine)-1]
@@ -406,7 +434,9 @@ class GOTerm:
                 elem = cls.handleSynonyme(value)
 
                 if elem == None:
-                    print(aValue)
+                    print(value)
+                    print(term.id)
+                    print(sLine)
 
                 term.synonym.add(elem)
 
@@ -505,7 +535,7 @@ class GOTerm:
                     if len(aValue[i]) > 0 and aValue[i][0] == "\"" and aValue[i][len(aValue[i]) - 1] == "\"":
                         aValue[i] = aValue[i][1:len(aValue[i]) - 2]
 
-                if cls.compareIDs("synonymExact", aValue[0]) or cls.compareIDs("synonymRelated", aValue[0]) or cls.compareIDs("synonymNarrow", aValue[0]):
+                if cls.compareIDs("synonymExact", aValue[0]) or cls.compareIDs("synonymRelated", aValue[0]) or cls.compareIDs("synonymNarrow", aValue[0]) or cls.compareIDs("IAO:0000118", aValue[0]):
 
                     if term.synonym == None:
                         term.synonym = set()
@@ -578,18 +608,29 @@ class GOTerm:
             synxrefs = None
             syntypet = GOSynonymeType.UNKNOWN
 
+            scopet = GOSynonymeScope[aval[scope]]
+            syntext = aval[syn]
+            synxrefs = aval[xrefs]
+
             if syntype > 0:
                 syntypett = aval[syntype].upper()
-                syntypet = GOSynonymeType.UNKNOWN #GOSynonymeType[syntypett]
 
-            scopet = GOSynonymeScope[aval[scope]]
+                try:
+                    syntypet = GOSynonymeType[syntypett]
 
-            syntext = aval[syn]
+                except:
+                    # apparently not a type.
 
-            synxrefs = aval[xrefs]
+                    if not ((synxrefs.startswith("[") and synxrefs.endswith("]")) or (synxrefs.startswith("{") and synxrefs.endswith("}"))):
+                        synxrefs = aval[syntype] + " " + aval[xrefs]
+
+                    syntypet = GOSynonymeType.UNKNOWN #GOSynonymeType[syntypett]
 
             if synxrefs == '':
                 synxrefs = None
+
+            if synxrefs != None and not ((synxrefs.startswith("[") and synxrefs.endswith("]")) or (synxrefs.startswith("{") and synxrefs.endswith("}"))):
+                print(value, aval, syntypet, synxrefs)
 
             syn = GOSynonyme( syntext, scopet, syntypet, synxrefs )
             if syn == None:
@@ -1008,7 +1049,7 @@ class GeneOntology:
 
                     newid = 'META:' + str(iCnt)
 
-                    sys.stderr.write(" ".join(("Merging: ", term.id, newOnto[id], " into ", newid)))
+                    sys.stderr.write(" ".join(("Merging: ", term.id, str(newOnto[id]), " into ", newid))+"\n")
 
                     mergedTerm = GOTerm.merge(term, newOnto.dTerms[id], newid)
                     iCnt += 1
@@ -1021,12 +1062,17 @@ class GeneOntology:
 
 if __name__ == '__main__':
 
+    #GOTerm.handleSynonyme("\"Kenya baboon\" EXACT common_name []")
+
     #oTest = GeneOntology("/home/proj/projekte/textmining/FBN_ATOL_Dummerstorf/Daten-Ontologien/MethodOntology_MZ1.obo") #"C:/ownCloud/data/biomodels/go.obo"
     #oTest.loadGeneAnnotation("/home/users/joppich/ownCloud/data/biomodels/gene2go.9606", {9606})
     #oTest = GeneOntology("/home/proj/projekte/textmining/FBN_ATOL_Dummerstorf/Daten-Ontologien/synonymes/modified/atol_v6_MZ.prot.obo")
     #oTest = GeneOntology('/mnt/c/dev/data/fbn_textmine/mom_new.obo')
     #oTest = GeneOntology('/mnt/c/Users/mjopp/Downloads/ncit.obo')
-    oTest = GeneOntology('/home/mjoppich/ownCloud/data/miRExplore/obodir/ncit.obo')
+    #oTest = GeneOntology('/home/mjoppich/ownCloud/data/miRExplore/obodir/ncit.obo')
+    oTest = GeneOntology('/mnt/c/ownCloud/data/miRExplore/cellline_ontology/clo.new.owl.obo')
+
+    oTest.saveFile("/mnt/c/ownCloud/data/miRExplore/cellline_ontology/clo.new.obo")
 
     #print(oTest.getID('GO:0002281'))
     #print(oTest.getGenes({9606}, 'GO:0002281'))

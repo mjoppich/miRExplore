@@ -1,12 +1,148 @@
-from collections import Counter
+import os
+from collections import Counter, defaultdict
 
 import networkx
 import requests
 import json
 
+from synonymes.mirnaID import miRNA, miRNAPART
 from utils.cytoscape_grapher import CytoscapeGrapher
 
 class DataBasePlotter:
+
+    @classmethod
+    def fetchGenes(cls, requestDict, gene2name=None, minPMIDEvCount=0, minTgtCount=0, acceptEv = None):
+        serverAddress = "https://turingwww.bio.ifi.lmu.de"
+        serverPort = None
+        serverPath = "yancDB"
+
+        serverAddress = "http://localhost"
+        serverPort = "5000"
+        serverPath = "/"
+
+        def makeServerAddress(address, port, path):
+
+            ret = address
+
+            if port != None:
+                ret += ":" + str(port)
+
+            if path != None:
+                ret += "/" + path + "/"
+
+            return ret
+
+        r = requests.post(makeServerAddress(serverAddress, serverPort, serverPath) + "/find_interactions",
+                          data=json.dumps(requestDict))
+
+        print(r)
+
+        jsonRes = r.json()
+
+        graph = networkx.Graph()
+
+
+        print(len(jsonRes['rels']))
+        nodeCounter = Counter()
+
+
+        allGenes2Name = {}
+
+        if gene2name != None:
+            for gene in gene2name:
+
+                for elem in gene2name[gene]:
+                    allGenes2Name[elem.upper()] = gene
+
+        targets2sources = defaultdict(set)
+        edge2datasourceCount = defaultdict(lambda: Counter())
+
+
+        for rel in jsonRes['rels']:
+
+            source = rel['lid']
+            target = rel['rid']
+
+            if gene2name != None:
+                if source.upper() in allGenes2Name:
+                    source = allGenes2Name[source.upper()]
+
+                if target.upper() in allGenes2Name:
+                    target = allGenes2Name[target.upper()]
+
+            try:
+                target = miRNA(target)
+                target = target.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID] , normalized=True)
+
+            except:
+                pass
+
+
+            edge = (source, target)
+            for ev in rel['evidences']:
+                ds = ev['data_source']
+
+
+                if acceptEv != None:
+                    evRes = acceptEv(ev)
+                else:
+                    evRes = True
+
+                if evRes:
+                    edge2datasourceCount[edge][ds] += 1
+
+
+            targets2sources[target].add(source)
+
+
+
+        for rel in jsonRes['rels']:
+
+            source = rel['lid']
+            target = rel['rid']
+
+            if gene2name != None:
+                if source.upper() in allGenes2Name:
+                    source = allGenes2Name[source.upper()]
+
+                if target.upper() in allGenes2Name:
+                    target = allGenes2Name[target.upper()]
+
+            try:
+                target = miRNA(target)
+                target = target.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID] , normalized=True)
+
+            except:
+                pass
+
+
+            edge = (source, target)
+
+            edgeCounts = edge2datasourceCount[edge]
+
+            allEvCount = sum([1 for x in edgeCounts])
+            otherEvCount = sum([1 for x in edgeCounts if x != "pmid"])
+
+            if allEvCount == 0:
+                print("Removing edge", edge, "for 0 count")
+                continue
+
+            if otherEvCount == 0 and edge2datasourceCount[edge]["pmid"] < minPMIDEvCount:
+                continue
+
+            if len(targets2sources[target]) < minTgtCount:
+                continue
+
+            graph.add_node(source, {'color': 'red'})
+            graph.add_node(target, {'color': 'blue'})
+
+            graph.add_edge(source, target)
+
+            nodeCounter[source] += 1
+            nodeCounter[target] += 1
+
+        return graph, nodeCounter, edge2datasourceCount, jsonRes
+
 
     @classmethod
     def makePlotForGenes(cls, path, name, gene2name, add=None, cv=False):
@@ -28,7 +164,10 @@ class DataBasePlotter:
             'disease': [{'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'}],
             'gene': allGenes, 'sentences': "false"}
         else:
-            requestData = {'gene': allGenes, 'sentences': "false"}
+            requestData = {
+                'gene': allGenes, 'sentences': "false",
+                'organism': [{'termid': "Homo sapiens"}]
+            }
 
 
         if add != None:
@@ -38,53 +177,7 @@ class DataBasePlotter:
 
         print(requestData)
 
-        serverAddress = "https://turingwww.bio.ifi.lmu.de"
-        serverPort = None
-        serverPath = "yancDB"
-
-        def makeServerAddress(address, port, path):
-
-            ret = address
-
-            if port != None:
-                ret += ":" + str(port)
-
-            if path != None:
-                ret += "/" + path + "/"
-
-            return ret
-
-        r = requests.post(makeServerAddress(serverAddress, serverPort, serverPath) + "/find_interactions",
-                          data=json.dumps(requestData))
-
-        print(r)
-
-        jsonRes = r.json()
-
-        graph = networkx.Graph()
-
-        nodeCounter = Counter()
-
-        print(len(jsonRes['rels']))
-
-        for rel in jsonRes['rels']:
-
-            source = rel['lid']
-            target = rel['rid']
-
-            if source.upper() in gene2name:
-                source = gene2name[source]
-
-            if target.upper() in gene2name:
-                target = gene2name[target]
-
-            graph.add_node(source, {'color': 'red'})
-            graph.add_node(target, {'color': 'blue'})
-
-            graph.add_edge(source, target)
-
-            nodeCounter[source] += 1
-            nodeCounter[target] += 1
+        graph, nodeCounter = cls.fetchGenes(requestData)
 
         newNodes = []
 
@@ -182,6 +275,7 @@ if __name__ == '__main__':
 
 
     print(len(allGenes), allGenes)
+    os.makedirs("/mnt/c/Users/mjopp/Desktop/yanc_network/", exist_ok=True)
 
     DataBasePlotter.makePlotForGenes('/mnt/c/Users/mjopp/Desktop/yanc_network/', 'all_chemokines', gene2name)
 
@@ -207,7 +301,6 @@ if __name__ == '__main__':
             sgene2name[gene] = gene
 
         return sgene2name
-
 
 
     subPlot = ['CCL2', 'CXCL1', 'CXCL12']

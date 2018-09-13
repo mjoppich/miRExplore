@@ -8,6 +8,7 @@ import sys
 import os
 
 from synonymes.SynonymFile import Synfile
+from textmining.SentenceID import SentenceID
 from utils.HashDict import HashDict
 from utils.tmutils import normalize_gene_names
 
@@ -301,6 +302,7 @@ def getOboID2Major(selectedTermIDs, hitsPerOboID, obo, primaryRoots, remainingRo
 
                             if parentSet == False:
                                 oboid2majorid[child.term.id] = base.id
+                                print("Base Ontology Term for", child.term.id, child.term.name)
 
                         if child.term.id == 'CL:1000497':
                             print("Too few hits for", child.term.name, oboid2majorid[child.term.id], hitsPerOboID[child.term.id], base.id)
@@ -344,6 +346,8 @@ def getOboID2Major(selectedTermIDs, hitsPerOboID, obo, primaryRoots, remainingRo
     oboid2majorid = {}
     oboid2rootdist = {}
 
+    print([x for x in primaryRoots])
+
     for root in primaryRoots:
         prepareObo2Major(root)
 
@@ -357,25 +361,26 @@ def getOboID2Major(selectedTermIDs, hitsPerOboID, obo, primaryRoots, remainingRo
 
 
 
-def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2, messenger_obolevel=3, selectedElems=None):
+def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2, messenger_obolevel=1, selectedElems=None):
 
     global messengerID2Name
+    global ccPMID
 
     elemJSON = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=False)
 
     rels = elemJSON['rels']
     addinfo = elemJSON['pmidinfo']
 
-    docInfos = defaultdict(lambda: defaultdict(set))
+    docInfos = defaultdict(lambda: defaultdict(list))
 
     for x in addinfo:
 
         alladdinfo = addinfo[x]
         for pmid in alladdinfo:
             for ev in alladdinfo[pmid]:
-                termid = ev['termid']
+                termid = (ev['termid'], ev['evidences'])
 
-                docInfos[x][pmid].add(termid)
+                docInfos[x][pmid].append(termid)
 
 
 
@@ -386,8 +391,13 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
     
     """
 
-    hitsPerOboID = Counter()
+    hitsPerOboID = defaultdict(lambda: Counter())
     messengerHitsPerOboID = Counter()
+
+
+
+    lOntology = ccPMID.lontology
+    rOntology = ccPMID.rontology
 
     evCount = 10
 
@@ -402,26 +412,26 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                 src = evidence.get('lontid', evidence['lid'])
                 tgt = evidence.get('rontid', evidence['rid'])
 
-                hitsPerOboID[src] += 1
+                hitsPerOboID[ccPMID.ltype][src] += 1
 
-                if src in cellsObo.dTerms:
-                    oboNode = cellsObo.dTerms[src]
-
-                    for child in oboNode.getAllParents():
-                        hitsPerOboID[child.id] += 1
-
-                hitsPerOboID[tgt] += 1
-
-                if tgt in cellsObo.dTerms:
-                    oboNode = cellsObo.dTerms[tgt]
+                if src in lOntology.dTerms:
+                    oboNode = lOntology.dTerms[src]
 
                     for child in oboNode.getAllParents():
-                        hitsPerOboID[child.id] += 1
+                        hitsPerOboID[ccPMID.ltype][child.id] += 1
+
+                hitsPerOboID[ccPMID.rtype][tgt] += 1
+
+                if tgt in rOntology.dTerms:
+                    oboNode = rOntology.dTerms[tgt]
+
+                    for child in oboNode.getAllParents():
+                        hitsPerOboID[ccPMID.rtype][child.id] += 1
 
                 evDocId = evidence['docid']
                 messengerIDs = docInfos['messengers'].get(evDocId, [])
 
-                for messengerID in messengerIDs:
+                for messengerID,nev in messengerIDs:
 
                     if messengerID in messengersObo.dTerms:
                         oboNode = messengersObo.dTerms[messengerID]
@@ -442,12 +452,28 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
     In order to avoid too many single nodes, assign each child to a major parent ....
     
     """
+    ontType2OboMajor = {}
 
-    allRoots = cellsObo.getRoots()
-    cellRoot = cellsObo.dTerms.get('CL:0000255', None)
+    print(ccPMID.types())
 
-    selectedCellElems = [x['termid'] for x in cells if x['group'] == 'CELLS']
-    oboid2majorid = getOboID2Major(selectedCellElems, hitsPerOboID, cellsObo, [cellRoot], allRoots)
+    for ontType in set(ccPMID.types()):
+
+        ont = ccPMID.getOntologyForType(ontType)
+
+        allRoots = ont.getRoots()
+
+        rootNodes = None
+        if ontType == "CELLS":
+            rootNodes = [ont.dTerms.get('CL:0000255', None)]
+
+
+        if rootNodes == None or rootNodes == [None]:
+            rootNodes = ont.getRoots()
+
+        selectedCellElems = [x['termid'] for x in cells if x['group'] == ontType]
+        oboid2majorid = getOboID2Major(selectedCellElems, hitsPerOboID[ontType], ont, rootNodes, allRoots, minOccurrences=-1)
+
+        ontType2OboMajor[ontType] = oboid2majorid
 
 
 
@@ -458,7 +484,7 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
     messengerMinOccs = int(evCount * 0.1)
     print("Messenger Minimum Occurrences", messengerMinOccs)
-    messengerOboid2Major = getOboID2Major(selectedMessengerElems, messengerHitsPerOboID, messengersObo, messengersObo.getRoots(), None, messenger_obolevel, minOccurrences=messengerMinOccs)
+    messengerOboid2Major = getOboID2Major(selectedMessengerElems, messengerHitsPerOboID, messengersObo, messengersObo.getRoots(), None, messenger_obolevel, minOccurrences=-1)
 
 
     oldname2newname = {}
@@ -475,12 +501,15 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                 src = evidence.get('lontid', evidence['lid'])
                 tgt = evidence.get('rontid', evidence['rid'])
 
-                newsrc = oboid2majorid.get(src, src)
-                newtgt = oboid2majorid.get(tgt, tgt)
+                srctype = evidence.get('ltype', "CELLS")
+                tgtype = evidence.get('rtype', "CELLS")
+
+                newsrc = ontType2OboMajor[srctype].get(src, src)
+                newtgt = ontType2OboMajor[tgtype].get(tgt, tgt)
 
 
                 if newsrc != None:
-                    srcTerm = cellsObo.dTerms[newsrc]
+                    srcTerm = ccPMID.lontology.dTerms[newsrc]
                     srcName = srcTerm.name
 
                     allNodes.add(srcName)
@@ -489,7 +518,7 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                     srcName = x['lid']
 
                 if newtgt != None:
-                    tgtTerm = cellsObo.dTerms[newtgt]
+                    tgtTerm = ccPMID.rontology.dTerms[newtgt]
                     tgtName = tgtTerm.name
 
                     allNodes.add(tgtName)
@@ -562,7 +591,10 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
     name2obo = defaultdict(set)
 
-
+    """
+    
+    BACKUP of original code: cell cell messenger effect
+    
     for x in rels:
 
         for evidence in x['evidences']:
@@ -649,7 +681,149 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
                     if not onlyCells:
                         allEdges[(mNodeIdx, cNodeIdx)] += 1
+    """
 
+    """
+    
+    Generating Sankey Chart: CELL MESSAGE CELL EFFECT
+    
+    """
+    allInteracts = 0
+
+    for x in rels:
+
+        for evidence in x['evidences']:
+
+            lid = evidence.get('lontid', evidence['lid'])
+            rid = evidence.get('rontid', evidence['rid'])
+
+            sentid = evidence['rel_sentence']
+
+            if majorParents:
+
+                lid = oldname2newname.get(lid, evidence['lid'])
+                rid = oldname2newname.get(rid, evidence['rid'])
+
+            if rid == 'root':
+                print("ROOT", evidence)
+
+            name2obo[lid].add(evidence.get('lontid', evidence['lid']))
+            name2obo[rid].add(evidence.get('rontid', evidence['rid']))
+
+
+            if (lid == rid):
+                rid = rid + "_c"
+
+                if not rid in allNodes:
+                    allNodes.append(rid)
+
+            edgeCellCell = check_circ(lid, rid)
+
+            if edgeCellCell == None:
+
+
+                addL = lid + "_c" in allNodes
+                addR = rid + "_c" in allNodes
+
+                if addL and not addR:
+                    lid = lid + "_c"
+                elif not addL and addR:
+                    rid = rid + "_c"
+                elif addL and addR:
+                    print("lid and rid modified in allnodes?", lid, rid, allNodes)
+                elif not addL and not addR:
+                    lid = lid + "_c"
+                    allNodes.append(lid)
+
+                edgeCellCell = check_circ(lid, rid)
+
+                if edgeCellCell == None:
+
+                    print("Circular", lid, rid, allNodes)
+                    continue
+
+            cellSrc.add(edgeCellCell[0])
+            cellTgt.add(edgeCellCell[1])
+
+
+            evDocId = evidence['docid']
+
+            sentence = evidence.get("sentence", "")
+
+            aSent = sentid.split(".")
+            aSentNum = int(aSent[-1])
+            aSent = aSent[0:2]
+            allowedSentIDs = set()
+            allowedSentIDs.add(str(SentenceID.fromArray(aSent + [aSentNum - 1])))
+            allowedSentIDs.add(str(SentenceID.fromArray(aSent + [aSentNum + 1])))
+
+            effect = docInfos['categories'].get(evDocId, [None])
+            message = docInfos['messengers'].get(evDocId, [None])
+
+            foundEffects = set()
+            if effect != None:
+
+                for termID, evidences in effect:
+                    for x in evidences:
+                        if x[0] == sentid:
+                            foundEffects.add(termID)
+
+                if len(foundEffects) == 0:
+                    for termID, evidences in effect:
+                        for x in evidences:
+                            if x[0] in allowedSentIDs:
+                                foundEffects.add(termID)
+
+            foundMessages = set()
+            if message != None:
+
+                for termID, evidences in message:
+                    for x in evidences:
+                        if x[0] == sentid:
+                            foundMessages.add(termID)
+
+                if len(foundMessages) == 0:
+                    for termID, evidences in message:
+                        for x in evidences:
+                            if x[0] in allowedSentIDs:
+                                foundMessages.add(termID)
+
+
+
+            messengerEdgesCounter[edgeCellCell] += len(foundMessages)
+            categoryEdgesCounter[edgeCellCell] += len(foundEffects)
+
+            for messengerID in foundMessages:
+
+
+                if messengerID == 'mUnknown':
+                    messengerName = messengerID
+                else:
+
+                    origMessID = messengerID
+                    messengerID = messengerOboid2Major[messengerID]
+                    messengerName = messengerID2Name[messengerID]
+
+                    if "root" in [origMessID, messengerID, messengerName]:
+                        print("root sighted in", [origMessID, messengerID, messengerName])
+
+                mNodeIdx = allNodes.index(messengerName)
+
+
+                for categoryID in foundEffects:
+
+                    cNodeIdx = allNodes.index(categoryID)
+
+                    if not onlyCells:
+
+
+                        allEdges[(edgeCellCell[0], mNodeIdx)] += 1
+                        allEdges[(mNodeIdx, edgeCellCell[1])] += 1
+                        allEdges[(edgeCellCell[1], cNodeIdx)] += 1
+
+                        allInteracts +=1
+
+    print("Max interacts", allInteracts)
 
     """
     
@@ -660,6 +834,8 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
     usedNodeIndices = {}
     usedNodes = []
     for src, tgt in allEdges:
+
+        print(src, tgt, allNodes[src], allNodes[tgt], allEdges[(src, tgt)])
 
         nodename = allNodes[src]
         if not nodename in usedNodes:
@@ -724,6 +900,34 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
             print(x)
 
     return graphObj
+
+
+@app.route("/query", methods=['POST'])
+def queryDB():
+    interactReq = request.get_json(force=True, silent=True)
+
+    global categoriesObo
+    global messengersObo
+
+    if interactReq == None:
+        return app.make_response((jsonify( {'error': 'invalid json'} ), 400, None))
+
+    if not 'elements' in interactReq:
+        return app.make_response((jsonify( {'error': 'must include CELLS'} ), 400, None))
+
+    print(interactReq)
+
+    fetchSentences=True
+    if 'sentences' in interactReq:
+        if interactReq['sentences'].upper() == 'FALSE':
+            fetchSentences = False
+
+    retInfo = makeInteractionObject(interactReq.get('elements', None), interactReq.get('categories', None),
+                              interactReq.get('messengers', None), None, fetchSentences=fetchSentences)
+
+    return app.make_response((jsonify(retInfo), 200, None))
+
+
 
 @app.route('/find_interactions', methods=['GET', 'POST'])
 def findInteractions():
@@ -915,25 +1119,45 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
         
     """
 
+    seenTuples = set()
 
+    oneDebug = 0
+    takenPMIDs = set()
 
+    missingGroupsCounter = Counter()
+    missingSentenceCounter = Counter()
+    missingTrust = 0
+    incorrectVerbDir = 0
+    seenEvidences = 0
+    duplicateDescriptor=0
+    reviewPMIDCount = 0
+    noOrganismCount = 0
+    incorrectOrganismCount = 0
 
     print("Loading sentences")
     for rel in allRels:
 
+        seenEvidences += 1
+
+        if rel.docid in reviewPMIDs:
+            reviewPMIDCount += 1
+            continue
+
+
         if organisms != None:
 
             if rel.orgs == None:
+                noOrganismCount += 1
                 continue
 
             if not any([x in rel.orgs for x in organisms]):
+                incorrectOrganismCount += 1
                 continue
 
         if rel.docid != -1:
             allDocIDs.add(rel.docid)
 
         evJSON = rel.toJSON()
-
 
         """
         
@@ -948,12 +1172,14 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
             docIDDiseaseInfo = addInfo['categories'].get(docID, [])
 
             if len(docIDDiseaseInfo) == 0:
+                print("docIDDisease")
                 continue
             else:
 
                 acceptEv = any([x['termid'] in allowedIDs['categories'] for x in docIDDiseaseInfo])
 
                 if not acceptEv:
+                    print("docIDDisease ev")
                     continue
 
         if messengers != None and len(allowedIDs['messengers']) > 0:
@@ -963,10 +1189,12 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
             docIDGOInfo = addInfo['messengers'].get(docID, [])
 
             if len(docIDGOInfo) == 0:
+                print("docIDmessenger")
                 continue
             else:
 
                 acceptEv = any([x['termid'] in allowedIDs['messengers'] for x in docIDGOInfo])
+                print("docIDmessenger ev")
 
                 if not acceptEv:
                     continue
@@ -978,6 +1206,125 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
         
         """
 
+
+
+        directionalAction = True
+        if directionalAction == True:
+
+            if not evJSON['rel_direction'] == "12":
+                incorrectVerbDir += 1
+                continue
+
+
+        if True:
+
+            docID = evJSON['docid']
+            rejectDoc = False
+
+
+            missingGroups = []
+
+            for infoGroup in ['messengers', 'categories']:
+
+                docIDInfo = addInfo[infoGroup].get(docID, [])
+
+                if len(docIDInfo) == 0:
+                    rejectDoc = True
+                    missingGroups.append(infoGroup)
+
+            missingGroupsCounter[tuple(sorted(missingGroups))] += 1
+
+            if rejectDoc:
+                if evJSON['docid'] == "22391089":
+                    print("Rejected infoGroup", docID, infoGroup)
+                continue
+
+            sameSentence = True
+
+
+
+            if sameSentence:
+
+                evSentID = evJSON['rel_sentence']
+                rejectDoc = False
+                missingSentenceGroup = set()
+
+                for infoGroup in ['messengers', 'categories']:
+                    docIDInfo = addInfo[infoGroup].get(docID, [])
+
+                    #docIDInfo != 0
+                    seenSentences = set()
+
+                    for docEvs in docIDInfo:
+                        for evEv in docEvs['evidences']:
+
+                            didSID = evEv[0]
+                            seenSentences.add(didSID)
+
+                            aSent = didSID.split(".")
+                            aSentNum = int(aSent[-1])
+
+                            aSent = aSent[0:2]
+
+                            seenSentences.add(str(SentenceID.fromArray([aSent[0], "1", "1"] )))
+
+                            if aSentNum == 1 and aSent[-2] == "2":
+                                seenSentences.add(str(SentenceID.fromArray([aSent[0], "1", aSentNum - 1])))
+                            else:
+                                seenSentences.add(str(SentenceID.fromArray(aSent + [aSentNum - 1])))
+
+                            seenSentences.add(str(SentenceID.fromArray(aSent + [aSentNum + 1])))
+
+                    if evJSON['docid'] == "313430":
+                        print("DocID info check", docID, docIDInfo, infoGroup, seenSentences)
+
+
+                    if not evSentID in seenSentences:
+                        rejectDoc = True
+
+                        missingSentenceGroup.add(infoGroup)
+
+                        if oneDebug == 0:
+                            print(evSentID, seenSentences)
+                            oneDebug += 1
+
+                if len(missingSentenceGroup) > 0:
+                    missingSentenceCounter[tuple(sorted(missingSentenceGroup))] += 1
+
+                    if 'messengers' in missingSentenceGroup:
+                        continue
+
+
+                evTrust = evJSON['trust']
+
+                trustDoc = evTrust['conj'] == 0
+
+                if evTrust['stack']:
+                    trustDoc = True
+
+                if evTrust['verb']:
+                    trustDoc = True
+
+                if evTrust['relex']:
+                    trustDoc = True
+
+                if not trustDoc:
+                    rejectDoc = True
+
+                if rejectDoc:
+
+                    missingTrust += 1
+
+                    if evJSON['docid'] == "22391089":
+                        print("Rejected trust")
+                    continue
+
+
+        tupleDescriptor = (evJSON['docid'], evJSON['rel_sentence'], evJSON['lid'], evJSON['rid'])
+
+        if tupleDescriptor in seenTuples:
+            duplicateDescriptor += 1
+            continue
 
 
         if fetchSentences:
@@ -993,15 +1340,24 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
 
         relID = (rel.l_id_type, rel.r_id_type)
 
+        docID = evJSON['docid']
+        takenPMIDs.add(docID)
+
         foundRels[relID].append(evJSON)
 
+        seenTuples.add(tupleDescriptor)
+
     print("Loaded Sentences", loadedSents)
+    print("Presenting results from", len(takenPMIDs), "PMIDs")
 
 
+    takenEvs = 0
     allrels = []
     for lent, rent in foundRels:
 
         lrEvs = foundRels[(lent, rent)]
+
+        takenEvs += len(lrEvs)
 
         allrels.append({'lid':lent[0],
                         'rid': rent[0],
@@ -1014,6 +1370,22 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
         'rels': allrels,
         'pmidinfo': addInfo
     }
+
+    print("Seen Evidences", seenEvidences)
+    print("incorrect Verb Direction", incorrectVerbDir)
+    print("missing Trust", missingTrust)
+    print("missing groups", missingGroupsCounter)
+    print("duplicate descriptor", duplicateDescriptor)
+    print("review Doc", reviewPMIDCount)
+    print("no org", noOrganismCount)
+    print("wrong org", incorrectOrganismCount)
+    print("Missing group for sentence", missingSentenceCounter)
+    print("taken rels", len(allrels))
+    print("taken evidences", takenEvs)
+
+    reviewPMIDCount = 0
+    noOrganismCount = 0
+    incorrectOrganismCount = 0
 
     return returnObj
 
@@ -1143,7 +1515,7 @@ def findID():
 
         if relDB.r_ont_based:
 
-            ront = relDB.lontology
+            ront = relDB.rontology
 
             for termid in ront.dTerms:
 
@@ -1309,7 +1681,10 @@ pmid2pmcDB = None
 mirFeedback = None
 ccPMID = None
 cellsObo = None
+neutrophilsObo = None
 messengerID2Name = None
+reviewPMIDs = None
+
 
 def start_app_from_args(args):
 
@@ -1324,9 +1699,24 @@ def start_app_from_args(args):
     global mirFeedback
     global pmid2pmcDB
     global messengerID2Name
+    global reviewPMIDs
+
+
+    with open(args.obodir + "/reviewPMID") as fin:
+        reviewPMIDs = set()
+
+        for line in fin:
+            line = line.strip()
+
+            aline = line.split("\t")
+
+            if aline[1] == "REVIEW":
+                reviewPMIDs.add(aline[0])
+
 
 
     pmidBase = args.textmine + '/aggregated/'
+    pmcBase = args.textmine + '/pmc_aggregation/'
 
     normGeneSymbols = normalize_gene_names(path=args.obodir + "/hgnc_no_withdrawn.syn")
 
@@ -1340,12 +1730,39 @@ def start_app_from_args(args):
     print(datetime.datetime.now(), "Loading mirel")
 
     testRels = None#TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
+    neutrophilsObo = GeneOntology(args.obodir + "/neutrophils.obo")
+    cellsObo = GeneOntology(args.obodir + "/target_cells.obo")
 
-    cellsObo = GeneOntology(args.obodir + "/cl.obo")
-    ccPMID = MiGenRelDB.loadFromFile(pmidBase + "/cell_cell.pmid", ltype="CELLS", rtype="CELLS", normGeneSymbols=normGeneSymbols, lontology = cellsObo, rontology = cellsObo)
+    ccPMC = MiGenRelDB.loadFromFile(pmcBase + "/neutrophils_cell.pmid", ltype="NEUTROPHIL", rtype="CELLS",
+                                     normGeneSymbols=normGeneSymbols, lontology=neutrophilsObo, rontology=cellsObo,
+                                     lReplaceSc=False, rReplaceSc=False, switchLR=False)
+
+    allPMCDocIDs = ccPMC.get_evidence_docids()
+
+    rejectPMIDs = set()
+    for pmc in allPMCDocIDs:
+
+        if pmc in pmid2pmcDB.pmc2pmid:
+
+            for pmid in pmid2pmcDB.pmc2pmid[pmc]:
+                rejectPMIDs.add(pmid)
 
 
-    relDBs = [ccPMID]
+    print("Rejectful PMIDs", len(rejectPMIDs))
+
+    """
+    Here we should ensure to ignore any PMID which has already been listed in PMC ...
+    
+    """
+
+    print("REMOVE PMCs from PMID !!!!", file=sys.stderr)
+
+    ccPMID = MiGenRelDB.loadFromFile(pmidBase + "/neutrophils_cell.pmid", ltype="NEUTROPHIL", rtype="CELLS",
+                                     normGeneSymbols=normGeneSymbols, lontology = neutrophilsObo, rontology = cellsObo,
+                                     lReplaceSc=False, rReplaceSc=False, switchLR=False, ignoreDocIDs=rejectPMIDs)
+
+
+    relDBs = [ccPMID, ccPMC]
     relDBs = [x for x in relDBs if x != None]
 
     print(datetime.datetime.now(), "Finished mirel")
@@ -1353,31 +1770,37 @@ def start_app_from_args(args):
     mirFeedback = feedbackDB(args.feedback)
 
     print(datetime.datetime.now(), "Loading sents")
-    sentDB = SentenceDB.loadFromFile(args.sentdir, pmidBase+"/pmid2sent")
+    sentDB = SentenceDB.loadFromFile(args.sentdir, "/mnt/c/dev/data/pmid2sent")
+    sentDBPMC = SentenceDB.loadFromFile(args.pmcsentdir, "/mnt/c/dev/data/pmc2sent")
+
+    sentDB.add_database(sentDBPMC)
+
     print(datetime.datetime.now(), "Finished sents")
 
-    requiredPMIDs = set()
+    requiredDOCIDs = set()
     for rdb in relDBs:
 
         assert (isinstance(rdb, DataBaseDescriptor))
 
         for rpmid in rdb.get_evidence_docids():
-            requiredPMIDs.add(rpmid)
+            requiredDOCIDs.add(rpmid)
 
-    if os.path.isfile(pmidBase + "/dbs.pickle"):
-        print(datetime.datetime.now(), "Loading pickle")
-        with open(pmidBase + "/dbs.pickle", 'rb') as fin:
+    pickleFile = args.textmine + "/dbs.pickle"
+
+    if os.path.isfile( pickleFile ):
+        print(datetime.datetime.now(), "Loading pickle", pickleFile)
+        with open(pickleFile, 'rb') as fin:
             allDBS = pickle.load(fin)
 
         pmid2Categories = allDBS[0]
         pmid2Messenger = allDBS[1]
 
-        print(datetime.datetime.now(), "Loading pickle ended")
+        print(datetime.datetime.now(), "Loading pickle ended", pickleFile)
 
     print(datetime.datetime.now(), "Loading ontologies")
 
-    categoriesObo = GeneOntology(args.obodir + "/categorization.obo")
-    messengersObo = GeneOntology(args.obodir + "/messenger.obo")
+    categoriesObo = GeneOntology(args.obodir + "/effects.obo")
+    messengersObo = GeneOntology(args.obodir + "/messages.obo")
 
     messengerID2Name = {}
 
@@ -1392,19 +1815,26 @@ def start_app_from_args(args):
     if allDBS == None:
 
         print(datetime.datetime.now(), "Loading GO")
-        pmid2Categories = PMID2XDB.loadFromFile(pmidBase + "/categories.pmid", categoriesObo, requiredPMIDs)
+        pmid2Categories = PMID2XDB.loadFromFile(pmidBase + "/effects.pmid", categoriesObo, requiredDOCIDs)
+        pmc2Categories = PMID2XDB.loadFromFile(pmcBase + "/effects.pmid", categoriesObo, requiredDOCIDs)
+
+
         print(datetime.datetime.now(), "Loading Disease")
-        pmid2Messenger = PMID2XDB.loadFromFile(pmidBase + "/messenger.pmid", messengersObo, requiredPMIDs)
+        pmid2Messenger = PMID2XDB.loadFromFile(pmidBase + "/messages.pmid", messengersObo, requiredDOCIDs)
+        pmc2Messenger = PMID2XDB.loadFromFile(pmcBase + "/messages.pmid", messengersObo, requiredDOCIDs)
+
+        pmid2Categories.add_database(pmc2Categories)
+        pmid2Messenger.add_database(pmc2Messenger)
 
 
         allDBS = (pmid2Categories, pmid2Messenger)
 
-        print(datetime.datetime.now(), "Writing Pickle")
+        print(datetime.datetime.now(), "Writing Pickle", pickleFile)
 
-        with open(pmidBase + "/dbs.pickle", 'wb') as fout:
+        with open(pickleFile, 'wb') as fout:
             pickle.dump(allDBS, fout)
 
-    print(datetime.datetime.now(), "Loading finished")
+    print(datetime.datetime.now(), "Loading finished", pickleFile)
 
 
 def getCLParser():
@@ -1413,6 +1843,7 @@ def getCLParser():
                         help='Base for Textmining. Includes aggregated_ and results folder', required=True)
     parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
     parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
+    parser.add_argument('-sp', '--pmcsentdir', type=str, help='Path to sentences', required=True)
     parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=False)
     parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
 
@@ -1438,7 +1869,7 @@ def gunicorn_start(datadir="/home/j/joppich/tm_soehnlein/", sentdir="/home/proj/
 
     parser = getCLParser()
 
-    argstr = "--textmine {datadir} --obodir {datadir}/obos --sentdir {sentdir} --feedback {feedbackFile}".format(datadir=datadir, sentdir=sentdir, feedbackFile=feedbackFile)
+    argstr = "--textmine {datadir} --obodir {datadir}/obodir --sentdir {sentdir} --feedback {feedbackFile}".format(datadir=datadir, sentdir=sentdir, feedbackFile=feedbackFile)
 
     print("Starting app with")
     print(argstr)

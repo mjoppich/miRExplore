@@ -20,10 +20,7 @@ class FeatureViewer:
         if basedir == None:
             print("FeatureViewer:", "db based")
 
-
             self.mongo = MongoDB('minglerna')
-
-
 
         else:
             print("FeatureViewer:", "file based")
@@ -34,12 +31,18 @@ class FeatureViewer:
             }
 
             interaction_file = os.path.join(basedir, org2prefix[self.org]+"_interactions_allDBs_and_pc.json")
-            with open(interaction_file) as interaction_input:
-                self.df_interactions = json.load(interaction_input)
+            gene_file = os.path.join(basedir, org2prefix[self.org] + "_primary_assembly_and_lncRNA.json")
 
-            gene_file = os.path.join(basedir, org2prefix[self.org]+"_primary_assembly_and_lncRNA.json")
-            with open(gene_file) as gene_input:
-                self.df_features = json.load(gene_input)
+            if os.path.exists(interaction_file) and os.path.exists(gene_file):
+                with open(interaction_file) as interaction_input:
+                    self.df_interactions = json.load(interaction_input)
+
+                with open(gene_file) as gene_input:
+                    self.df_features = json.load(gene_input)
+
+            else:
+                self.df_interactions = {}
+                self.df_features = {}
 
     def queryDBForGeneID(self, my_collection, geneID):
 

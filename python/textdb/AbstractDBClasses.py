@@ -85,7 +85,9 @@ class DataBaseDescriptor(ABC):
 
         for lid in self.ltype2rel:
             for ev in self.ltype2rel[lid]:
-                docIDs.add(ev.docid)
+
+                if ev.docid != None:
+                    docIDs.add(ev.docid)
 
         return docIDs
 
@@ -176,7 +178,7 @@ class DataBaseDescriptor(ABC):
 
     def get_rid_rels(self, geneID):
 
-        if not self.l_ont_based:
+        if not self.r_ont_based:
             return self.rtype2rel.get(geneID, None)
         else:
             allRels = self.rtype2rel.get(geneID, None)

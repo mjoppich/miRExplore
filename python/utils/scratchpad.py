@@ -1,11 +1,12 @@
-from synonymes.GeneOntology import GeneOntology
+import spacy
+from spacy import displacy
 
-cellsObo = GeneOntology("/home/mjoppich/dev/data/tm_soehnlein/obos/cl.obo")
+nlp = spacy.load('en')
+doc = nlp("".join([u'Microvesicles released by apoptotic human neutrophils suppress proliferation and IL-2/IL-2 receptor expression of resting T helper cells.', u'Macrophages are influenced by chemokines from neutrophils']))
 
+alldeps = [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]
 
-ecTerm = cellsObo.dTerms['CL:0000255']
+for t in doc:
+    print(t.idx, t.text, t.dep_, t.pos_, t.head.text, [x for x in t.conjuncts], [x for x in t.children])
 
-ac = ecTerm.getAllChildren(withLevel=True)
-
-for child, l in ac:
-    print(child.term.id, child.term.name, l, sep="\t")
+displacy.serve(doc, style='dep', port=5005)
