@@ -397,11 +397,7 @@ if __name__ == '__main__':
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-<<<<<<< HEAD
     storagePath = '/mnt/raidtmpbio/joppich/pmid/'
-=======
-    storagePath = '/mnt/c/ownCloud/data/miRExplore/xmltest/'
->>>>>>> cd3f3788a9b92a815ac8ca201c1e034f2574b811
     baseFileName = 'pubmed18n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
@@ -429,51 +425,6 @@ if __name__ == '__main__':
 
         for filename in filenames:
             print(filename)
-<<<<<<< HEAD
-
-            basefile = os.path.basename(filename)
-            sentfile = basefile.replace(".xml.gz", ".sent")
-
-            titlefile = basefile.replace(".xml.gz", ".title")
-            authorfile = basefile.replace(".xml.gz", ".author")
-            citationfile = basefile.replace(".xml.gz", ".citation")
-
-            pmid2title = {}
-            pmid2authors = defaultdict(set)
-            pmid2citations = defaultdict(set)
-
-            with open(storagePath + sentfile, 'w') as outfile:
-
-                pubmedParser = PubmedXMLParser()
-                pubmedParser.parseXML(filename)
-
-                for elem in PubmedArticleIterator(pubmedParser):
-
-                    try:
-                        entry = PubmedEntry.fromXMLNode(elem)
-                        sents = entry.to_sentences(tokenizer)
-
-                        for x in sents:
-                            outfile.write(x + "\n")
-
-                        pmidID = entry.getID()
-
-                        if entry.title != None:
-                            pmid2title[pmidID] = entry.title
-
-                        if entry.authors != None and len(entry.authors) > 0:
-                            for author in entry.authors: #first, initials, last
-                                pmid2authors[pmidID].add( (author[1], author[2], author[0]) )
-
-                        if entry.cites != None and len(entry.cites) > 0:
-                            for cite in entry.cites:
-
-                                try:
-                                    val = int(cite)
-                                    pmid2citations[pmidID].add( val )
-                                except:
-                                    continue
-=======
 
             basefile = os.path.basename(filename)
             sentfile = basefile.replace(".xml.gz", ".sent")
@@ -503,25 +454,10 @@ if __name__ == '__main__':
                             continue
 
                         sents = entry.to_sentences(tokenizer)
->>>>>>> cd3f3788a9b92a815ac8ca201c1e034f2574b811
 
                         for x in sents:
                             outfile.write(x + "\n")
 
-<<<<<<< HEAD
-                    except:
-
-                        eprint("Exception", sentfile)
-                        try:
-
-                            pmid = elem.find('MedlineCitation/PMID').text
-                            eprint(pmid)
-
-                        except:
-                            pass
-
-                        continue
-=======
                         pmidID = entry.getID()
 
                         if entry.title != None:
@@ -545,7 +481,6 @@ if __name__ == '__main__':
 
                         eprint("Exception", sentfile)
                         try:
->>>>>>> cd3f3788a9b92a815ac8ca201c1e034f2574b811
 
                             pmid = elem.find('MedlineCitation/PMID').text
                             eprint(pmid)
