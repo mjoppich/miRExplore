@@ -1,12 +1,16 @@
 import glob
-import os
+import os, sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
 
 from collections import defaultdict
 from lxml import etree
-from porestat.utils.Parallel import MapReduce
 
 from utils.idutils import eprint
 import logging
+
+from utils.parallel import MapReduce
+
 logger = logging.getLogger('convertJatsToText')
 
 import nltk.data
@@ -393,7 +397,7 @@ if __name__ == '__main__':
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-    storagePath = '/mnt/c/ownCloud/data/miRExplore/xmltest/'
+    storagePath = '/mnt/raidtmpbio/joppich/pmid/'
     baseFileName = 'pubmed18n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
@@ -530,7 +534,7 @@ if __name__ == '__main__':
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(4)
+    ll = MapReduce(6)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)
 
     print("Done")

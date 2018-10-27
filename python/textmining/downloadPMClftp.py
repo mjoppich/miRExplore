@@ -8,7 +8,7 @@ if __name__ == '__main__':
 
     ftpBase = 'ftp.ncbi.nlm.nih.gov'
     pdfBase = 'pub/pmc/oa_pdf'
-    saveDirectory = "/home/extproj/joppich/pmc"
+    saveDirectory = "/home/extproj/tmp/joppich/pmc"
 
     ftp = FTP(ftpBase)
     ftp.login()
@@ -24,14 +24,14 @@ if __name__ == '__main__':
 
         for folder in allPaths:
 
-            cmd = "bash -c \"mkdir -p {localFolder}; cd {localFolder}; lftp {ftpServer} -e 'cd {ftpBaseFolder}; mirror --only-newer . {localFolder}'\"".format(localFolder=saveDirectory+"/"+folder,
+            cmd = "bash -c \"mkdir -p {localFolder}; cd {localFolder}; lftp {ftpServer} -e 'cd {ftpBaseFolder}; mirror --only-newer . {localFolder}; exit'\"".format(localFolder=saveDirectory+"/"+folder,
                                                                                                                                             ftpServer = ftpBase,
                                                                                                                                             ftpBaseFolder = pdfBase + "/" + folder)
 
             print(cmd)
             os.system(cmd)
 
-    ll = MapReduce(procs=2)
+    ll = MapReduce(procs=8)
     result = ll.exec(allFolders, downloadFiles, None, 1, None)
 
 

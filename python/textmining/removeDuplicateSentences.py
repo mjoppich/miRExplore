@@ -1,5 +1,6 @@
 import glob
-import os
+import os, sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 from collections import defaultdict
 import shutil
@@ -11,7 +12,9 @@ if __name__ == '__main__':
 
     for fileExt in ['.sent', '.author', '.citation', '.title']:
 
-        allfiles = glob.glob('/local/storage/pubmed18/*'+fileExt)
+        storagePath = '/mnt/raidtmpbio/joppich/pmid/'
+
+        allfiles = glob.glob(storagePath+'/*'+fileExt)
         allfiles = sorted(allfiles, key=lambda x: os.path.basename(x), reverse=True)
 
         seenPMIDs = set()
