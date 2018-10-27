@@ -32,6 +32,8 @@ class SentenceID:
         retObj.parID = str(arr[1])
         retObj.senID = str(arr[2])
 
+        return retObj
+
 
     @classmethod
     def fromStr(cls, line):

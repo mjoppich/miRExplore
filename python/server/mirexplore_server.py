@@ -48,6 +48,8 @@ from flask_cors import CORS
 
 
 dataurl = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'frontend/src/static/'
+
+pdfStaticDir = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'pdf_frontend/src/static/'
 app = Flask(__name__, static_folder=dataurl, static_url_path='/static')
 CORS(app)
 
@@ -80,6 +82,11 @@ def allowed_file(filename):
 def root():
     retFile = 'index.html'
     return app.send_static_file(retFile)
+
+
+@app.route('/pdf/<path:filename>')
+def base_static(filename):
+    return send_from_directory(pdfStaticDir, filename)
 
 @app.route('/test', methods=['GET', 'POST'])
 def test():
@@ -1159,6 +1166,9 @@ def start_app_from_args(args):
 
     global mi2mirna
 
+
+
+
     pmidBase = args.textmine + '/aggregated_pmid/'
     pmcBase = args.textmine + '/aggregated_pmc/'
 
@@ -1211,8 +1221,7 @@ def start_app_from_args(args):
 
 
     print(datetime.datetime.now(), "Loading mirWalk")
-    mirWalkMMU3UTRDB = MirWalkDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/mirwalk/mmu_miRWalk_3UTR.txt', org="mmu",
-                                              bindSite="3UTR", normGeneSymbols=normGeneSymbols)
+    mirWalkMMU3UTRDB = None#MirWalkDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/mirwalk/mmu_miRWalk_3UTR.txt', org="mmu", bindSite="3UTR", normGeneSymbols=normGeneSymbols)
     print(datetime.datetime.now(), "Loading mirWalk finished")
     relDBs = [recordsDB, mirtarbaseDB, dianaDB, mirelPMIDhsa, mirelPMIDmmu, lncMirPMID, geneLncPMID, mirandaDB_mm10, mirWalkMMU3UTRDB]
 
@@ -1299,6 +1308,8 @@ def start_app_from_args(args):
     featureViewerHSA = FeatureViewer('hsa', args.obodir, rfamDB=rfDB)
 
     print(datetime.datetime.now(), "Loading finished")
+
+
 def getCLParser():
     parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
     parser.add_argument('-t', '--textmine', type=str, help='Base for Textmining. Includes aggregated_ and results folder', required=True)
@@ -1310,6 +1321,20 @@ def getCLParser():
     return parser
 
 if __name__ == '__main__':
+
+    """
+    --textmine
+    /home/mjoppich/ownCloud/data/miRExplore/textmine/
+    --obodir
+    /home/mjoppich/ownCloud/data/miRExplore/obodir
+    --sentdir
+    /home/mjoppich/dev/data/pmid/
+    --feedback
+    /home/mjoppich/ownCloud/data/miRExplore/obodir/feedback
+    --port
+    65500
+
+    """
 
 
     parser = getCLParser()

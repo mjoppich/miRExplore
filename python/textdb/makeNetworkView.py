@@ -17,7 +17,7 @@ class DataBasePlotter:
         serverPath = "yancDB"
 
         serverAddress = "http://localhost"
-        serverPort = "5000"
+        serverPort = "65500"
         serverPath = "/"
 
         def makeServerAddress(address, port, path):

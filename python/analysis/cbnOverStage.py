@@ -1,4 +1,4 @@
-from collections import Counter, OrderedDict
+from collections import Counter, OrderedDict, defaultdict
 
 import networkx
 
@@ -176,9 +176,14 @@ for cbnNW in cbn2edges:
     requestData = cbn2restrict[cbnNW]
     requestData['gene'] = list(totalNWGenes)
 
+    requestData['disease'] = [
+        {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
+        {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+    ]
+
     print(cbnNW)
 
-    graph, nodeCounts, evcount = DataBasePlotter.fetchGenes(requestData, gene2name=genes2name, minPMIDEvCount=0, minTgtCount=0, acceptEv=acceptEvidence)
+    graph, nodeCounts, evcount, json = DataBasePlotter.fetchGenes(requestData, gene2name=genes2name, minPMIDEvCount=0, minTgtCount=0, acceptEv=acceptEvidence)
 
     newNodes = []
 
@@ -249,8 +254,94 @@ for cbnNW in cbn2edges:
 
     cbn2graph[cbnNW] = graph
 
+### which miRNAs play a role in all networks?
+
+### are there miRNAs which orchestrate the transition from one state to the other? which ones are unique to each stage? only for miRNAs connected to genes present in both stages
+
+makeStory = [
+    ['CV-IPN-Endothelial_cell-monocyte_interaction_1', 'CV-IPN-Endothelial_cell_activation_1',
+     'CV-IPN-Plaque_destabilization_1', 'CV-IPN-Platelet_activation_1', 'CV-IPN-Smooth_muscle_cell_activation_1',
+     'CV-IPN-Foam_cell_formation_1']
+]
+
+storyTransitions = []
 
 
+for storyline in makeStory:
+    for i in range(0, len(storyline)-1):
+        storyTransitions.append( (storyline[i], storyline[i+1]) )
+
+
+def getMirsForGene(gene, graph):
+
+    alledges = graph.edges(gene)
+
+    targetMirs = set()
+
+    for u,v in alledges:
+
+        if u == gene:
+            if v.startswith("miR"):
+               targetMirs.add(v)
+
+        else:
+            if u.startswith("miR"):
+                targetMirs.add(u)
+
+    return targetMirs
+
+
+
+for storyTransition in storyTransitions:
+
+    graphFrom = cbn2graph[storyTransition[0]]
+    graphTo = cbn2graph[storyTransition[1]]
+
+    fromGenes = set()
+    toGenes = set()
+
+    for (node, nodeAttr) in graphFrom.nodes(data=True):
+        if not node.startswith("miR"):
+            fromGenes.add(node)
+
+    for (node, nodeAttr) in graphTo.nodes(data=True):
+        if not node.startswith("miR"):
+            toGenes.add(node)
+
+    commonGenes = fromGenes.intersection(toGenes)
+
+    genesWithDiff = {}
+
+    for cgene in commonGenes:
+
+        fromMirs = getMirsForGene(cgene, graphFrom)
+        toMirs = getMirsForGene(cgene, graphTo)
+
+        diffMirs = set()
+        toDiffMirs = set()
+        fromDiffMirs = set()
+        for x in fromMirs.union(toMirs):
+            if not x in fromMirs and x in toMirs:
+                toDiffMirs.add(x)
+            elif x in fromMirs and not x in toMirs:
+                fromDiffMirs.add(x)
+
+
+        if len(toDiffMirs) > 0 or len(fromDiffMirs) > 0:
+            genesWithDiff[cgene] = (toDiffMirs, fromDiffMirs)
+
+
+
+    for cgene in genesWithDiff:
+        mirset = genesWithDiff[cgene]
+        print(storyTransition[0], storyTransition[1], cgene, ",".join(mirset[0]), ",".join(mirset[1]))
+
+
+
+
+
+
+mirSByCBN = defaultdict(set)
 
 for cbnNW in cbn2restrict:
 
@@ -277,8 +368,14 @@ for cbnNW in cbn2restrict:
 
 
     intNodes = [(node,degree) for node, degree in graph.degree().items() if node in mirnaNodes]
-
     intNodes = sorted(intNodes, key=lambda x: x[1], reverse=True)
+
+
+    for node in intNodes:
+        if node[0].startswith("miR"):
+            mirSByCBN[cbnNW].add(node[0])
+
+
 
     print(cbnNW)
     for i in range(0, min(10, len(intNodes))):
@@ -288,3 +385,75 @@ for cbnNW in cbn2restrict:
     print()
 
     mygraph = CytoscapeGrapher.showGraph(graph, location='/mnt/c/Users/mjopp/Desktop/yanc_network/', name=cbnNW)
+
+
+allSet = None
+
+for nw in mirSByCBN:
+
+    if allSet == None:
+        allSet = mirSByCBN[nw]
+    else:
+        allSet = allSet.intersection(mirSByCBN[nw])
+
+print("miRNAs in all nws")
+print(allSet)
+
+
+
+makeStory = [
+    ['CV-IPN-Endothelial_cell-monocyte_interaction_1', 'CV-IPN-Endothelial_cell_activation_1',
+     'CV-IPN-Plaque_destabilization_1', 'CV-IPN-Platelet_activation_1', 'CV-IPN-Smooth_muscle_cell_activation_1',
+     'CV-IPN-Foam_cell_formation_1']
+]
+
+import matplotlib.pyplot as plt
+
+figidx = 0
+for stages in makeStory:
+
+    mergedGraph = cbn2graph[stages[0]]
+
+    for i in range(1, len(stages)):
+        mergedGraph = networkx.compose(mergedGraph, cbn2graph[stages[i]])
+
+
+    pos = networkx.spring_layout(mergedGraph)
+
+    for stage in stages:
+        plt.figure(figidx, figsize=(50,30))
+        figidx += 1
+
+        networkGraph = cbn2graph[stage]
+
+        edges = networkGraph.edges()
+
+        colors = []
+        for u,v in edges:
+            elem = networkGraph[u][v]
+
+            if not 'color' in elem:
+                elem['color'] = "#0000FF"
+
+            colors.append(elem['color'])
+
+
+        nodes = networkGraph.nodes()
+        nodeColors = []
+        for x in nodes:
+            if any([x.lower().startswith(y) for y in ['mir', 'let']]):
+                nodeColors.append('blue')
+            else:
+                nodeColors.append('green')
+
+        networkx.draw(networkGraph, pos, font_size=25, with_labels=False, node_color=nodeColors, edges=edges, edge_color=colors, node_size=1200, linewidths=0.5, font_weight='bold', dpi=1000)
+        for p in pos:  # raise text positions
+            clist = list(pos[p])
+            clist[1] = clist[1] + 0.02
+            pos[p] = tuple(clist)
+
+        networkx.draw_networkx_labels(networkGraph, pos, font_weight='bold', font_size=25)
+
+        plt.suptitle(stage)
+
+        plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".png")

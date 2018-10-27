@@ -71,10 +71,16 @@ for cellID in celloObo.dTerms:
             for x in toadd:
                 newSyn.addSyn(x)
 
+    """
     if oboNode.name.split(" ")[-1].upper() == 'CELL':
         allsyn = [x for x in newSyn.syns]
 
         for x in allsyn:
+            newSyn.addSyn(x + "s")
+    """
+    allsyn = [x for x in newSyn.syns]
+    for x in allsyn:
+        if x[-1] != 's' and not x[-1].isdigit():
             newSyn.addSyn(x + "s")
 
     if isHela:

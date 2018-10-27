@@ -3,7 +3,7 @@
 export default class config {
 
     static restServer = "http://localhost";//'https://turingwww.bio.ifi.lmu.de'
-    static restPort = '5000'
+    static restPort = '65500'
     static restFolder = '';//'mingleRNA'
 
     static getRestAddress()

@@ -57,7 +57,7 @@ class Synonym:
 
         return self.syns
 
-    def addTextSyns(self, synText):
+    def addTextSyns(self, synText,captureBrackets=True):
 
         if synText == None or synText == 'None':
             return
@@ -67,7 +67,7 @@ class Synonym:
         if len(synText) == 0:
             return
 
-        vAllWords = self.getAllSplittedSyns(synText, ', ')
+        vAllWords = self.getAllSplittedSyns(synText, ', ', captureBrackets=captureBrackets)
 
         for x in vAllWords:
             self.addSyn(x)
@@ -300,7 +300,7 @@ class Synonym:
 
 
 
-    def getAllSplittedSyns(self, search, delimiter=', ', quotechars=['\"', '\'']):
+    def getAllSplittedSyns(self, search, delimiter=', ', quotechars=['\"', '\''], captureBrackets=True):
 
         vAllWords = self.splitQuotedDelimited(search)
 
@@ -311,17 +311,18 @@ class Synonym:
 
             foundBrackets = []
 
-            foundBracketWords = self.findNestedMatches(word)
-            for x in foundBracketWords:
+            if captureBrackets:
+                foundBracketWords = self.findNestedMatches(word)
+                for x in foundBracketWords:
 
-                foundBrackets.append( "("+x+")" )
+                    foundBrackets.append( "("+x+")" )
 
-                for y in self.splitQuotedDelimited(x):
+                    for y in self.splitQuotedDelimited(x):
 
-                    if y[0]==y[len(y)-1] and len(y) > 0:
-                        y = y[1:len(y)-1]
+                        if y[0]==y[len(y)-1] and len(y) > 0:
+                            y = y[1:len(y)-1]
 
-                    setAllWords.add(y)
+                        setAllWords.add(y)
 
             testWord = word
             for bracketWord in foundBrackets:

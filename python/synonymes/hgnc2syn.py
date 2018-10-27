@@ -34,6 +34,9 @@ for result in hgncData:
     if "~WITHDRAWN" in mirexploreGeneID.upper():
         pass
 
+    if hgncID == "HGNC:2434":
+        print(hgncID)
+
     mirexploreGeneID = mirexploreGeneID.upper().replace('~WITHDRAWN', '').replace(':', '_')
 
     synIDCounter[mirexploreGeneID] += 1
@@ -51,7 +54,7 @@ for result in hgncData:
     syn.addTextSyns('"'+result[hgncSymIdx]+'"')
     syn.addTextSyns('"'+result[hgncNameIdx]+'"')
     syn.addTextSyns(result[hgncPrevSymIdx])
-    syn.addTextSyns(result[hgncPrevNameIdx])
+    syn.addTextSyns(result[hgncPrevNameIdx], captureBrackets=False)
     syn.addTextSyns(result[hgncSynsIdx])
     syn.addTextSyns(result[hgncNameSynIdx])
 

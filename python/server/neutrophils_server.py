@@ -7,6 +7,7 @@ import regex
 import sys
 import os
 
+from neutrophils.allowedSentences import AllowedSentences
 from synonymes.SynonymFile import Synfile
 from textmining.SentenceID import SentenceID
 from utils.HashDict import HashDict
@@ -922,8 +923,12 @@ def queryDB():
         if interactReq['sentences'].upper() == 'FALSE':
             fetchSentences = False
 
+    maxSentDist=1
+    if 'sentence_distance' in interactReq:
+        maxSentDist = int(interactReq['sentence_distance'])
+
     retInfo = makeInteractionObject(interactReq.get('elements', None), interactReq.get('categories', None),
-                              interactReq.get('messengers', None), None, fetchSentences=fetchSentences)
+                              interactReq.get('messengers', None), None, fetchSentences=fetchSentences, maxSentDist=maxSentDist)
 
     return app.make_response((jsonify(retInfo), 200, None))
 
@@ -947,14 +952,25 @@ def findInteractions():
         if interactReq['sentences'].upper() == 'FALSE':
             fetchSentences = False
 
-    return returnInteractions(interactReq.get('elements', None), interactReq.get('categories', None), interactReq.get('messengers', None), organisms=interactReq.get('organisms', None), fetchSentences=fetchSentences)
+    maxSentDist=1
+    if 'sentence_distance' in interactReq:
+        maxSentDist = int(interactReq['sentence_distance'])
+
+
+    return returnInteractions(interactReq.get('elements', None),
+                              interactReq.get('categories', None),
+                              interactReq.get('messengers', None),
+                              organisms=interactReq.get('organisms', None),
+                              fetchSentences=fetchSentences,
+                              maxSentDist=maxSentDist
+                              )
 
 @app.route('/status')
 def getStatus():
     return app.make_response((jsonify({'error': 'must include homid'}), 400, None))
 
 
-def makeInteractionObject(cells=None, categories=None, messengers=None, organisms=None, fetchSentences=True):
+def makeInteractionObject(cells=None, categories=None, messengers=None, organisms=None, fetchSentences=True, maxSentDist=1):
 
     global relDBs
     global sentDB
@@ -1134,6 +1150,8 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
     noOrganismCount = 0
     incorrectOrganismCount = 0
 
+    allowedSentsGen = AllowedSentences(maxSentDist)
+
     print("Loading sentences")
     for rel in allRels:
 
@@ -1172,14 +1190,14 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
             docIDDiseaseInfo = addInfo['categories'].get(docID, [])
 
             if len(docIDDiseaseInfo) == 0:
-                print("docIDDisease")
+                #print("docIDDisease")
                 continue
             else:
 
                 acceptEv = any([x['termid'] in allowedIDs['categories'] for x in docIDDiseaseInfo])
 
                 if not acceptEv:
-                    print("docIDDisease ev")
+                    #print("docIDDisease ev")
                     continue
 
         if messengers != None and len(allowedIDs['messengers']) > 0:
@@ -1189,12 +1207,12 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
             docIDGOInfo = addInfo['messengers'].get(docID, [])
 
             if len(docIDGOInfo) == 0:
-                print("docIDmessenger")
+                #print("docIDmessenger")
                 continue
             else:
 
                 acceptEv = any([x['termid'] in allowedIDs['messengers'] for x in docIDGOInfo])
-                print("docIDmessenger ev")
+                #print("docIDmessenger ev")
 
                 if not acceptEv:
                     continue
@@ -1242,7 +1260,6 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
             sameSentence = True
 
 
-
             if sameSentence:
 
                 evSentID = evJSON['rel_sentence']
@@ -1256,24 +1273,12 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
                     seenSentences = set()
 
                     for docEvs in docIDInfo:
-                        for evEv in docEvs['evidences']:
 
-                            didSID = evEv[0]
-                            seenSentences.add(didSID)
+                        newSents = allowedSentsGen.getAllowedSentences(docEvs['evidences'])
 
-                            aSent = didSID.split(".")
-                            aSentNum = int(aSent[-1])
+                        if newSents != None:
+                            seenSentences = seenSentences.union(newSents)
 
-                            aSent = aSent[0:2]
-
-                            seenSentences.add(str(SentenceID.fromArray([aSent[0], "1", "1"] )))
-
-                            if aSentNum == 1 and aSent[-2] == "2":
-                                seenSentences.add(str(SentenceID.fromArray([aSent[0], "1", aSentNum - 1])))
-                            else:
-                                seenSentences.add(str(SentenceID.fromArray(aSent + [aSentNum - 1])))
-
-                            seenSentences.add(str(SentenceID.fromArray(aSent + [aSentNum + 1])))
 
                     if evJSON['docid'] == "313430":
                         print("DocID info check", docID, docIDInfo, infoGroup, seenSentences)
@@ -1285,13 +1290,14 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
                         missingSentenceGroup.add(infoGroup)
 
                         if oneDebug == 0:
-                            print(evSentID, seenSentences)
+
+                            print(evSentID, seenSentences, docIDInfo)
                             oneDebug += 1
 
-                if len(missingSentenceGroup) > 0:
-                    missingSentenceCounter[tuple(sorted(missingSentenceGroup))] += 1
+                missingSentenceCounter[tuple(sorted(missingSentenceGroup))] += 1
 
-                    if 'messengers' in missingSentenceGroup:
+                if len(missingSentenceGroup) > 0:
+                    if 'messengers' in missingSentenceGroup or 'categories' in missingSentenceGroup:
                         continue
 
 
@@ -1371,6 +1377,14 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
         'pmidinfo': addInfo
     }
 
+    print("")
+    print("")
+    print("")
+    print("")
+    print("")
+    print("")
+    print("")
+    print("Max Sentence Distance", maxSentDist)
     print("Seen Evidences", seenEvidences)
     print("incorrect Verb Direction", incorrectVerbDir)
     print("missing Trust", missingTrust)
@@ -1382,6 +1396,14 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
     print("Missing group for sentence", missingSentenceCounter)
     print("taken rels", len(allrels))
     print("taken evidences", takenEvs)
+    print("")
+    print("")
+    print("")
+    print("")
+    print("")
+    print("")
+    print("")
+    print("")
 
     reviewPMIDCount = 0
     noOrganismCount = 0
@@ -1390,10 +1412,9 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
     return returnObj
 
 
-def returnInteractions(cells=None, categories=None, messengers=None, organisms=None, fetchSentences=True):
+def returnInteractions(cells=None, categories=None, messengers=None, organisms=None, fetchSentences=True, maxSentDist=1):
 
-
-    returnObj = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=fetchSentences)
+    returnObj = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=fetchSentences, maxSentDist=maxSentDist)
 
     return app.make_response((jsonify(returnObj), 200, None))
 

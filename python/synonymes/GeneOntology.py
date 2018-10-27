@@ -52,6 +52,40 @@ class GOSynonyme:
                 except:
                     pass
 
+    def __eq__(self, other):
+
+        if other == None:
+            return False
+
+        synEq = self.syn == other.syn
+        typeEq = self.type == other.type
+        scopeEq = self.scope == other.scope
+
+
+        xrefsEq = True
+
+        if self.xrefs == None and other.xrefs != None:
+            xrefsEq = False
+
+        if self.xrefs != None and other.xrefs == None:
+            xrefsEq = False
+
+        if self.xrefs != None and other.xrefs != None:
+            xrefsEq = self.xrefs == other.xrefs
+
+        return synEq and typeEq and scopeEq and xrefsEq
+
+
+    def __hash__(self):
+
+        xrefhash = 0
+
+        if self.xrefs != None:
+            xrefhash = sum([hash(x) for x in sorted(self.xrefs)])
+
+        return hash(self.type) + hash(self.scope) + hash(self.syn) + xrefhash
+
+
     def __repr__(self):
         return self.__str__()
 
@@ -576,7 +610,7 @@ class GOTerm:
 
                 if not key in ['property_value', 'replaced_by', 'created_by', 'creation_date', 'disjoint_from', 'comment', 'consider', 'relationship', 'intersection_of']:
 
-                    sys.stderr.write("unprocessed key: " + str(key) + "\n")
+                    sys.stderr.write("unprocessed key: " + str(key) +  "\t" + str(sLine.strip())  + "\n")
 
         return term
 
@@ -1070,24 +1104,110 @@ if __name__ == '__main__':
     #oTest = GeneOntology('/mnt/c/dev/data/fbn_textmine/mom_new.obo')
     #oTest = GeneOntology('/mnt/c/Users/mjopp/Downloads/ncit.obo')
     #oTest = GeneOntology('/home/mjoppich/ownCloud/data/miRExplore/obodir/ncit.obo')
-    oTest = GeneOntology('/mnt/c/ownCloud/data/miRExplore/cellline_ontology/clo.new.owl.obo')
+    #oTest = GeneOntology('/mnt/c/ownCloud/data/miRExplore/cellline_ontology/clo.new.owl.obo')
+    #oTest = GeneOntology('/mnt/c/ownCloud/data/miRExplore/cell_ontology/cl.obo')
 
-    oTest.saveFile("/mnt/c/ownCloud/data/miRExplore/cellline_ontology/clo.new.obo")
+    oTest = GeneOntology('/home/mjoppich/dev/data/tm_soehnlein/obodir/messages.obo')
+
+    for termID in oTest.dTerms:
+        print(termID)
+
+    allRoots = oTest.getRoots()
+
+    print("ROOTS")
+    child2root = {}
+    for x in allRoots:
+        allchildren = x.getAllChildren()
+
+        for t in allchildren:
+            child2root[t.term.id] = x.name
+            child2root[t.term.name] = x.name
+
+    print(child2root)
+    exit()
+
+    #oTest.saveFile("/mnt/c/ownCloud/data/miRExplore/cellline_ontology/clo.new.obo")
 
     #print(oTest.getID('GO:0002281'))
     #print(oTest.getGenes({9606}, 'GO:0002281'))
 
-    oterm = oTest.dTerms['NCIT:C20466']
+    #oterm = oTest.dTerms['NCIT:C17764']
+    oterm = oTest.dTerms['CL:0000115']
+    oterm.toObo()
     allchildren = oterm.getAllChildren()
 
     #print(len(allchildren))
 
     #oRet = GeneOntology()
 
+    newTerm = GOTerm()
+    newTerm.id = "interleukin"
+    newTerm.name = "interleukin"
+    newTerm.synonym = set()
+
+    seenSyns = set()
+
+    hsaMmu = ('CXCL', 'Cxcl')
+    hsaMmu = None
+
 
     for rel in allchildren:
         #print(rel.term.id, rel.term.name)
         print(rel.term.id.replace(":", "_"))
+
+        termSyns = [GOSynonyme(rel.term.name, GOSynonymeScope.BROAD)]
+
+        if rel.term.synonym != None:
+            termSyns += rel.term.synonym
+
+        for x in termSyns:
+
+
+            if x.syn in seenSyns:
+                continue
+
+            seenSyns.add(x.syn)
+
+            x.scope = GOSynonymeScope.BROAD
+            newTerm.synonym.add(x)
+
+            if hsaMmu != None:
+
+
+                if x.syn.startswith(hsaMmu[0]+"-"):
+                    nsyn = x.syn.replace(hsaMmu[0]+"-", hsaMmu[0])
+
+                    y = GOSynonyme(nsyn, GOSynonymeScope.BROAD, GOSynonymeType.UNKNOWN, x.xrefs)
+                    newTerm.synonym.add(y)
+
+                if x.syn.startswith(hsaMmu[0]):
+                    nsyn = x.syn.replace(hsaMmu[0], hsaMmu[1])
+
+                    y = GOSynonyme(nsyn, GOSynonymeScope.BROAD, GOSynonymeType.UNKNOWN, x.xrefs)
+                    newTerm.synonym.add(y)
+
+                    if x.syn.startswith(hsaMmu[0]+"-"):
+                        nsyn = x.syn.replace(hsaMmu[0]+"-", hsaMmu[0])
+
+                        y = GOSynonyme(nsyn, GOSynonymeScope.BROAD, GOSynonymeType.UNKNOWN, x.xrefs)
+                        newTerm.synonym.add(y)
+
+            else:
+
+                nsyn = x.syn.lower()
+
+                y = GOSynonyme(nsyn, GOSynonymeScope.BROAD, GOSynonymeType.UNKNOWN, x.xrefs)
+                newTerm.synonym.add(y)
+
+
+
+
+
+        #print(oTest.dTerms[rel.term.id].toObo())
+
+    print(newTerm.toObo())
+
+
     #    oRet.dTerms[rel.term.id] = rel.term
 
     #oRet.saveFile("/mnt/c/Users/mjopp/Desktop/ncit.obo")
@@ -1095,4 +1215,4 @@ if __name__ == '__main__':
     #oTest = GeneOntology('/mnt/c/Users/mjopp/Desktop/ncit.obo')
 
 
-    print( oTest.getRoots() )
+    #print( oTest.getRoots() )

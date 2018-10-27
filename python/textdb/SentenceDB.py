@@ -47,9 +47,10 @@ class SentenceDB:
                 return sent
 
         if filename != self.loadedSentFilePath:
+            loadFile = filename + ".sent"
 
-            sys.stderr.write("Loading file: " + filename  + " for docid " + docid + "\n")
-            self.loadedSentFile = self.loadFile(filename + ".sent")
+            sys.stderr.write("Loading file: " + loadFile  + " for docid " + docid + "\n")
+            self.loadedSentFile = self.loadFile(loadFile)
             self.loadedSentFilePath = filename
 
         allDocSents = self.loadedSentFile[adocid[0]]
@@ -59,7 +60,7 @@ class SentenceDB:
 
                 self.recent_elements.append( sent )
 
-                if len(self.recent_elements) > 10000:
+                if len(self.recent_elements) > 20000:
                     self.recent_elements.popleft() # if too large, pop
 
                 return sent
@@ -76,12 +77,15 @@ class SentenceDB:
 
             for line in infile:
                 #line = line.decode('latin1')
-
                 line = line.strip()
                 if len(line) == 0:
                     continue
 
                 aline = line.split("\t")
+
+                if len(aline) != 2:
+                    #print("Invalid input line for sent:", line, file=sys.stderr)
+                    continue
 
                 sentID = aline[0]
                 sentText = aline[1]
@@ -145,15 +149,14 @@ class SentenceDB:
 
 if __name__ == '__main__':
 
-    sentenceLocation = "/mnt/c/dev/data/pmc/allsent/"
-    x2sentFile = "/mnt/c/dev/data/pmc2sent"
+    sentenceLocation = "/mnt/c/dev/data/pmid/"
+    x2sentFile = "/mnt/c/dev/data/pmid2sent"
 
-    SentenceDB.prepareDB(sentenceLocation, x2sentFile)
+    #SentenceDB.prepareDB(sentenceLocation, x2sentFile)
 
     sentDB = SentenceDB.loadFromFile(sentenceLocation, x2sentFile)
 
-    senttxt = sentDB.get_sentence("28295230.2.6")
-
+    senttxt = sentDB.get_sentence("459579.1.1")
     print(senttxt)
 
 

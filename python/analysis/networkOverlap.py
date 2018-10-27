@@ -2,7 +2,7 @@ import pickle
 import tempfile
 
 from collections import defaultdict, Counter
-from networkx.drawing.nx_agraph import graphviz_layout
+from networkx.drawing.nx_agraph import graphviz_layout, pygraphviz_layout
 import os
 
 from porestat.utils.DataFrame import DataFrame, DataRow, ExportTYPE
@@ -43,7 +43,6 @@ if __name__ == '__main__':
         ]
 
     }
-
 
     inflammatory_ec = {
         'CCL2': ['miR-495'],
@@ -88,14 +87,16 @@ if __name__ == '__main__':
 
     networks['macrophages'] = ccl2_macrophage
     networks['macrophages_cv'] = ccl2_macrophage
+    networks['macrophages_all'] = ccl2_macrophage
 
     networkGraphs = {}
     makeStory = [
-        ('macrophages', 'macrophages_cv'),
-        ('inflammatory_ec','inflammatory_ec_cv')
+        ('macrophages', 'macrophages_cv', 'macrophages_all'),
+        ('inflammatory_ec','inflammatory_ec_cv'),
+        ('large_chemokines', 'large_chemokines_cv'),
     ]
 
-    ignoreNetworks = ['large_chemokines']
+    ignoreNetworks = []#['large_chemokines']
 
     networkRestrictions = {
         'inflammatory_ec':
@@ -105,6 +106,17 @@ if __name__ == '__main__':
                     {"group": "cells", "name": "endothelial cell", "termid": "META:52"}
                 ]
             },
+        'inflammatory_ec_cv':
+            {
+                'sentences': "false",
+                "cells": [
+                    {"group": "cells", "name": "endothelial cell", "termid": "META:52"}
+                ],
+                "disease": [
+                    {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
         'macrophages':
             {
                 'sentences': "false",
@@ -112,14 +124,30 @@ if __name__ == '__main__':
                     {"group": "cells", "name": "macrophage", "termid": "META:99"}
                 ]
             },
+        'macrophages_all':
+            {
+                'sentences': "false",
+            },
         'macrophages_cv':
             {
                 'sentences': "false",
                 "cells": [
                     {"group": "cells", "name": "macrophage", "termid": "META:99"}
                 ],
-                "disease": [{'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'}]
-            }
+                "disease": [
+                    {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
+        'large_chemokines': {
+            'sentences': "false",
+        },
+        'large_chemokines_cv': {
+            'sentences': "false",
+            "disease": [
+                {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
+                {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+            ]        }
     }
 
     figidx = 0
@@ -135,6 +163,7 @@ if __name__ == '__main__':
         interactions = networks[network]
         acceptedInteractions = defaultdict(set)
         typeByGene = defaultdict(lambda: Counter())
+        elemsByGene = defaultdict(lambda: defaultdict(set))
 
         allMirna = set()
 
@@ -250,6 +279,7 @@ if __name__ == '__main__':
                 networkGraph.add_edge(oEdge[0], oEdge[1], color= 'g' if edgeStatus == "accepted" else "b")
 
                 typeByGene[oEdge[0]][edgeStatus] += 1
+                elemsByGene[gene][edgeStatus].add(mirna)
 
                 objMirna = miRNA(oEdge[1])
 
@@ -336,6 +366,7 @@ if __name__ == '__main__':
 
 
                 typeByGene[gene][edgeStatus] += 1
+                elemsByGene[gene][edgeStatus].add(mirna)
 
                 objMirna = miRNA(mirna)
                 dianaLink = "http://carolina.imis.athena-innovation.gr/diana_tools/web/index.php?r=tarbasev8%2Findex&miRNAs%5B%5D=&genes%5B%5D={geneCap}&genes%5B%5D={geneLow}&sources%5B%5D=1&sources%5B%5D=7&sources%5B%5D=9&publication_year=&prediction_score=&sort_field=&sort_type=&query=1".format(
@@ -360,9 +391,13 @@ if __name__ == '__main__':
                 htmlDF.addRow(row)
 
 
-        for gene in typeByGene:
 
-            print(gene, typeByGene[gene])
+        print(network)
+        for gene in typeByGene:
+            print(gene, typeByGene[gene], elemsByGene[gene]['missing'])
+
+        print()
+        print()
 
 
 
@@ -380,7 +415,7 @@ if __name__ == '__main__':
             mergedGraph = nx.compose(mergedGraph, networkGraphs[stages[i]])
 
 
-        pos = graphviz_layout(mergedGraph)
+        pos = nx.spring_layout(mergedGraph)
 
         for stage in stages:
             plt.figure(figidx, figsize=(20,14))
@@ -391,15 +426,26 @@ if __name__ == '__main__':
             edges = networkGraph.edges()
             colors = [networkGraph[u][v]['color'] for u, v in edges]
 
-            nx.draw(networkGraph, pos, font_size=16, with_labels=False, edges=edges, edge_color=colors, node_size=1200, linewidths=0.25, font_weight='bold', dpi=1000)
+            nodes = networkGraph.nodes()
+            nodeColors = []
+            for x in nodes:
+                if any([x.lower().startswith(y) for y in ['mir', 'let']]):
+                    nodeColors.append('blue')
+                else:
+                    nodeColors.append('green')
+
+            nx.draw(networkGraph, pos, font_size=25, with_labels=False, node_color=nodeColors, edges=edges, edge_color=colors, node_size=1200, linewidths=0.5, font_weight='bold', dpi=1000)
             for p in pos:  # raise text positions
-                pos[p][1] += 0.02
-            nx.draw_networkx_labels(networkGraph, pos)
+                clist = list(pos[p])
+                clist[1] = clist[1] + 0.02
+                pos[p] = tuple(clist)
+
+            nx.draw_networkx_labels(networkGraph, pos, font_weight='bold', font_size=25)
 
             plt.suptitle(stage)
 
             plt.savefig("/mnt/c/Users/mjopp/Desktop/" + stage.replace(" ", "_") + ".png")
 
-    plt.show()
+    #plt.show()
 
 
