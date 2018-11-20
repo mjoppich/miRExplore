@@ -41,6 +41,8 @@ class PubmedEntry:
         self.authors = []
         self.doi = None
 
+        self.pub_date = None
+
     def getID(self):
 
         try:
@@ -338,6 +340,25 @@ class PubmedEntry:
         pubmed.pub_types = publicationTypes
         pubmed.cites = citedLiterature
 
+        artDateNode = cls.get_node(articleNode, 'ArticleDate')
+
+        articleDate = None
+        if artDateNode != None:
+            articleDate = (artDateNode[0]["Year"],artDateNode[0]["Month"],artDateNode[0]["Day"])
+
+
+        if articleDate == None and 'Journal' in articleNode:
+
+            articleJournalInfo = articleNode["Journal"]
+            if "JournalIssue" in articleJournalInfo:
+                if 'PubDate' in articleJournalInfo['JournalIssue']:
+                    if 'Year' in articleJournalInfo['JournalIssue']['PubDate']:
+                        articleDate = (articleJournalInfo['JournalIssue']['PubDate']['Year'], articleJournalInfo['JournalIssue']['PubDate']['Month'], articleJournalInfo['JournalIssue']['PubDate']['Day'])
+
+
+
+        pubmed.pub_date = (0,0,0)
+
         return pubmed
 
 class PubmedXMLParser:
@@ -394,17 +415,14 @@ class PubmedArticleIterator:
 
 
 if __name__ == '__main__':
-    tokenizer_loc = 'tokenizers/punkt/english.pickle'
-    tokenizer = nltk.data.load(tokenizer_loc)
 
     storagePath = '/mnt/raidtmpbio/joppich/pmid/'
     baseFileName = 'pubmed18n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
 
-
     startFrom = 0
-    endOn = 2000
+    endOn = 3000
 
 
     allfiles = []
@@ -427,16 +445,14 @@ if __name__ == '__main__':
             print(filename)
 
             basefile = os.path.basename(filename)
-            sentfile = basefile.replace(".xml.gz", ".sent")
-            titlefile = basefile.replace(".xml.gz", ".title")
-            authorfile = basefile.replace(".xml.gz", ".author")
-            citationfile = basefile.replace(".xml.gz", ".citation")
+            datefile = basefile.replace(".xml.gz", ".date")
+            typefile = basefile.replace(".xml.gz", ".pubtype")
 
-            pmid2title = {}
-            pmid2authors = defaultdict(set)
-            pmid2citations = defaultdict(set)
+            pmid2date = {}
+            pmid2types = defaultdict(set)
 
-            with open(storagePath + sentfile, 'w') as outfile:
+
+            with open(storagePath + datefile, 'w') as outdate, open(storagePath + typefile, "w") as outtype:
 
                 pubmedParser = PubmedXMLParser()
                 pubmedParser.parseXML(filename)
@@ -445,40 +461,20 @@ if __name__ == '__main__':
 
                     try:
 
-
-
                         entry = PubmedEntry.fromXMLNode(elem)
 
                         if entry == None:
                             continue
 
-                        sents = entry.to_sentences(tokenizer)
+                        pmid2date[entry.pmid] = entry.pubdate
 
-                        for x in sents:
-                            outfile.write(x + "\n")
-
-                        pmidID = entry.getID()
-
-                        if entry.title != None:
-                            pmid2title[pmidID] = entry.title
-
-                        if entry.authors != None and len(entry.authors) > 0:
-                            for author in entry.authors: #first, initials, last
-                                pmid2authors[pmidID].add( (author[1], author[2], author[0]) )
-
-                        if entry.cites != None and len(entry.cites) > 0:
-                            for cite in entry.cites:
-
-                                try:
-                                    val = int(cite)
-                                    pmid2citations[pmidID].add( val )
-                                except:
-                                    continue
+                        for dtype in entry.pub_types:
+                            pmid2types[entry.pmid].add(dtype)
 
 
                     except:
 
-                        eprint("Exception", sentfile)
+                        eprint("Exception", datefile)
                         try:
 
                             pmid = elem.find('MedlineCitation/PMID').text
@@ -489,51 +485,15 @@ if __name__ == '__main__':
 
                         continue
 
-            with open(storagePath + titlefile, 'w') as outfile:
+                for x in pmid2date:
+                    print(x, pmid2date[x], sep="\t", file=outdate)
 
-                print(titlefile)
-
-                for pmid in pmid2title:
-                    title = pmid2title[pmid]
-                    if title == None or len(title) == 0:
-                        continue
-
-                    outfile.write(str(pmid) + "\t" + str(title) + "\n")
-
-            with open(storagePath + authorfile, 'w') as outfile:
-
-                print(authorfile)
-
-                for pmid in pmid2authors:
-                    authors = pmid2authors[pmid]
-
-                    if authors == None or len(authors) == 0:
-                        continue
-
-                    for author in authors:
-
-                        first = author[0] if author[0] != None else ''
-                        initials = author[1] if author[1] != None else ''
-                        last = author[2] if author[2] != None else ''
-
-                        outfile.write(str(pmid) + "\t" + "\t".join([first, initials, last]) + "\n")
-
-            with open(storagePath + citationfile, 'w') as outfile:
-
-                print(citationfile)
-
-                for pmid in pmid2citations:
-                    citations = pmid2citations[pmid]
-
-                    if citations == None or len(citations) == 0:
-                        continue
-
-                    for quote in citations:
-
-                        outfile.write(str(pmid) + "\t" + str(quote) + "\n")
+                for x in pmid2types:
+                    for doctype in pmid2types[x]:
+                        print(x, doctype, sep="\t", file=outtype)
 
 
-    ll = MapReduce(6)
+    ll = MapReduce(1)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)
 
     print("Done")

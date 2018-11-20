@@ -445,7 +445,8 @@ class MiGenRelDB(DataBaseDescriptor):
 
         print("Gene Symbols Normalized", geneSymbolsNormalized)
 
-        if __name__ == '__main__':
+        addTesters = False
+        if addTesters:
 
 
             prepareTMAnalysis = False

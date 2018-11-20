@@ -259,9 +259,9 @@ for cbnNW in cbn2edges:
 ### are there miRNAs which orchestrate the transition from one state to the other? which ones are unique to each stage? only for miRNAs connected to genes present in both stages
 
 makeStory = [
-    ['CV-IPN-Endothelial_cell-monocyte_interaction_1', 'CV-IPN-Endothelial_cell_activation_1',
-     'CV-IPN-Plaque_destabilization_1', 'CV-IPN-Platelet_activation_1', 'CV-IPN-Smooth_muscle_cell_activation_1',
-     'CV-IPN-Foam_cell_formation_1']
+    ['CV-IPN-Endothelial_cell_activation_1','CV-IPN-Endothelial_cell-monocyte_interaction_1','CV-IPN-Foam_cell_formation_1','CV-IPN-Smooth_muscle_cell_activation_1','CV-IPN-Platelet_activation_1',
+     'CV-IPN-Plaque_destabilization_1'
+     ]
 ]
 
 storyTransitions = []
@@ -284,14 +284,16 @@ def getMirsForGene(gene, graph):
             if v.startswith("miR"):
                targetMirs.add(v)
 
-        else:
+        elif v == gene:
             if u.startswith("miR"):
                 targetMirs.add(u)
 
     return targetMirs
 
+outfile = open("/mnt/c/Users/mjopp/Desktop/yanc_network/" + "mirs_per_stage.tsv", 'w')
 
-
+print("Condition1", "Condition2", "Gene", "miRNAs Only Before", "miRNAs Only After", "Common Mirs", sep="\t")
+print("Condition1", "Condition2", "Gene", "miRNAs Only Before", "miRNAs Only After", "Common Mirs", sep="\t", file=outfile)
 for storyTransition in storyTransitions:
 
     graphFrom = cbn2graph[storyTransition[0]]
@@ -320,23 +322,26 @@ for storyTransition in storyTransitions:
         diffMirs = set()
         toDiffMirs = set()
         fromDiffMirs = set()
+        commonMirs = set()
         for x in fromMirs.union(toMirs):
             if not x in fromMirs and x in toMirs:
                 toDiffMirs.add(x)
             elif x in fromMirs and not x in toMirs:
                 fromDiffMirs.add(x)
+            elif x in fromMirs and x in toMirs:
+                commonMirs.add(x)
 
 
         if len(toDiffMirs) > 0 or len(fromDiffMirs) > 0:
-            genesWithDiff[cgene] = (toDiffMirs, fromDiffMirs)
-
+            genesWithDiff[cgene] = (fromDiffMirs, toDiffMirs, commonMirs)
 
 
     for cgene in genesWithDiff:
         mirset = genesWithDiff[cgene]
-        print(storyTransition[0], storyTransition[1], cgene, ",".join(mirset[0]), ",".join(mirset[1]))
+        print(storyTransition[0], storyTransition[1], cgene, ",".join(sorted(mirset[0])), ",".join(sorted(mirset[1])),",".join(sorted(mirset[2])), sep="\t")
+        print(storyTransition[0], storyTransition[1], cgene, ",".join(sorted(mirset[0])), ",".join(sorted(mirset[1])),",".join(sorted(mirset[2])), sep="\t", file=outfile)
 
-
+outfile.close()
 
 
 
@@ -400,13 +405,6 @@ print("miRNAs in all nws")
 print(allSet)
 
 
-
-makeStory = [
-    ['CV-IPN-Endothelial_cell-monocyte_interaction_1', 'CV-IPN-Endothelial_cell_activation_1',
-     'CV-IPN-Plaque_destabilization_1', 'CV-IPN-Platelet_activation_1', 'CV-IPN-Smooth_muscle_cell_activation_1',
-     'CV-IPN-Foam_cell_formation_1']
-]
-
 import matplotlib.pyplot as plt
 
 figidx = 0
@@ -440,13 +438,30 @@ for stages in makeStory:
 
         nodes = networkGraph.nodes()
         nodeColors = []
+
+        mirNodes = 0
+        geneNodes = 0
+
         for x in nodes:
             if any([x.lower().startswith(y) for y in ['mir', 'let']]):
                 nodeColors.append('blue')
+                mirNodes += 1
             else:
                 nodeColors.append('green')
+                geneNodes += 1
 
-        networkx.draw(networkGraph, pos, font_size=25, with_labels=False, node_color=nodeColors, edges=edges, edge_color=colors, node_size=1200, linewidths=0.5, font_weight='bold', dpi=1000)
+
+        lineWidth = 0.5
+
+        if len(nodes) < 200 and len(edges) < 200:
+            print("change linewidth", stage)
+            lineWidth = 3
+
+        else:
+            print("linewidth unchanged", stage)
+            lineWidth=0.75
+
+        networkx.draw(networkGraph, pos, font_size=25, with_labels=False, node_color=nodeColors, edges=edges, edge_color=colors, node_size=1200, width=lineWidth, font_weight='bold', dpi=1000)
         for p in pos:  # raise text positions
             clist = list(pos[p])
             clist[1] = clist[1] + 0.02
@@ -454,6 +469,7 @@ for stages in makeStory:
 
         networkx.draw_networkx_labels(networkGraph, pos, font_weight='bold', font_size=25)
 
-        plt.suptitle(stage)
+        plt.suptitle("{title}: {mirc} miRs, {genec} genes, {intc} interactions".format(title=stage, mirc=mirNodes, genec=geneNodes, intc=len(colors)))
 
         plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".png")
+        plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".pdf")

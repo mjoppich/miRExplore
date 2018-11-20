@@ -403,7 +403,7 @@ if __name__ == '__main__':
 
         networkGraphs[network] = networkGraph
 
-        htmlDF.export("/mnt/c/Users/mjopp/Desktop/" + network.replace(" ", "_") + ".html", ExportTYPE.HTML)
+        htmlDF.export("/mnt/c/Users/mjopp/Desktop/yanc_network/" + network.replace(" ", "_") + ".html", ExportTYPE.HTML)
 
 
     figidx = 0
@@ -415,36 +415,88 @@ if __name__ == '__main__':
             mergedGraph = nx.compose(mergedGraph, networkGraphs[stages[i]])
 
 
+        hasLargeStage = any(['large' in stage for stage in stages])
+
         pos = nx.spring_layout(mergedGraph)
 
         for stage in stages:
-            plt.figure(figidx, figsize=(20,14))
-            figidx += 1
+
 
             networkGraph = networkGraphs[stage]
 
             edges = networkGraph.edges()
             colors = [networkGraph[u][v]['color'] for u, v in edges]
 
+            d = nx.degree(networkGraph)
             nodes = networkGraph.nodes()
             nodeColors = []
+            nodeSizes = []
+
+            allSizes = [x for x in d.values()]
+            minSize = min(allSizes)
+            maxSize = max(allSizes)
+            diffSize = maxSize-minSize
+
+            fontSize = 16
+            minNodeSize = 1200
+            figSize = (20, 14)
+            edgeWidth = 3
+
+            if hasLargeStage:
+                fontSize = 8
+                minNodeSize = 100
+                figSize = (20,30)
+                edgeWidth = 0.75
+
+
+            plt.figure(figidx, figsize=figSize)
+            figidx += 1
+
+            maxNodeSize = 3000
+            diffNodeSize = maxNodeSize-minNodeSize
+            nodeList = []
+
+
+
+
+
+
             for x in nodes:
                 if any([x.lower().startswith(y) for y in ['mir', 'let']]):
                     nodeColors.append('blue')
                 else:
                     nodeColors.append('green')
 
-            nx.draw(networkGraph, pos, font_size=25, with_labels=False, node_color=nodeColors, edges=edges, edge_color=colors, node_size=1200, linewidths=0.5, font_weight='bold', dpi=1000)
+                nodeDegree = d[x]
+
+                nodeDegree -= minSize
+                nodeDegree = nodeDegree / diffSize
+
+                nodeSize = minNodeSize + diffNodeSize * nodeDegree
+
+                nodeSizes.append( nodeSize )
+                nodeList.append(x)
+
+            nx.draw(networkGraph, pos, font_size=fontSize, with_labels=False, node_color=nodeColors, edges=edges, edge_color=colors, nodelist=nodeList, node_size=nodeSizes, width=edgeWidth, font_weight='bold', dpi=1000)
+
+
             for p in pos:  # raise text positions
+
                 clist = list(pos[p])
-                clist[1] = clist[1] + 0.02
+
+                if p in nodeList:
+                    if nodeSizes[nodeList.index(p)] < 1000:
+                        clist[1] = clist[1] + 0.005
+                    else:
+                        clist[1] = clist[1] + 0.02
                 pos[p] = tuple(clist)
 
-            nx.draw_networkx_labels(networkGraph, pos, font_weight='bold', font_size=25)
+            nx.draw_networkx_labels(networkGraph, pos, font_weight='bold', font_size=fontSize)
 
             plt.suptitle(stage)
 
-            plt.savefig("/mnt/c/Users/mjopp/Desktop/" + stage.replace(" ", "_") + ".png")
+            plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".png")
+            plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".pdf")
 
     #plt.show()
 
