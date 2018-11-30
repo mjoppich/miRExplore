@@ -111,6 +111,7 @@ def oboinfo():
     global categoriesObo
     global messengersObo
     global cellsObo
+    global organsObo
 
     if interactReq == None:
         return app.make_response((jsonify( {'error': 'invalid json'} ), 400, None))
@@ -126,7 +127,8 @@ def oboinfo():
     selObo = {
         'cells': cellsObo,
         'messengers': messengersObo,
-        'categories': categoriesObo
+        'categories': categoriesObo,
+        'organs': organsObo
     }
 
     if not oboname in selObo:
@@ -198,8 +200,8 @@ def sankey_network():
     selectedCells = [x['termid'] for x in selected if x['group'] == 'CELLS']
 
 
-    graphObj = make_plot_info(interactReq.get('elements', None), interactReq.get('categories', None),
-                              interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
+    graphObj = make_plot_info(cells=interactReq.get('elements', None), categories=interactReq.get('categories', None),
+                              messengers=interactReq.get('messengers', None), organs=interactReq.get('organs', None), organisms=interactReq.get('organisms', None),
                               majorParents=True, onlyCells=False, obolevel=obolevel, messenger_obolevel=messenger_obolevel, selectedElems=selectedCells )
 
     return app.make_response((jsonify(graphObj), 200, None))
@@ -223,8 +225,8 @@ def interaction_network():
     messenger_obolevel = interactReq.get('messenger_obolevel', 3)
 
 
-    graphObj = make_plot_info(interactReq.get('elements', None), interactReq.get('categories', None),
-                              interactReq.get('messengers', None), organisms=interactReq.get('organisms', None),
+    graphObj = make_plot_info(cells=interactReq.get('elements', None), categories=interactReq.get('categories', None),
+                              messengers=interactReq.get('messengers', None), organs=interactReq.get('organs', None), organisms=interactReq.get('organisms', None),
                               majorParents=True, onlyCells=True, obolevel=obolevel, messenger_obolevel=messenger_obolevel)
 
 
@@ -362,12 +364,12 @@ def getOboID2Major(selectedTermIDs, hitsPerOboID, obo, primaryRoots, remainingRo
 
 
 
-def make_plot_info(cells, categories, messengers, organisms, majorParents=True, onlyCells=False, obolevel=2, messenger_obolevel=1, selectedElems=None):
+def make_plot_info(cells, categories, messengers, organs, organisms, majorParents=True, onlyCells=False, obolevel=2, messenger_obolevel=1, selectedElems=None):
 
     global messengerID2Name
     global ccPMID
 
-    elemJSON = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=False)
+    elemJSON = makeInteractionObject(cells=cells, categories=categories, messengers=messengers, organs=organs, organisms=organisms, fetchSentences=False)
 
     rels = elemJSON['rels']
     addinfo = elemJSON['pmidinfo']
@@ -565,6 +567,7 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
     allEdges = Counter()
     messengerEdgesCounter = Counter()
     categoryEdgesCounter = Counter()
+    organEdgesCounter = Counter()
 
     cellSrc = set()
     cellTgt = set()
@@ -760,6 +763,7 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
 
             effect = docInfos['categories'].get(evDocId, [None])
             message = docInfos['messengers'].get(evDocId, [None])
+            organ = docInfos['organs'].get(evDocId, [None])
 
             foundEffects = set()
             if effect != None:
@@ -789,10 +793,32 @@ def make_plot_info(cells, categories, messengers, organisms, majorParents=True, 
                             if x[0] in allowedSentIDs:
                                 foundMessages.add(termID)
 
+            foundOrgans = set()
+            if organ != None:
 
+                # TODO add all organs mentioned in text!
+                for termID, evidences in organ:
+                    foundOrgans.add(termID)
+
+                for termID, evidences in organ:
+                    for x in evidences:
+                        if x[0] == sentid:
+                            foundOrgans.add(termID)
+
+                if len(foundOrgans) == 0:
+                    for termID, evidences in organ:
+                        for x in evidences:
+                            if x[0] in allowedSentIDs:
+                                foundOrgans.add(termID)
+
+
+            if organ != None and len(foundOrgans) == 0:
+                # it is a requirement to have organs listed ... if they are queried
+                continue
 
             messengerEdgesCounter[edgeCellCell] += len(foundMessages)
             categoryEdgesCounter[edgeCellCell] += len(foundEffects)
+            organEdgesCounter[edgeCellCell] += len(foundOrgans)
 
             for messengerID in foundMessages:
 
@@ -957,9 +983,10 @@ def findInteractions():
         maxSentDist = int(interactReq['sentence_distance'])
 
 
-    return returnInteractions(interactReq.get('elements', None),
-                              interactReq.get('categories', None),
-                              interactReq.get('messengers', None),
+    return returnInteractions(cells=interactReq.get('elements', None),
+                              categories=interactReq.get('categories', None),
+                              messengers=interactReq.get('messengers', None),
+                              organs=interactReq.get('organs', None),
                               organisms=interactReq.get('organisms', None),
                               fetchSentences=fetchSentences,
                               maxSentDist=maxSentDist
@@ -970,18 +997,21 @@ def getStatus():
     return app.make_response((jsonify({'error': 'must include homid'}), 400, None))
 
 
-def makeInteractionObject(cells=None, categories=None, messengers=None, organisms=None, fetchSentences=True, maxSentDist=1):
+def makeInteractionObject(cells=None, categories=None, messengers=None, organs=None, organisms=None, fetchSentences=True, maxSentDist=1):
 
     global relDBs
     global sentDB
     global pmid2Categories
     global pmid2Messenger
+    global pmid2Organs
+    global organsObo
     global categoriesObo
     global messengersObo
 
     cells = cells if cells!=None else []
     categories = categories if categories!=None else []
     messengers = messengers if messengers!=None else []
+    organs = organs if organs != None else []
 
     foundRels = defaultdict(list)
 
@@ -1067,6 +1097,20 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
 
         allowedIDs['messengers'] = set(allowedTermIDs)
 
+    if organs != None:
+
+        allowedTermIDs = []
+        for delem in organs:
+            elemTerm = organsObo.getID(delem['termid'])
+
+            if elemTerm == None:
+                continue
+
+            elemTerms = [x.term.id for x in elemTerm.getAllChildren()] + [elemTerm.id]
+            allowedTermIDs += elemTerms
+
+        allowedIDs['organs'] = set(allowedTermIDs)
+
 
     """
     
@@ -1124,6 +1168,20 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
                 allDocInfos[docid] = docInfo
 
         addInfo['messengers'] = allDocInfos
+
+    if pmid2Organs:
+
+        addInfo['organs'] = None
+
+        allDocInfos = {}
+
+        for docid in allDocIDs:
+            docInfo = pmid2Organs.getDOC(docid)
+
+            if docInfo != None:
+                allDocInfos[docid] = docInfo
+
+        addInfo['organs'] = allDocInfos
 
 
     """
@@ -1217,6 +1275,23 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
                 if not acceptEv:
                     continue
 
+        if organs != None and len(allowedIDs['organs']) > 0:
+
+            docID = evJSON['docid']
+
+            docIDGOInfo = addInfo['organs'].get(docID, [])
+
+            if len(docIDGOInfo) == 0:
+                #print("docIDmessenger")
+                continue
+            else:
+
+                acceptEv = any([x['termid'] in allowedIDs['organs'] for x in docIDGOInfo])
+                #print("docIDmessenger ev")
+
+                if not acceptEv:
+                    continue
+
 
         """
         
@@ -1250,6 +1325,13 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
                     rejectDoc = True
                     missingGroups.append(infoGroup)
 
+            if organs != None and len(allowedIDs['organs']) > 0:
+                docIDInfo = addInfo["organs"].get(docID, [])
+
+                if len(docIDInfo) == 0:
+                    rejectDoc = True
+                    missingGroups.append(infoGroup)
+
             missingGroupsCounter[tuple(sorted(missingGroups))] += 1
 
             if rejectDoc:
@@ -1266,7 +1348,7 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
                 rejectDoc = False
                 missingSentenceGroup = set()
 
-                for infoGroup in ['messengers', 'categories']:
+                for infoGroup in ['messengers', 'categories', 'organs']:
                     docIDInfo = addInfo[infoGroup].get(docID, [])
 
                     #docIDInfo != 0
@@ -1297,7 +1379,7 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
                 missingSentenceCounter[tuple(sorted(missingSentenceGroup))] += 1
 
                 if len(missingSentenceGroup) > 0:
-                    if 'messengers' in missingSentenceGroup or 'categories' in missingSentenceGroup:
+                    if 'messengers' in missingSentenceGroup or 'categories' in missingSentenceGroup or 'organs' in missingSentenceGroup:
                         continue
 
 
@@ -1412,9 +1494,9 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organism
     return returnObj
 
 
-def returnInteractions(cells=None, categories=None, messengers=None, organisms=None, fetchSentences=True, maxSentDist=1):
+def returnInteractions(cells=None, categories=None, messengers=None, organs=None, organisms=None, fetchSentences=True, maxSentDist=1):
 
-    returnObj = makeInteractionObject(cells, categories, messengers, organisms, fetchSentences=fetchSentences, maxSentDist=maxSentDist)
+    returnObj = makeInteractionObject(cells=cells, categories=categories, messengers=messengers, organs=organs, organisms=organisms, fetchSentences=fetchSentences, maxSentDist=maxSentDist)
 
     return app.make_response((jsonify(returnObj), 200, None))
 
@@ -1653,6 +1735,37 @@ def cells_autocomplete():
 
     return app.make_response((jsonify(jsonResult), 200, None))
 
+@app.route('/organs_ac', methods=['GET', 'POST'])
+def organs_autocomplete():
+    global pmid2Organs
+
+    searchWords = request.get_json(force=True, silent=True)
+    searchWord = searchWords['search']
+
+    if searchWord == None or len(searchWord) < 2:
+        return app.make_response((jsonify([]), 200, None))
+
+    reMatch = regex.compile(searchWord + '{e<=3}')
+
+    jsonResult = list()
+
+    for (termName, termID) in pmid2Organs.getTerms():
+
+        if reMatch.match(termName):
+            jsonResult.append(
+                {
+                    'name': termName,
+                    'termid': termID,
+                    'group': 'organs'
+                }
+            )
+
+        if len(jsonResult) > 100:
+            break
+
+    return app.make_response((jsonify(jsonResult), 200, None))
+
+
 @app.route("/relation_feedback", methods=["GET", "POST"])
 def rel_feedback():
 
@@ -1705,6 +1818,8 @@ cellsObo = None
 neutrophilsObo = None
 messengerID2Name = None
 reviewPMIDs = None
+pmid2Organs = None
+organsObo = None
 
 
 def start_app_from_args(args):
@@ -1721,6 +1836,8 @@ def start_app_from_args(args):
     global pmid2pmcDB
     global messengerID2Name
     global reviewPMIDs
+    global pmid2Organs
+    global organsObo
 
 
     with open(args.obodir + "/reviewPMID") as fin:
@@ -1753,6 +1870,7 @@ def start_app_from_args(args):
     testRels = None#TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
     neutrophilsObo = GeneOntology(args.obodir + "/neutrophils.obo")
     cellsObo = GeneOntology(args.obodir + "/target_cells.obo")
+
 
     ccPMC = MiGenRelDB.loadFromFile(pmcBase + "/neutrophils_cell.pmid", ltype="NEUTROPHIL", rtype="CELLS",
                                      normGeneSymbols=normGeneSymbols, lontology=neutrophilsObo, rontology=cellsObo,
@@ -1815,6 +1933,7 @@ def start_app_from_args(args):
 
         pmid2Categories = allDBS[0]
         pmid2Messenger = allDBS[1]
+        pmid2Organs = allDBS[2]
 
         print(datetime.datetime.now(), "Loading pickle ended", pickleFile)
 
@@ -1822,6 +1941,7 @@ def start_app_from_args(args):
 
     categoriesObo = GeneOntology(args.obodir + "/effects.obo")
     messengersObo = GeneOntology(args.obodir + "/messages.obo")
+    organsObo = GeneOntology(args.obodir + "/organs.obo")
 
     messengerID2Name = {}
 
@@ -1844,11 +1964,16 @@ def start_app_from_args(args):
         pmid2Messenger = PMID2XDB.loadFromFile(pmidBase + "/messages.pmid", messengersObo, requiredDOCIDs)
         pmc2Messenger = PMID2XDB.loadFromFile(pmcBase + "/messages.pmid", messengersObo, requiredDOCIDs)
 
+        print(datetime.datetime.now(), "Loading Organs")
+        pmid2Organs = PMID2XDB.loadFromFile(pmidBase + "/organs.pmid", organsObo, requiredDOCIDs)
+        pmc2Organs = PMID2XDB.loadFromFile(pmcBase + "/organs.pmid", organsObo, requiredDOCIDs)
+
         pmid2Categories.add_database(pmc2Categories)
         pmid2Messenger.add_database(pmc2Messenger)
+        pmid2Organs.add_database(pmc2Organs)
 
 
-        allDBS = (pmid2Categories, pmid2Messenger)
+        allDBS = (pmid2Categories, pmid2Messenger, pmid2Organs)
 
         print(datetime.datetime.now(), "Writing Pickle", pickleFile)
 

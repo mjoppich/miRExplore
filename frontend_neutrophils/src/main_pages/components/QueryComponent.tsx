@@ -21,6 +21,7 @@ export interface QueryComponentState {
     selectedOrganisms: Array<any>,
     selectedCategories: Array<any>,
     selectedMessengers: Array<any>,
+    selectedOrgans: Array<any>,
     interactions: any,
 
     showInteractionGraph:boolean,
@@ -49,6 +50,7 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
         selectedOrganisms: [],
         selectedMessengers: [],
         selectedCategories: [],
+        selectedOrgans: [],
         interactions: [],
 
         showSankeyChart:true,
@@ -127,6 +129,11 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
         if ((this.state.selectedOrganisms)&&(this.state.selectedOrganisms.length > 0))
         {
             sendData['organisms'] = this.state.selectedOrganisms;
+        }
+
+        if ((this.state.selectedOrgans)&&(this.state.selectedOrgans.length > 0))
+        {
+            sendData['organs'] = this.state.selectedOrgans;
         }
 
         if (!this.state.loadSentences)
@@ -261,6 +268,13 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
                             floatText="Messengers"
                             hintText="Enter Messenger-Term here"
                             onValueChange={(newvalues) => this.setState({selectedMessengers: newvalues})
+                        }/>
+
+                        <OboChipAC
+                            url="organs_ac"
+                            floatText="Organs"
+                            hintText="Enter Organ-Term here"
+                            onValueChange={(newvalues) => this.setState({selectedOrgans: newvalues})
                         }/>
 
         <FormGroup>

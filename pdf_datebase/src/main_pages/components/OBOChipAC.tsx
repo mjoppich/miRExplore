@@ -103,15 +103,21 @@ export default class OboChipAC extends React.Component<OboChipACProps, OboChipAC
                 elemnames.push(element.name)
             });
 
+            console.log("Received data")
+            console.log(elemnames)
+
             self.setState({datasource: elemnames, elements: allElements})
 
         })
         .catch(function (error) {
 
-            console.log(config.getRestAddress() + "/" + self.props.url)
-            console.log(searchText)
+            console.error("error receiving data")
+            console.error(this.props.url)
 
-            console.log(error)
+            console.error(config.getRestAddress() + "/" + self.props.url)
+            console.error(searchText)
+
+            console.error(error)
             self.setState({elements: [], datasource: []})
         });
     }

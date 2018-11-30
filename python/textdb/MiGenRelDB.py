@@ -121,12 +121,14 @@ class MiRGeneRel(DataBaseRel):
 class MiGenRelDB(DataBaseDescriptor):
 
 
-    def __init__(self, ltype, rtype):
+    def __init__(self, ltype, rtype, dbfilepath):
 
         super().__init__()
 
         self.ltyped = ltype
         self.rtyped = rtype
+
+        self.dbfilepath = dbfilepath
 
     @property
     def ltype(self):
@@ -232,6 +234,30 @@ class MiGenRelDB(DataBaseDescriptor):
         return rels
 
 
+    def toSQLite(self):
+
+        if os.path.isfile(self.dbfilepath):
+            os.remove(self.dbfilepath)
+
+        conn, c = self.getConnCursor()
+
+        c.execute("create table migenrel (lid text, ltype text, rid text, rtype text, docid text, evs text, sameparagraph bool, samesentence bool)")
+        c.execute("create index migenrel_lid on migenrel (lid)")
+        c.execute("create index migenrel_rid on migenrel (rid)")
+        c.execute("create index migenrel_docid on migenrel (docid)")
+
+        insertSQL = '''INSERT INTO migenrel(lid,ltype,rid, rtype, docid, evs, sameparagraph, samesentence) VALUES (?,?,?,?,?,?,?,?)'''
+
+        for x in self.ltype2rel:
+            rels = self.ltype2rel[x]
+
+            for rel in rels:
+                c.execute(insertSQL, (rel.lid, rel.ltype, rel.rid, rel.rtype, rel.pubID, rel.same_paragraph, rel.same_sentence, str(rel.toJSON()), ))
+
+        conn.commit()
+        c.close()
+
+
     @classmethod
     def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None, switchLR=False, lReplaceSc=True, rReplaceSc=True, ignoreDocIDs=None):
 
@@ -247,7 +273,7 @@ class MiGenRelDB(DataBaseDescriptor):
             rtype = typeTmp
 
 
-        ret = MiGenRelDB(ltype, rtype)
+        ret = MiGenRelDB(ltype, rtype, filepath + ".db")
         ret.lontology = lontology
         ret.rontology = rontology
 

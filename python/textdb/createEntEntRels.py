@@ -84,6 +84,15 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
 
     allRelations = []
 
+    """
+    
+    TODO we still have to sort out APOE-/- mice out and LDLR-/-
+    
+    ... what about relation like in neutrophils?
+    
+    
+    """
+
     if len(sentHits) > 0:
 
         doc = nlp(sentence.text)
