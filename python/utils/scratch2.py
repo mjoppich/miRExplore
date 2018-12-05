@@ -122,7 +122,8 @@ testCases = [
     (u'TLR7/8-activated neutrophils promoted cleavage of FcgRIIA on plasmacytoid dendritic cells and monocytes, resulting in impaired overall clearance of ICs and increased complement C5a generation', 1, 11),
     (u'Lupus neutrophils produce elevated levels of factors known to fuel autoantibody production, including IL-6 and B cell survival factors, but also reactive oxygen intermediates, which can suppress lymphocyte proliferation', 1, 16),
     (u'Human neutrophils mediate trogocytosis rather than phagocytosis of CLL B cells opsonized with anti-CD20 antibodies', 1,9),
-    (u'Mycobacterium tuberculosis-induced neutrophil ectosomes decrease macrophage activation.', 4,7)
+    (u'Mycobacterium tuberculosis-induced neutrophil ectosomes decrease macrophage activation.', 4,7),
+    (u'Furthermore, KLF12, HMGB1 and CIT mRNAs were confirmed as direct targets of the p53-induced miR-34a, miR-205 and miR-486-5p, respectively', 1, 14)
 ]
 
 #29099614.2.11

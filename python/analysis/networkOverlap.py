@@ -208,7 +208,7 @@ if __name__ == '__main__':
         print(len(jsonRes['rels']))
 
         htmlDF = DataFrame()
-        htmlDF.addColumns(['chemokine', 'miRNA Group', 'miRNA', 'Original Network', 'PubMed', 'MIRECORD', 'MIRTARBASE', 'DIANA'])
+        htmlDF.addColumns(['gene rel', 'gene', 'miRNA Group', 'miRNA', 'Original Network', 'PubMed', 'MIRECORD', 'MIRTARBASE', 'DIANA'])
 
         for rel in jsonRes['rels']:
 
@@ -334,7 +334,8 @@ if __name__ == '__main__':
                 )
 
                 addRow = {
-                    'chemokine': oEdge[0] + "<br/>" + oEdge[1],
+                    'gene rel': oEdge[0] + "<br/>" + oEdge[1],
+                    'gene': oEdge[0],
                     'miRNA Group': objMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]),
                     'miRNA': "<br/>".join(allAcceptedStr),
                     'Original Network': "{edgestate}</br>".format(edgestate=edgeStatus) +
@@ -373,7 +374,8 @@ if __name__ == '__main__':
                     geneCap=gene.upper(), geneLow=gene.upper())
 
                 addRow = {
-                    'chemokine': gene,
+                    'gene rel': gene,
+                    'gene': gene,
                     'miRNA Group': objMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]),
                     'miRNA': mirna,
                     'Original Network': "{edgestate}</br>".format(edgestate=edgeStatus) +
@@ -404,6 +406,8 @@ if __name__ == '__main__':
         networkGraphs[network] = networkGraph
 
         htmlDF.export("/mnt/c/Users/mjopp/Desktop/yanc_network/" + network.replace(" ", "_") + ".html", ExportTYPE.HTML)
+        htmlDF.export("/mnt/c/Users/mjopp/Desktop/yanc_network/" + network.replace(" ", "_") + ".tsv", ExportTYPE.TSV)
+
 
 
     figidx = 0

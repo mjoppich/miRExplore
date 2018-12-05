@@ -6,9 +6,11 @@ from collections import defaultdict, Counter
 from lxml import etree
 from xml.dom import minidom
 
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
+
 from neutrophils.allowedSentences import AllowedSentences
 
-sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 
 """
@@ -24,26 +26,73 @@ PMCs 1219
 """
 
 
+def findContextInfo(inContext, allowedSentIDs, acceptDocWide=False):
+
+    foundContexts = set()
+    contextDistances = {}
+    contextWords = {}
+
+    if acceptDocWide:
+        return foundContexts, contextWords, contextDistances
+
+    for termContext in inContext:
+
+        if termContext == None:
+            continue
+
+        for x in termContext['evidences']:
+            if x[0] == sentid:
+                contextElem = (termContext['termid'], termContext['termname'], x[0], x[1], x[2])
+                foundContexts.add(contextElem)
+
+                if contextElem in contextDistances:
+                    if allowedSentIDs[x[0]] < contextDistances[contextElem]:
+                        contextDistances[contextElem] = allowedSentIDs[x[0]]
+
+                        if x[0] == sentid:
+                            contextWords[contextElem] = makeSubstr(sentence, x[1], x[2])
+                else:
+                    contextDistances[contextElem] = allowedSentIDs[x[0]]
+
+                    if x[0] == sentid:
+                        contextWords[contextElem] = makeSubstr(sentence, x[1], x[2])
+
+    if len(foundContexts) == 0:
+        for termContext in inContext:
+
+            if termContext == None:
+                continue
+
+            for x in termContext['evidences']:
+                if x[0] in allowedSentIDs:
+
+                    contextElem = (termContext['termid'], termContext['termname'], x[0], x[1], x[2])
+                    foundContexts.add(contextElem)
+
+                    if contextElem in contextDistances:
+
+                        if allowedSentIDs[x[0]] < contextDistances[contextElem]:
+                            contextDistances[contextElem] = allowedSentIDs[x[0]]
+
+                            if x[0] == sentid:
+                                contextWords[contextElem] = makeSubstr(sentence, x[1], x[2])
+
+
+                    else:
+                        contextDistances[contextElem] = allowedSentIDs[x[0]]
+
+                        if x[0] == sentid:
+                            contextWords[contextElem] = makeSubstr(sentence, x[1], x[2])
+
+    return foundContexts, contextWords, contextDistances
+
 
 
 import requests
 
 from textmining.SentenceID import SentenceID
 
-parser = argparse.ArgumentParser(description='db query', add_help=False)
-parser.add_argument('-o', '--output', type=argparse.FileType("w"), help='outfile', default=None, required=False)
-parser.add_argument('-t', '--output-text', type=argparse.FileType("w"), help='outfile', default=sys.stdout, required=False)
 
-args = parser.parse_args()
-
-fetchAddData = True
-fetchSentences=True
-
-
-
-from Bio import Entrez
-
-Entrez.email = "joppich@bio.ifi.lmu.de"
 
 
 
@@ -169,9 +218,41 @@ def getResultHandle(dbName, allIDs):
 #thandle = getResultHandle("pmc", ['4902075'])
 #print(extractPMCInfo(thandle))
 
+parser = argparse.ArgumentParser(description='db query', add_help=False)
+parser.add_argument('-o', '--output', type=argparse.FileType("w"), help='outfile', default=None, required=False)
+parser.add_argument('-t', '--output-text', type=argparse.FileType("w"), help='outfile', default=sys.stdout, required=False)
+parser.add_argument('--organ', type=str, help='outfile', default=None, required=False)
 
-maxSentDist = 5
-query = {"elements": [{'group': 'NEUTROPHIL', 'name': 'PMN', 'termid': 'PMN'}, {'group': 'NEUTROPHIL', 'name': 'neutrophils', 'termid': 'neutrophils'}], "sentences": str(fetchSentences), "obolevel": 1, "messenger_obolevel": 1, "sentence_distance": maxSentDist}
+args = parser.parse_args()
+
+fetchAddData = False
+fetchSentences=False
+
+
+
+from Bio import Entrez
+
+Entrez.email = "joppich@bio.ifi.lmu.de"
+
+maxSentDist = 3
+query = {
+        "elements": [{'group': 'NEUTROPHIL', 'name': 'PMN', 'termid': 'PMN'}, {'group': 'NEUTROPHIL', 'name': 'neutrophils', 'termid': 'neutrophils'}],
+        "sentences": str(fetchSentences),
+        "obolevel": 1,
+        "messenger_obolevel": 1,
+        "sentence_distance": maxSentDist
+    }
+
+organQuery = []
+if args.organ != None:
+    organQuery = [{"group": "organs", "name": args.organ, "termid": args.organ}]
+
+    query['organs'] = organQuery
+    print("Set organs", organQuery, file=sys.stderr)
+
+for x in query:
+    print(x, query[x])
+
 r = requests.post("http://localhost:65522/query", data=json.dumps(query))
 
 res = json.loads(r.content.decode())
@@ -313,102 +394,34 @@ for rel in res['rels']:
 
         effect = res['pmidinfo']['categories'].get(docid, [None])
         message = res['pmidinfo']['messengers'].get(docid, [None])
+        organ = res['pmidinfo']['organs'].get(docid, [None])
 
 
-        effectWords = {}
-        messageWords = {}
+        foundOrgans = set()
+        organWords = {}
+        organDistances = {}
+        if len(organQuery) > 0: # required specific organ
 
-        effectDistances = {}
-        messageDistances = {}
+            if len(organ) == 0:
+
+                print("Organ Ejected", docid)
+                continue
+
 
         foundEffects = set()
+        effectDistances = {}
+        effectWords = {}
+
         if effect != None:
-
-            for termEffect in effect:
-                for x in termEffect['evidences']:
-                    if x[0] == sentid:
-                        effectElem = (termEffect['termid'], termEffect['termname'], x[0], x[1], x[2])
-                        foundEffects.add(effectElem)
-
-                        if effectElem in messageDistances:
-                            if allowedSentIDs[x[0]] < effectDistances[effectElem]:
-                                effectDistances[effectElem] = allowedSentIDs[x[0]]
-
-                                if x[0] == sentid:
-                                    effectWords[effectElem] = makeSubstr(sentence, x[1], x[2])
-                        else:
-                            effectDistances[effectElem] = allowedSentIDs[x[0]]
-
-                            if x[0] == sentid:
-                                effectWords[effectElem] = makeSubstr(sentence, x[1], x[2])
-
-            if len(foundEffects) == 0:
-                for termEffect in effect:
-                    for x in termEffect['evidences']:
-                        if x[0] in allowedSentIDs:
-
-                            effectElem = (termEffect['termid'], termEffect['termname'], x[0], x[1], x[2])
-                            foundEffects.add(effectElem)
-
-                            if effectElem in messageDistances:
-
-                                if allowedSentIDs[x[0]] < effectDistances[effectElem]:
-                                    effectDistances[effectElem] = allowedSentIDs[x[0]]
-
-                                    if x[0] == sentid:
-                                        effectWords[effectElem] = makeSubstr(sentence, x[1], x[2])
-
-
-                            else:
-                                effectDistances[effectElem] = allowedSentIDs[x[0]]
-
-                                if x[0] == sentid:
-                                    effectWords[effectElem] = makeSubstr(sentence, x[1], x[2])
-
+            foundEffects, effectWords, effectDistances = findContextInfo(effect, allowedSentIDs)
 
         foundMessages = set()
+        messageWords = {}
+        messageDistances = {}
+
         if message != None:
+            foundMessages, messageWords, messageDistances = findContextInfo(message, allowedSentIDs)
 
-            for termMessage in message:
-
-                for x in termMessage['evidences']:
-                    if x[0] == sentid:
-                        messageElem = (termMessage['termid'], termMessage['termname'], x[0], x[1], x[2])
-                        foundMessages.add(messageElem)
-
-                        if messageElem in messageDistances:
-                            if messageElem in messageDistances:
-                                if allowedSentIDs[x[0]] < messageDistances[messageElem]:
-                                    messageDistances[messageElem] = allowedSentIDs[x[0]]
-
-                                    if x[0] == sentid:
-                                        messageWords[messageElem] = makeSubstr(sentence, x[1], x[2])
-
-                        else:
-                            messageDistances[messageElem] = allowedSentIDs[x[0]]
-
-                            if x[0] == sentid:
-                                messageWords[messageElem] = makeSubstr(sentence, x[1], x[2])
-
-            if len(foundMessages) == 0:
-                for termMessage in message:
-                    for x in termMessage['evidences']:
-                        if x[0] in allowedSentIDs:
-
-                            messageElem = (termMessage['termid'], termMessage['termname'], x[0], x[1], x[2])
-                            foundMessages.add(messageElem)
-
-                            if messageElem in messageDistances:
-                                if allowedSentIDs[x[0]] < messageDistances[messageElem]:
-                                    messageDistances[messageElem] = allowedSentIDs[x[0]]
-
-                                    if x[0] == sentid:
-                                        messageWords[messageElem] = makeSubstr(sentence, x[1], x[2])
-
-                            else:
-                                messageDistances[messageElem] = allowedSentIDs[x[0]]
-                                if x[0] == sentid:
-                                    messageWords[messageElem] = makeSubstr(sentence, x[1], x[2])
 
         trustStr = sep.join([str(x) for x in trusts])
 
@@ -440,9 +453,9 @@ for rel in res['rels']:
                     overlap = max([messageInterval[0], effectInterval[0]]) <= min([messageInterval[1], effectInterval[1]])
 
                     if overlap:
-                        print("overlap")
-                        print(messageInterval, messageWord)
-                        print(effectInterval, effectWord)
+                        #print("overlap")
+                        #print(messageInterval, messageWord)
+                        #print(effectInterval, effectWord)
                         continue
 
 

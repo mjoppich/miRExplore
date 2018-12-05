@@ -371,6 +371,9 @@ def make_plot_info(cells, categories, messengers, organs, organisms, majorParent
 
     elemJSON = makeInteractionObject(cells=cells, categories=categories, messengers=messengers, organs=organs, organisms=organisms, fetchSentences=False)
 
+    organs = organs if organs != None else []
+
+
     rels = elemJSON['rels']
     addinfo = elemJSON['pmidinfo']
 
@@ -794,7 +797,7 @@ def make_plot_info(cells, categories, messengers, organs, organisms, majorParent
                                 foundMessages.add(termID)
 
             foundOrgans = set()
-            if organ != None:
+            if len(organs) > 0:
 
                 # TODO add all organs mentioned in text!
                 for termID, evidences in organ:
@@ -812,8 +815,9 @@ def make_plot_info(cells, categories, messengers, organs, organisms, majorParent
                                 foundOrgans.add(termID)
 
 
-            if organ != None and len(foundOrgans) == 0:
+            if len(organs) > 0 and len(foundOrgans) == 0:
                 # it is a requirement to have organs listed ... if they are queried
+                print("Ejected organs", evDocId)
                 continue
 
             messengerEdgesCounter[edgeCellCell] += len(foundMessages)
@@ -954,7 +958,7 @@ def queryDB():
         maxSentDist = int(interactReq['sentence_distance'])
 
     retInfo = makeInteractionObject(interactReq.get('elements', None), interactReq.get('categories', None),
-                              interactReq.get('messengers', None), None, fetchSentences=fetchSentences, maxSentDist=maxSentDist)
+                              interactReq.get('messengers', None), interactReq.get('organs', None), fetchSentences=fetchSentences, maxSentDist=maxSentDist)
 
     return app.make_response((jsonify(retInfo), 200, None))
 
@@ -1211,7 +1215,7 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organs=N
     allowedSentsGen = AllowedSentences(maxSentDist)
 
     print("Loading sentences")
-    for rel in allRels:
+    for relIdx, rel in enumerate(allRels):
 
         seenEvidences += 1
 
@@ -1348,7 +1352,7 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organs=N
                 rejectDoc = False
                 missingSentenceGroup = set()
 
-                for infoGroup in ['messengers', 'categories', 'organs']:
+                for infoGroup in ['messengers', 'categories']: # add organs iff it should be within same sentence+-
                     docIDInfo = addInfo[infoGroup].get(docID, [])
 
                     #docIDInfo != 0
@@ -1453,6 +1457,19 @@ def makeInteractionObject(cells=None, categories=None, messengers=None, organs=N
                         'rtype': rent[1],
                         'evidences': lrEvs
                         })
+
+
+    for category in addInfo:
+
+        delIds = set()
+
+        for pubid in addInfo[category]:
+
+            if not pubid in takenPMIDs:
+                delIds.add(pubid)
+
+        for x in delIds:
+            del addInfo[category][x]
 
     returnObj = {
         'rels': allrels,

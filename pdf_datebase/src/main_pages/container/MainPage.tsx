@@ -12,11 +12,21 @@ import LinearProgress from '@material-ui/core/LinearProgress';
 import D3SVGParallelLinesGraph from '../components/D3SVGForceParallelLines';
 
 import OboChipAC from '../components/OBOChipAC';
+import Switch from '@material-ui/core/Switch'
 
 import FormGroup from '@material-ui/core/FormGroup';
-import FormControlLabel from '@material-ui/core/FormControlLabel'
+import FormControlLabel from '@material-ui/core/FormControlLabel';
 
-export interface WelcomePageState { files: any, results: any, authorResults: any, queryState:any, interactionData: any, updateInteractions: boolean, selectedAuthors: Array<any>, }
+import {
+    XYPlot,
+    XAxis,
+    YAxis,
+    VerticalGridLines,
+    HorizontalGridLines,
+    VerticalBarSeries
+  } from 'react-vis';
+
+export interface WelcomePageState { files: any, results: any, authorResults: any, queryState:any, interactionData: any, updateInteractions: boolean, selectedAuthors: Array<any>, onlyOriginalRelsAuthor: boolean, onlyOriginalRelsPDF: boolean}
 export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePageState> {
 
     /**
@@ -45,7 +55,9 @@ export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePage
         interactionData: [],
         updateInteractions: false,
         selectedAuthors: [],
-        authorResults: {}
+        authorResults: [],
+        onlyOriginalRelsAuthor: false,
+        onlyOriginalRelsPDF: false
     };
     
       onDrop(files) {
@@ -76,6 +88,8 @@ export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePage
             formData.append(elemid, elem);
 
         }
+
+        formData.append("only_originals", this.state.onlyOriginalRelsPDF);
 
         var self=this;
         this.setState({queryState: 1})
@@ -342,7 +356,7 @@ export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePage
       var self=this;
       this.setState({queryState: 1})
 
-      axios.post(config.getRestAddress() + "/authorsearch", {authors: self.state.selectedAuthors}, config.axiosConfig)
+      axios.post(config.getRestAddress() + "/authorsearch", {authors: self.state.selectedAuthors, only_originals: self.state.onlyOriginalRelsAuthor}, config.axiosConfig)
       .then(function (response) {
 
           console.log("Received TM Results")
@@ -366,7 +380,7 @@ export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePage
             return <div></div>;
         }
 
-        var author2rels = this.state.authorResults["author2rels"];
+        var author2rels = this.state.authorResults;
         console.log(author2rels);
 
         if (author2rels == undefined)
@@ -374,19 +388,102 @@ export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePage
             return <div></div>;
         }
 
-        var relKeys = Object.keys(author2rels);
 
         var allResElems = [];
 
-        for (var i = 0; i < relKeys.length; ++i)
+        for (var i = 0; i < author2rels.length; ++i)
         {
-            allResElems.push(<h2 key={allResElems.length}>{relKeys[i]}</h2>)
 
-            var relEvs = author2rels[relKeys[i]];
+            let authorInfos = author2rels[i].author;
+
+            if (authorInfos.length == 4)
+            {
+                authorInfos = [authorInfos[0], authorInfos[1], authorInfos[2]];
+            }
+
+            allResElems.push(<h2 key={allResElems.length}>{authorInfos.join(" ")}</h2>)
+
+            var relEvs = author2rels[i].rels;
+
+            var allEvs = [];
+
+            for (var j =0; j < relEvs.length; ++j)
+            {
+                allEvs = allEvs.concat(relEvs[j].rels);
+            }
+
+            console.log("Concat Evs")
+            console.log(allEvs);
+            
+
+            var year2count = {};
+            var minYear = 2000;
+            var maxYear = 2020;
+
+            var seenDocs = [];
+
+            allEvs.forEach(element => {
+                    
+                var year = element['year'];
+                var docid = element['docid'];
+
+                if (seenDocs.indexOf(docid) >= 0)
+                {
+                    return;
+                }
+
+                seenDocs.push(docid);
+
+                console.log("Unique docid");
+                console.log(docid);
+                console.log(year);
+                console.log(seenDocs);
+
+                if ( year < minYear)
+                {
+                    minYear = year;
+                } else if (year > maxYear)
+                {
+                    maxYear = year;
+                }
+
+                if (year in year2count)
+                {
+                    year2count[year] += 1;
+                } else {
+                    year2count[year] = 1;
+                }
+
+            });
+
+            var showYears = [];
+
+            for (var j = minYear; j < maxYear+1; ++j)
+            {
+                if (j in year2count)
+                {
+                    showYears.push({x: j, y: year2count[j]})
+                } else {
+                    showYears.push({x: j, y: 0})
+                }
+            }
+
+            var plot = <XYPlot key={allResElems.length} margin={{bottom: 70}} xType="ordinal" width={800} height={300}>
+                        <VerticalGridLines />
+                        <HorizontalGridLines />
+                        <XAxis tickLabelAngle={-45} />
+                        <YAxis />
+                        <VerticalBarSeries
+                        data={showYears}
+                        />
+                </XYPlot>;
+
+            allResElems.push(plot);
+
 
             allResElems.push(<ReactTable
                 key={allResElems.length}
-                data={relEvs}
+                data={allEvs}
                 filterable
                 defaultFilterMethod={(filter, row) =>
                   String(row[filter.id]) === filter.value}
@@ -436,14 +533,14 @@ export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePage
                         {
                             Header: "Pubmed Evidences",
                             id: "pub_evs",
-                            accessor: d => d.pubevs,
+                            accessor: d => d.pub_evs,
                             filterMethod: (filter, rows) => 
                             {
                                 var elems = [];
 
-                                if (rows["pubevs"])
+                                if (rows["pub_evs"])
                                 {
-                                    rows['pubevs'].forEach(element => {
+                                    rows['pub_evs'].forEach(element => {
                                         elems.push(element[0])
 
                                         element[3].forEach(elem => {
@@ -469,7 +566,9 @@ export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePage
 
                                 var allDisInfo = [];
                             
-                                var relInfo = row.value;
+                                console.log("cell row")
+                                console.log(row);
+                                var relInfo = row.original.pub_evs;
 
                                 relInfo.sort(function(a,b) {return a[0] > b[0];})
 
@@ -619,6 +718,15 @@ export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePage
                     </section>
 
                     <FormGroup>
+                    <FormControlLabel
+                control={
+                    <Switch
+                    checked={this.state.onlyOriginalRelsPDF}
+                    onChange={(newValue) => this.setState({onlyOriginalRelsPDF: !this.state.onlyOriginalRelsPDF})}
+                    /> 
+                }
+                label="Only original relations"
+                />
                     <Button onClick={() => this.sendFilesToServer()}>
                     Submit To Server
                     </Button>
@@ -642,6 +750,16 @@ export class WelcomePage extends React.Component<{ switchTab?: any },WelcomePage
                             hintText="Author First/Last Name"
                             onValueChange={(newvalues) => this.setState({selectedAuthors: newvalues})
                         }/>
+
+            <FormControlLabel
+                control={
+                    <Switch
+                    checked={this.state.onlyOriginalRelsAuthor}
+                    onChange={(newValue) => this.setState({onlyOriginalRelsAuthor: !this.state.onlyOriginalRelsAuthor})}
+                    /> 
+                }
+                label="Only original relations"
+                />
 
                         <Button onClick={() => this.queryAuthors()}>
                             Query Authors
