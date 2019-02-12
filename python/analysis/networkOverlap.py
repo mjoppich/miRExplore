@@ -2,11 +2,17 @@ import pickle
 import tempfile
 
 from collections import defaultdict, Counter
+import networkx as nx
+
 from networkx.drawing.nx_agraph import graphviz_layout, pygraphviz_layout
-import os
+import os, sys
+
+from utils.tmutils import normalize_gene_names
+
+sys.path.insert(0, str(os.path.dirname("/mnt/d/dev/git/poreSTAT/")))
+
 
 from porestat.utils.DataFrame import DataFrame, DataRow, ExportTYPE
-import networkx as nx
 
 from synonymes.mirnaID import miRNA, miRNAPART
 from textdb.makeNetworkView import DataBasePlotter
@@ -76,11 +82,42 @@ if __name__ == '__main__':
         'LPL': ['miR-467a']
     }
 
+    normGeneSymbols = normalize_gene_names(path="/mnt/d/owncloud/data/miRExplore/obodir/" + "/hgnc_no_withdrawn.syn")
+
+    andreouInts1= {'ICAM1': ['miR-223', 'miR-17-3p'], 'SELE': ['miR-31'], 'VCAM1': ['miR-126', 'miR-126-5p'], 'DLK1': ['miR-126', 'miR-126-5p'], 'JAMA': ['miR-143', 'miR-145'], 'SIRT1': ['miR-217'], 'NOS3': ['miR-155'], 'ETS1': ['miR-155', 'miR-126', 'miR-126-5p'], 'PPARA': ['miR-21'], 'TIMP3': ['miR-712'], 'MAP3K7': ['miR-10'], 'KPNA4': ['miR-181b'], 'TRAF6': ['miR-146a', 'miR-146b'], 'IRAK1': ['miR-146a', 'miR-146b'], 'IRAK2': ['miR-146a', 'miR-146b'], 'KLF2': ['miR-143', 'miR-145', 'miR-126', 'miR-126-5p', 'miR-92a'], 'CXCL12': ['miR-126', 'miR-126-5p'], 'KLF4': ['miR-92a', 'miR-663'], 'SOCS5': ['miR-92a']}
+    andreouInts2= {'IFNG': ['miR-29', 'miR-155'], 'CD40': ['miR-146a', 'miR-181a'], 'CD40L': ['miR-146a', 'miR-181a'], 'MMP2': ['miR-21', 'miR-21', 'miR-24', 'miR-29'], 'MMP3': ['miR-21', 'miR-24', 'miR-29'], 'MMP8': ['miR-21', 'miR-24', 'miR-29'], 'MMP9': ['miR-21', 'miR-24', 'miR-29'], 'MMP12': ['miR-21', 'miR-24', 'miR-29'], 'MMP13': ['miR-21', 'miR-24', 'miR-29'], 'MMP14': ['miR-21', 'miR-24', 'miR-29']}
+    andreouInts3= {'MTTP': ['miR-30c'], 'ABCA1': ['miR-33', 'miR-302a'], 'ABCG1': ['miR-33'], 'CPT1A': ['miR-33'], 'KLF2': ['miR-92a'], 'KLF4': ['miR-92a', 'miR-145'], 'SOCS5': ['miR-92a'], 'DLK1': ['miR-126-5p'], 'RGS16': ['miR-126-3p'], 'BCL6': ['miR-155'], 'SOCS1': ['miR-155'], 'MAP3K10': ['miR-155'], 'KPNA4': ['miR-181b'], 'AKT1': ['miR-342-5p'], 'TIMP3': ['miR-712']}
+
+
+    andreouInteractions1 = {}
+    andreouInteractions2 = {}
+    andreouInteractions3 = {}
+
+    for gene in andreouInts1:
+        andreouInteractions1[normGeneSymbols.get(gene, gene)] = andreouInts1[gene]
+
+    for gene in andreouInts2:
+        andreouInteractions2[normGeneSymbols.get(gene, gene)] = andreouInts2[gene]
+
+    for gene in andreouInts3:
+        andreouInteractions3[normGeneSymbols.get(gene, gene)] = andreouInts3[gene]
 
     networks = {}
     networks['large_chemokines'] = largeInteractions
     networks['large_chemokines_cv'] = largeInteractions
 
+
+    networks['andreou_fig1'] = andreouInteractions1
+    networks['andreou_fig1_cv'] = andreouInteractions1
+    networks['andreou_fig1_athero'] = andreouInteractions1
+
+    networks['andreou_fig2'] = andreouInteractions2
+    networks['andreou_fig2_cv'] = andreouInteractions2
+    networks['andreou_fig2_athero'] = andreouInteractions2
+
+    networks['andreou_table1'] = andreouInteractions3
+    networks['andreou_table1_cv'] = andreouInteractions3
+    networks['andreou_table1_athero'] = andreouInteractions3
 
     networks['inflammatory_ec'] = inflammatory_ec
     networks['inflammatory_ec_cv'] = inflammatory_ec
@@ -94,6 +131,9 @@ if __name__ == '__main__':
         ('macrophages', 'macrophages_cv', 'macrophages_all'),
         ('inflammatory_ec','inflammatory_ec_cv'),
         ('large_chemokines', 'large_chemokines_cv'),
+        ('andreou_fig1', 'andreou_fig1_cv'),
+        ('andreou_fig2', 'andreou_fig2_cv'),
+        ('andreou_table1', 'andreou_table1_cv'),
     ]
 
     ignoreNetworks = []#['large_chemokines']
@@ -147,7 +187,64 @@ if __name__ == '__main__':
             "disease": [
                 {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
                 {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
-            ]        }
+            ]        },
+
+        'andreou_fig1': {
+            'sentences': "false",
+        },
+        'andreou_fig2': {
+            'sentences': "false",
+        },
+        'andreou_table1': {
+            'sentences': "false",
+        },
+
+        'andreou_fig1_cv':
+            {
+                'sentences': "false",
+                "disease": [
+                    {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
+        'andreou_fig2_cv':
+            {
+                'sentences': "false",
+                "disease": [
+                    {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
+        'andreou_table1_cv':
+            {
+                'sentences': "false",
+                "disease": [
+                    {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
+
+        'andreou_fig1_athero':
+            {
+                'sentences': "false",
+                "disease": [
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
+        'andreou_fig2_athero':
+            {
+                'sentences': "false",
+                "disease": [
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
+        'andreou_table1_athero':
+            {
+                'sentences': "false",
+                "disease": [
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
     }
 
     figidx = 0
@@ -279,7 +376,7 @@ if __name__ == '__main__':
                 networkGraph.add_edge(oEdge[0], oEdge[1], color= 'g' if edgeStatus == "accepted" else "b")
 
                 typeByGene[oEdge[0]][edgeStatus] += 1
-                elemsByGene[gene][edgeStatus].add(mirna)
+                elemsByGene[oEdge[0]][edgeStatus].add(oEdge[1])
 
                 objMirna = miRNA(oEdge[1])
 
@@ -395,18 +492,45 @@ if __name__ == '__main__':
 
 
         print(network)
-        for gene in typeByGene:
+        for gene in sorted([x for x in typeByGene]):
             print(gene, typeByGene[gene], elemsByGene[gene]['missing'])
 
         print()
         print()
 
+        networkDF = DataFrame()
+        networkDF.addColumns(["gene", "accepted", "additional", "missing", "missing miRNAs"])
+
+
+        print(network)
+        for gene in sorted([x for x in typeByGene]):
+
+            infoDict = {
+                "gene": gene,
+                "accepted": typeByGene[gene]["accepted"],
+                "additional": typeByGene[gene]["additional"],
+                "missing": typeByGene[gene]["missing"],
+                "missing miRNAs": ", ".join(elemsByGene[gene]['missing'])
+            }
+
+            dr = DataRow.fromDict(infoDict)
+            networkDF.addRow(dr)
+
+            print("Gene:", gene, "Status: ", ", ".join([": ".join([x, str(typeByGene[gene][x])]) for x in typeByGene[gene]]), "Missing miRNAs: "+",".join(elemsByGene[gene]['missing']))
+
+        print()
+        print()
+
+        print(networkDF._makeLatex())
+
+        print()
+        print()
 
 
         networkGraphs[network] = networkGraph
 
-        htmlDF.export("/mnt/c/Users/mjopp/Desktop/yanc_network/" + network.replace(" ", "_") + ".html", ExportTYPE.HTML)
-        htmlDF.export("/mnt/c/Users/mjopp/Desktop/yanc_network/" + network.replace(" ", "_") + ".tsv", ExportTYPE.TSV)
+        htmlDF.export("/mnt/d/yanc_network/" + network.replace(" ", "_") + ".html", ExportTYPE.HTML)
+        htmlDF.export("/mnt/d/yanc_network/" + network.replace(" ", "_") + ".tsv", ExportTYPE.TSV)
 
 
 
@@ -436,7 +560,7 @@ if __name__ == '__main__':
             nodeColors = []
             nodeSizes = []
 
-            allSizes = [x for x in d.values()]
+            allSizes = [x[1] for x in d]
             minSize = min(allSizes)
             maxSize = max(allSizes)
             diffSize = maxSize-minSize
@@ -499,8 +623,8 @@ if __name__ == '__main__':
 
             plt.suptitle(stage)
 
-            plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".png")
-            plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".pdf")
+            plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".png")
+            plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".pdf")
 
     #plt.show()
 

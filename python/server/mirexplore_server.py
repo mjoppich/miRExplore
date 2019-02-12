@@ -582,12 +582,22 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
                     for gene in relDB.all_ltypes:
                         dbrels = relDB.get_rels('gene', gene)
-                        allRelsByType['gene'] += dbrels
+
+                        if dbrels == None:
+                            continue
+
+                        #allRelsByType['gene'] += dbrels
 
                 elif relDB.rtype == "gene":
 
                     for gene in relDB.all_rtypes:
                         dbrels = relDB.get_rels('gene', gene)
+
+                        if dbrels == None:
+                            print("None dbrels (rtype) for gene", gene)
+                            continue
+
+
                         allRelsByType['gene'] += dbrels
 
             else:
@@ -1214,6 +1224,7 @@ def start_app_from_args(args):
 
     mirelPMIDhsa = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
     mirelPMIDmmu = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
+
     lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.pmid", ltype="lncrna", rtype="mirna")
     geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.pmid", ltype="gene", rtype="lncrna")
 

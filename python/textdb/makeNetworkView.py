@@ -133,8 +133,8 @@ class DataBasePlotter:
             if len(targets2sources[target]) < minTgtCount:
                 continue
 
-            graph.add_node(source, {'color': 'red'})
-            graph.add_node(target, {'color': 'blue'})
+            graph.add_node(source, color='red')
+            graph.add_node(target, color='blue')
 
             graph.add_edge(source, target)
 

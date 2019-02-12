@@ -2,6 +2,7 @@ import copy
 import os, sys
 
 from synonymes.SynonymFile import Synfile
+from synonymes.mirnaID import miRNA
 from textdb.DocOrganismDB import DocOrganismDB
 
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
@@ -166,17 +167,38 @@ class MiGenRelDB(DataBaseDescriptor):
         return resvec
 
 
-    def get_lid_rels(self, geneID):
+    def get_rels(self, etype, eid):
+
+        if etype == self.ltype:
+            return self.get_lid_rels(eid)
+        elif etype == self.rtype:
+            return self.get_rid_rels(eid)
+
+        return None
+
+
+
+    def get_lid_rels(self, entID):
 
         if not self.l_ont_based:
-            return self.ltype2rel.get(geneID, None)
+
+            if self.ltype.upper() == "MIRNA":
+                miFoundRels = set()
+                for strMirna in self.ltype2rel:
+                    oMirna = miRNA(strMirna)
+                    if oMirna.accept(entID):
+                        miFoundRels = miFoundRels.union(self.ltype2rel[strMirna])
+                return miFoundRels
+
+            else:
+                return self.ltype2rel.get(entID, None)
         else:
-            allRels = self.ltype2rel.get(geneID, None)
+            allRels = self.ltype2rel.get(entID, None)
 
             if allRels == None:
                 return None
 
-            rootObo = self.lontology.dTerms.get(geneID, None)
+            rootObo = self.lontology.dTerms.get(entID, None)
 
             if rootObo != None:
 
@@ -191,17 +213,27 @@ class MiGenRelDB(DataBaseDescriptor):
 
             return self.undoOntID(allRels)
 
-    def get_rid_rels(self, geneID):
+    def get_rid_rels(self, entID):
 
         if not self.r_ont_based:
-            return self.rtype2rel.get(geneID, None)
+
+            if self.rtype.upper() == "MIRNA":
+                miFoundRels = set()
+                for strMirna in self.rtype2rel:
+                    oMirna = miRNA(strMirna)
+                    if oMirna.accept(entID):
+                        miFoundRels = miFoundRels.union(self.rtype2rel[strMirna])
+                return miFoundRels
+            else:
+                return self.ltype2rel.get(entID, None)
+
         else:
-            allRels = self.rtype2rel.get(geneID, None)
+            allRels = self.rtype2rel.get(entID, None)
 
             if allRels == None:
                 return None
 
-            rootObo = self.rontology.dTerms.get(geneID, None)
+            rootObo = self.rontology.dTerms.get(entID, None)
 
             if rootObo != None:
 
@@ -406,12 +438,17 @@ class MiGenRelDB(DataBaseDescriptor):
                     lid = rid
                     rid = tmp
 
-
                 if tmRelations != None:
                     allrels = set()
 
                     for relIdx, rel in enumerate(tmRelations):
 
+                        if len(rel) > 10:
+                            stackEv = rel[10]
+                            verbEv = rel[11]
+
+                            if not stackEv and not verbEv:
+                                continue
 
 
 
@@ -450,6 +487,10 @@ class MiGenRelDB(DataBaseDescriptor):
                     relations = allrels
                 else:
                     relations = set([MiRGeneRel(None, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), dbtype, None)])
+
+
+                if len(relations) == 0:
+                    continue
 
                 for relIdx, rel in enumerate(relations):
 

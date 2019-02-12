@@ -28,7 +28,7 @@ genes2name = {'CXCL12': {'CXCL12'}, 'CXCL13': {'CXCL13'}, 'CXCL14': {'CXCL14'}, 
               'CCL26': {'CCL26'}, 'CCL27': {'CCL27A', 'CCL27', 'CCL27B', 'GM13306'}, 'CCL6': {'CCL6'}, 'CCL9': {'CCL9'},
               }
 
-normGeneSymbols = normalize_gene_names(path="/mnt/c/ownCloud/data/miRExplore/obodir/" + "/hgnc_no_withdrawn.syn")
+normGeneSymbols = normalize_gene_names(path="/mnt/d/owncloud/data/miRExplore/obodir/" + "/hgnc_no_withdrawn.syn")
 
 
 cbn2restrict = OrderedDict([(
@@ -197,7 +197,7 @@ for cbnNW in cbn2edges:
 
         newNodes.append((node, nodeAttr))
 
-    removeNodes = [node for node, degree in graph.degree().items() if degree >= 2 and node in mirnaNodes]
+    removeNodes = [node for node, degree in graph.degree() if degree >= 2 and node in mirnaNodes]
     #graph.remove_nodes_from(removeNodes)
 
 
@@ -290,7 +290,7 @@ def getMirsForGene(gene, graph):
 
     return targetMirs
 
-outfile = open("/mnt/c/Users/mjopp/Desktop/yanc_network/" + "mirs_per_stage.tsv", 'w')
+outfile = open("/mnt/d/yanc_network/" + "mirs_per_stage.tsv", 'w')
 
 print("Condition1", "Condition2", "Gene", "miRNAs Only Before", "miRNAs Only After", "Common Mirs", sep="\t")
 print("Condition1", "Condition2", "Gene", "miRNAs Only Before", "miRNAs Only After", "Common Mirs", sep="\t", file=outfile)
@@ -372,7 +372,7 @@ for cbnNW in cbn2restrict:
                 nodeAttr['color'] = '#d942f4'
 
 
-    intNodes = [(node,degree) for node, degree in graph.degree().items() if node in mirnaNodes]
+    intNodes = [(node,degree) for node, degree in graph.degree() if node in mirnaNodes]
     intNodes = sorted(intNodes, key=lambda x: x[1], reverse=True)
 
 
@@ -389,7 +389,7 @@ for cbnNW in cbn2restrict:
     print()
     print()
 
-    mygraph = CytoscapeGrapher.showGraph(graph, location='/mnt/c/Users/mjopp/Desktop/yanc_network/', name=cbnNW)
+    mygraph = CytoscapeGrapher.showGraph(graph, location='/mnt/d/yanc_network/', name=cbnNW)
 
 
 allSet = None
@@ -471,5 +471,5 @@ for stages in makeStory:
 
         plt.suptitle("{title}: {mirc} miRs, {genec} genes, {intc} interactions".format(title=stage, mirc=mirNodes, genec=geneNodes, intc=len(colors)))
 
-        plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".png")
-        plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".pdf")
+        plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".png")
+        plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".pdf")

@@ -18,7 +18,7 @@ def normalize_gene_names(path="/home/mjoppich/ownCloud/data/miRExplore/textmine/
 
             normalizeGeneNames[psyn] = sid
 
-            if psyn == 'LIN28':
+            if psyn == 'MAP3K7':
                 print(psyn, sid)
 
     return normalizeGeneNames

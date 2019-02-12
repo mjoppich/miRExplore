@@ -7,7 +7,7 @@ import os
 
 import spacy
 
-
+sys.path.insert(0, str(os.path.dirname("/mnt/d/dev/git/poreSTAT/")))
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 from neutrophils.RelexParser import RelexParser
@@ -643,13 +643,18 @@ if __name__ == '__main__':
     dataDir = args.datadir
 
     ent1Syns = SynfileMap(resultBase + "/"+args.folder1+"/synfile.map")
-    ent1Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    #ent1Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent1Syns.loadSynFiles(('/mnt/c/ownCloud/data/miRExplore/', dataDir))
 
     ent2Syns = SynfileMap(resultBase + "/"+args.folder2+"/synfile.map")
-    ent2Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    #ent2Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent2Syns.loadSynFiles(('/mnt/c/ownCloud/data/miRExplore/', dataDir))
+
 
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
-    relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    #relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    relSyns.loadSynFiles(('/mnt/c/ownCloud/data/miRExplore/', dataDir))
+
 
     relationSyns = AssocSynfile(args.datadir + '/obodir/allrels.csv')
 
