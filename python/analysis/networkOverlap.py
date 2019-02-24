@@ -3,6 +3,7 @@ import tempfile
 
 from collections import defaultdict, Counter
 import networkx as nx
+import scipy.stats
 
 from networkx.drawing.nx_agraph import graphviz_layout, pygraphviz_layout
 import os, sys
@@ -14,13 +15,23 @@ sys.path.insert(0, str(os.path.dirname("/mnt/d/dev/git/poreSTAT/")))
 
 from porestat.utils.DataFrame import DataFrame, DataRow, ExportTYPE
 
-from synonymes.mirnaID import miRNA, miRNAPART
+from synonymes.mirnaID import miRNA, miRNAPART, miRNACOMPARISONLEVEL
 from textdb.makeNetworkView import DataBasePlotter
 from utils.cytoscape_grapher import CytoscapeGrapher
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
+
+
+    missRates = sorted([2/19, 5/17, 1/4, 5/12, 0/6, 2/8, 3/12, 1/23])
+
+    print("missrate", sum(missRates)/len(missRates))
+
+    print(scipy.stats.describe(missRates))
+    print(np.median(missRates))
+    #exit(0)
 
     largeInteractions = {
         'CCL9': ['miR-30d-3p', 'miR-3473c', 'let-7g-5p'],
@@ -39,7 +50,9 @@ if __name__ == '__main__':
         'CCR5': ['miR-186-5p', 'miR-669j', 'miR-21-5p', 'miR-146a-5p', 'miR-150-5p', 'miR-146b-5p', 'miR-669k-3p', 'miR-142-3p', 'miR-34a-5p'],
         'CCL4': ['miR-27b-3p', 'miR-27a-3p', 'miR-21-3p', 'miR-467f'],
         'CX3CL1': ['miR-15a-5p', 'miR-322-5p', 'miR-706', 'miR-762', 'miR-665-3p', 'miR-758-3p', 'miR-381-3p'],
-        'CXCR4': ['miR-381-3p', 'miR-21-3p', 'miR-467a-5p', 'miR-467h', 'miR-218-5p', 'miR-1a-3p', 'miR-181d-5p', 'miR-206-3p', 'miR-181b-5p', 'miR-9-5p', 'miR-132-3p', 'miR-25-3p', 'miR-467d-5p', 'miR-669k-3p', 'miR-146b-5p', 'miR-467b-5p', 'miR-467e-5p', 'miR-467f', 'miR-146a-5p'],
+        'CXCR4': ['miR-381-3p', 'miR-21-3p', 'miR-467a-5p', 'miR-467h', 'miR-218-5p', 'miR-1a-3p', 'miR-181d-5p',
+                  'miR-206-3p', 'miR-181b-5p', 'miR-9-5p', 'miR-132-3p', 'miR-25-3p', 'miR-467d-5p', 'miR-669k-3p',
+                  'miR-146b-5p', 'miR-467b-5p', 'miR-467e-5p', 'miR-467f', 'miR-146a-5p'],
         'CCR7': ['let-7g-5p', 'miR-23b-3p', 'miR-669p-5p', 'miR-23a-5p', 'let-7e-5p', 'miR-669l-5p', 'miR-15a-5p', 'miR-467e-5p', 'miR-21-5p', 'miR-16-5p', 'let-7d-5p', 'miR-669n', 'miR-98-5p', 'let-7b-5p', 'let-7a-5p', 'let-7i-5p', 'let-7c-5p', 'miR-15b-5p', 'miR-467h'],
         'CXCL12': [
             'miR-532-5p', 'miR-130b-3p', 'miR-222-3p', 'miR-144-3p', 'miR-542-3p', 'miR-149-5p', 'miR-330-3p', 'miR-532-3p', 'miR-3470b', 'miR-125b-5p', 'miR-221-3p', 'miR-19b-3p', 'miR-301b-3p',
@@ -105,6 +118,7 @@ if __name__ == '__main__':
     networks = {}
     networks['large_chemokines'] = largeInteractions
     networks['large_chemokines_cv'] = largeInteractions
+    networks['large_chemokines_athero'] = largeInteractions
 
 
     networks['andreou_fig1'] = andreouInteractions1
@@ -121,19 +135,21 @@ if __name__ == '__main__':
 
     networks['inflammatory_ec'] = inflammatory_ec
     networks['inflammatory_ec_cv'] = inflammatory_ec
+    networks['inflammatory_ec_athero'] = inflammatory_ec
 
     networks['macrophages'] = ccl2_macrophage
     networks['macrophages_cv'] = ccl2_macrophage
+    networks['macrophages_athero'] = ccl2_macrophage
     networks['macrophages_all'] = ccl2_macrophage
 
     networkGraphs = {}
     makeStory = [
-        ('macrophages', 'macrophages_cv', 'macrophages_all'),
-        ('inflammatory_ec','inflammatory_ec_cv'),
-        ('large_chemokines', 'large_chemokines_cv'),
-        ('andreou_fig1', 'andreou_fig1_cv'),
-        ('andreou_fig2', 'andreou_fig2_cv'),
-        ('andreou_table1', 'andreou_table1_cv'),
+        ('macrophages', 'macrophages_cv', 'macrophages_athero', 'macrophages_all'),
+        ('inflammatory_ec','inflammatory_ec_cv', 'inflammatory_ec_athero'),
+        ('large_chemokines', 'large_chemokines_cv', 'large_chemokines_athero'),
+        ('andreou_fig1', 'andreou_fig1_cv', 'andreou_fig1_athero'),
+        ('andreou_fig2', 'andreou_fig2_cv', 'andreou_fig1_athero'),
+        ('andreou_table1', 'andreou_table1_cv', 'andreou_table1_athero'),
     ]
 
     ignoreNetworks = []#['large_chemokines']
@@ -154,6 +170,17 @@ if __name__ == '__main__':
                 ],
                 "disease": [
                     {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
+
+        'inflammatory_ec_athero':
+            {
+                'sentences': "false",
+                "cells": [
+                    {"group": "cells", "name": "endothelial cell", "termid": "META:52"}
+                ],
+                "disease": [
                     {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
                 ]
             },
@@ -179,6 +206,16 @@ if __name__ == '__main__':
                     {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
                 ]
             },
+        'macrophages_athero':
+            {
+                'sentences': "false",
+                "cells": [
+                    {"group": "cells", "name": "macrophage", "termid": "META:99"}
+                ],
+                "disease": [
+                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ]
+            },
         'large_chemokines': {
             'sentences': "false",
         },
@@ -188,7 +225,11 @@ if __name__ == '__main__':
                 {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
                 {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
             ]        },
-
+        'large_chemokines_athero': {
+            'sentences': "false",
+            "disease": [
+                {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+            ]},
         'andreou_fig1': {
             'sentences': "false",
         },
@@ -247,6 +288,12 @@ if __name__ == '__main__':
             },
     }
 
+
+    def acceptEvidence(ev):
+
+        return True
+
+
     figidx = 0
 
     for network in networks:
@@ -257,20 +304,33 @@ if __name__ == '__main__':
         if network in ignoreNetworks:
             continue
 
+        #if not network in ['large_chemokines_athero']: #'large_chemokines', 'large_chemokines_cv',
+        #    continue
+
         interactions = networks[network]
         acceptedInteractions = defaultdict(set)
         typeByGene = defaultdict(lambda: Counter())
         elemsByGene = defaultdict(lambda: defaultdict(set))
 
         allMirna = set()
-
         miStr2mirna = {}
+
+        normalizedInteractions = defaultdict(set)
 
         for gene in interactions:
 
             for mirna in interactions[gene]:
 
+                try:
+                    oMirna = miRNA(mirna)
+                    mirnaN = oMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
+                    mirna = mirnaN
+
+                except:
+                    pass
+
                 allMirna.add(mirna)
+                normalizedInteractions[gene].add(mirna)
 
         allTargetMirna = []
 
@@ -300,12 +360,41 @@ if __name__ == '__main__':
         #requestData['disease'] = [{'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'}]
 
 
-        graph, nodeCounter, edge2datasourceCount, jsonRes = DataBasePlotter.fetchGenes(requestData)
+        graph, nodeCounter, edge2datasourceCount, jsonRes = DataBasePlotter.fetchGenes(requestData, minPMIDEvCount=0, minTgtCount=0, acceptEv=acceptEvidence)
 
         print(len(jsonRes['rels']))
 
         htmlDF = DataFrame()
         htmlDF.addColumns(['gene rel', 'gene', 'miRNA Group', 'miRNA', 'Original Network', 'PubMed', 'MIRECORD', 'MIRTARBASE', 'DIANA'])
+
+        foundGenes = set()
+
+        interactionCountExpDB = 0
+        interactionCountPubmed = 0
+        interactionCountPubmedExpDB = 0
+
+        interactionsWithPubmed = set()
+        interactionsWithExpDB = set()
+
+
+        interactionCountAccepted = 0
+        interactionCountAdditional = 0
+        interactionCountMissing = 0
+
+        expDBEdge2Source = defaultdict(set)
+        mirnaGeneSourceCounter = Counter()
+        mirnaGeneIntSourceCounter = Counter()
+
+        intToSources = defaultdict(set)
+
+        simpleMirna2Genes = defaultdict(set)
+        gene2simpleMirna = defaultdict(set)
+
+        distinctMirna2Genes = defaultdict(set)
+        gene2distinctMirna = defaultdict(set)
+
+        simpleInteractions = set()
+        distinctInteractions = set()
 
         for rel in jsonRes['rels']:
 
@@ -345,12 +434,24 @@ if __name__ == '__main__':
 
             for oEdge in orderedEdges:
 
+                foundGenes.add(oEdge[0])
+
+                try:
+                    miObj = miRNA(oEdge[1])
+                    miStr = miObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
+
+                    oEdge[1] = miStr
+                except:
+                    pass
+
                 edgeStatus = None
 
-                allGeneMirna = interactions[oEdge[0]]
+                allGeneMirna = normalizedInteractions[oEdge[0]]
                 miAccepted = False
 
                 allAcceptedStr = set()
+
+
 
                 for strMirna in allGeneMirna:
                     miObj = miStr2mirna.get(strMirna, None)
@@ -358,8 +459,13 @@ if __name__ == '__main__':
                     if miObj == None:
                         continue
 
-                    miObjAccepts = miObj.accept(oEdge[1])
+                    miObjAccepts = miObj.accept(oEdge[1], compLevel=miRNACOMPARISONLEVEL.PRECURSOR)
                     miAccepted = miAccepted or miObjAccepts
+
+                    if "fig1_athero" in network:
+                        if oEdge[0] == "IRAK1":
+                            print(oEdge)
+                            miObjAccepts = miObj.accept(oEdge[1], compLevel=miRNACOMPARISONLEVEL.PRECURSOR)
 
 
                     if miObjAccepts:
@@ -373,33 +479,122 @@ if __name__ == '__main__':
                 if not miAccepted:
                     edgeStatus = "additional"
 
-                networkGraph.add_edge(oEdge[0], oEdge[1], color= 'g' if edgeStatus == "accepted" else "b")
+
+                if edgeStatus == 'accepted':
+                    interactionCountAccepted += 1
+                else:
+                    interactionCountAdditional += 1
+
+
+                # determine kindness of interaction
+                edgeResources = edge2datasourceCount.get((oEdge[0], miRNA(oEdge[1]).getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])), None)
+
+
+                edgeLabel = ""
+                if edgeResources != None:
+
+                    hasPMID = False
+                    hasExpDB = False
+
+                    if edgeResources['pmid'] > 0:
+                        interactionCountPubmed += 1
+                        interactionsWithPubmed.add(oEdge)
+                        hasPMID = True
+                        edgeLabel += "p"
+
+                    if edgeResources['DIANA'] > 0 or edgeResources['miRTarBase'] > 0 or edgeResources['miRecords'] > 0:
+
+                        if edgeResources['DIANA'] > 0:
+                            edgeLabel += "D"
+
+                        if edgeResources['miRTarBase'] > 0:
+                            edgeLabel += "T"
+
+                        if edgeResources['miRecords'] > 0:
+                            edgeLabel += "R"
+
+                        if not "D" in edgeLabel and not "T" in edgeLabel and not "R" in edgeLabel:
+                            print(edgeResources)
+
+                        interactionCountExpDB += 1
+                        interactionsWithExpDB.add(oEdge)
+                        hasExpDB = True
+
+
+                    if hasPMID and hasExpDB:
+                        interactionCountPubmedExpDB += 1
+
+
+                objMirna = miRNA(oEdge[1])
+                simpleMirna = objMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID])
+                simpleEdge = tuple([oEdge[0], simpleMirna])
+
+
+                simpleMirna2Genes[simpleMirna].add(oEdge[0])
+                gene2simpleMirna[oEdge[0]].add(simpleMirna)
+
+                distinctMirna2Genes[oEdge[1]].add(oEdge[0])
+                gene2distinctMirna[oEdge[0]].add(oEdge[1])
+
+                networkGraph.add_edge(oEdge[0], oEdge[1], edgeResources=edgeResources, label=edgeLabel, color= 'g' if edgeStatus == "accepted" else "b")
 
                 typeByGene[oEdge[0]][edgeStatus] += 1
                 elemsByGene[oEdge[0]][edgeStatus].add(oEdge[1])
 
-                objMirna = miRNA(oEdge[1])
+                simpleInteractions.add(simpleEdge)
+                distinctInteractions.add(oEdge)
+
 
                 pmidEvs = set()
                 mirtarbaseEvs = set()
                 mirecordsEvs = set()
                 dianaEvs = set()
 
+                interactionEvidences = set()
+
+
                 for ev in rel['evidences']:
 
                     if ev['data_source'] == "DIANA":
-                        dianaEvs.add( (ev['method'], ev['direction']) )
+                        dianaEvs.add( (ev['method'], (ev['direction'])))
+
+                        expDBEdge2Source[oEdge].add(('DIANA', ev['method']))
+
+                        mirnaGeneSourceCounter['DIANA'] += 1
+                        interactionEvidences.add("DIANA")
+
+                        intToSources[simpleEdge].add("DIANA")
 
                     elif ev['data_source'] == "miRTarBase":
                         mirtarbaseEvs.add(
                             (ev['data_id'], ",".join(ev['exp_support']), ev['functional_type'], ev['docid'])
                         )
+                        expDBEdge2Source[oEdge].add(('MIRTARBASE', (ev['data_id'], ",".join(ev['exp_support']), ev['functional_type'], ev['docid'])))
+                        mirnaGeneSourceCounter['MIRTARBASE'] += 1
+                        interactionEvidences.add("MIRTARBASE")
+                        intToSources[simpleEdge].add("MIRTARBASE")
+
+
                     elif ev['data_source'] == "pmid":
                         pmidEvs.add((ev['docid'],))
+
+                        expDBEdge2Source[oEdge].add(('PMID', (ev['docid'])))
+                        mirnaGeneSourceCounter['PMID'] += 1
+                        interactionEvidences.add("PMID")
+                        intToSources[simpleEdge].add("PMID")
+
                     elif ev['data_source'] == "mirecords":
                         mirecordsEvs.add((ev['docid']))
+                        expDBEdge2Source[oEdge].add(('MIRECORDS', (ev['docid'])))
+                        mirnaGeneSourceCounter['mirecords'] += 1
+                        interactionEvidences.add("mirecords")
+                        intToSources[simpleEdge].add("mirecords")
+
                     else:
                         print("Unhandled data source", ev['data_source'])
+
+                interactionEvidences = tuple(sorted(interactionEvidences))
+                mirnaGeneIntSourceCounter[interactionEvidences] += 1
 
 
                 dianaLink = "http://carolina.imis.athena-innovation.gr/diana_tools/web/index.php?r=tarbasev8%2Findex&miRNAs%5B%5D=&genes%5B%5D={geneCap}&genes%5B%5D={geneLow}&sources%5B%5D=1&sources%5B%5D=7&sources%5B%5D=9&publication_year=&prediction_score=&sort_field=&sort_type=&query=1".format(
@@ -449,9 +644,9 @@ if __name__ == '__main__':
                 row = DataRow.fromDict(addRow)
                 htmlDF.addRow(row)
 
-        for gene in interactions:
+        for gene in normalizedInteractions:
 
-            for mirna in interactions[gene]:
+            for mirna in normalizedInteractions[gene]:
 
                 edgeWasFound = mirna in acceptedInteractions[gene]
 
@@ -459,6 +654,8 @@ if __name__ == '__main__':
                     continue
 
                 edgeStatus = "missing"
+
+                interactionCountMissing += 1
 
                 networkGraph.add_edge(gene, mirna, color='r')
 
@@ -468,7 +665,7 @@ if __name__ == '__main__':
 
                 objMirna = miRNA(mirna)
                 dianaLink = "http://carolina.imis.athena-innovation.gr/diana_tools/web/index.php?r=tarbasev8%2Findex&miRNAs%5B%5D=&genes%5B%5D={geneCap}&genes%5B%5D={geneLow}&sources%5B%5D=1&sources%5B%5D=7&sources%5B%5D=9&publication_year=&prediction_score=&sort_field=&sort_type=&query=1".format(
-                    geneCap=gene.upper(), geneLow=gene.upper())
+                    geneCap=gene.upper(), geneLow=gene.capitalize())
 
                 addRow = {
                     'gene rel': gene,
@@ -490,10 +687,128 @@ if __name__ == '__main__':
                 htmlDF.addRow(row)
 
 
+        allDegrees = networkGraph.degree()
+
+
+        singleMirnaGenes = set()
+        multiMirnaGenes = set()
+
+        singleGeneMirnas = set()
+        multiGeneMirnas = set()
+
+
+
+        """
+        THIS ANALYSIS ALSO HAS ADDED EDGES FROM MISSING!!!!!!
+        """
+        for node, nodedegree in allDegrees:
+
+            if node.startswith("miR-") or node.startswith("let-"):
+
+                if nodedegree == 1:
+                    singleGeneMirnas.add(node)
+                elif nodedegree >= 1:
+                    multiGeneMirnas.add(node)
+
+            else:
+
+                if nodedegree == 1:
+                    singleMirnaGenes.add(node)
+                elif nodedegree >= 1:
+                    multiMirnaGenes.add(node)
 
         print(network)
+
+
+        print("Simple Interactions", len(simpleInteractions))
+        print("Distinct Interactions", len(distinctInteractions))
+
+        print("Number of simple mirnas", len(simpleMirna2Genes))
+        print("Number of simple mirnas with 1 gene", sum([1 for x in simpleMirna2Genes if len(simpleMirna2Genes[x]) == 1]))
+        print("Number of simple mirnas > 1 gene",
+              sum([1 for x in simpleMirna2Genes if len(simpleMirna2Genes[x]) > 1]))
+
+        print("Number of genes", len(gene2simpleMirna))
+        print("Number of genes with 1 simple mirna",
+              sum([1 for x in gene2simpleMirna if len(gene2simpleMirna[x]) == 1]))
+        print("Number of genes with >1 simple mirna",
+              sum([1 for x in gene2simpleMirna if len(gene2simpleMirna[x]) > 1]))
+        # anzahl gene mit nur einer miRNA
+        print("Number of genes with only one miRNA", len(singleMirnaGenes))
+
+
+        print("Number of distinct mirnas", len(distinctMirna2Genes))
+        print("Number of distinct mirnas with 1 gene", sum([1 for x in distinctMirna2Genes if len(distinctMirna2Genes[x]) == 1]))
+        print("Number of distinct mirnas > 1 gene",
+              sum([1 for x in distinctMirna2Genes if len(distinctMirna2Genes[x]) > 1]))
+
+        print("Number of genes", len(gene2distinctMirna))
+        print("Number of genes with 1 distinct mirna",
+              sum([1 for x in gene2distinctMirna if len(gene2distinctMirna[x]) == 1]))
+        print("Number of genes with >1 distinct mirna",
+              sum([1 for x in gene2distinctMirna if len(gene2distinctMirna[x]) > 1]))
+        # anzahl gene mit nur einer miRNA
+        print("Number of genes with only one miRNA", len(singleMirnaGenes))
+
+        # anzahl gene mit mehr als einer miRNA
+        print("Number of genes with more than one miRNA", len(multiMirnaGenes))
+
+        print("Number of miRNAs with only one genes", len(singleGeneMirnas))
+        print("Number of miRNAs with more than one genes", len(multiGeneMirnas))
+        print("miRNA Gene Interaction source counter", sum([mirnaGeneSourceCounter[x] for x in mirnaGeneSourceCounter]), mirnaGeneSourceCounter)
+        print("miRNA Gene Interactions detailed", sum([mirnaGeneIntSourceCounter[x] for x in mirnaGeneIntSourceCounter]), mirnaGeneIntSourceCounter)
+
+        intToSourcesCount = Counter()
+        for ed in intToSources:
+            uniedge = tuple(sorted(intToSources[ed]))
+            intToSourcesCount[uniedge] += 1
+
+        print("miRNA(simple) Gene Interactions detailed", sum([intToSourcesCount[x] for x in intToSourcesCount]), intToSourcesCount)
+
+
+        totalInteractionCount = interactionCountAccepted+ interactionCountAdditional+ interactionCountMissing
+        totalGraphInteractionCount = interactionCountAccepted  + interactionCountAdditional
+        # anzahl kanten in graph
+        print("Number of interactions (acc, add, graph, mis, total)", interactionCountAccepted, interactionCountAdditional, totalGraphInteractionCount, interactionCountMissing, totalInteractionCount)
+
+        # anzahl kanten nur durch experimental db
+        print("Number of interactions supported by experimental db", len(interactionsWithExpDB))
+
+        printSet = interactionsWithExpDB.difference(interactionsWithPubmed)
+        if len(printSet) > 50:
+            printSet = {}
+        print("Number of interactions supported only by experimental db", len(interactionsWithExpDB.difference(interactionsWithPubmed)), printSet)
+
+        for edge in printSet:
+            print(edge, expDBEdge2Source.get(edge, None))
+
+
+        # anzahl kanten nur durch pubmed
+        print("Number of interactions supported by pubmed", len(interactionsWithPubmed))
+        print("Number of interactions supported only by pubmed", len(interactionsWithPubmed.difference(interactionsWithExpDB)))
+
+
+        # anzahl kanten mit pubmed UND experimental db
+        printSet = interactionsWithExpDB.intersection(interactionsWithPubmed)
+        if len(printSet) > 50:
+            printSet = {}
+        print("Number of interactions supported by pubmed+expdb", len(interactionsWithExpDB.intersection(interactionsWithPubmed)), printSet)
+        for edge in printSet:
+            print(edge, expDBEdge2Source.get(edge, None))
+        # anzahl kanten nur mit exp hinweisen aber zu weak
+
+        # anzahl kanten nur durch pubmed aber zu weak
+
+
+        print()
+        print()
+        print()
+        print()
         for gene in sorted([x for x in typeByGene]):
-            print(gene, typeByGene[gene], elemsByGene[gene]['missing'])
+            if "athero" in network:
+                print(gene, typeByGene[gene], elemsByGene[gene]['additional'], elemsByGene[gene]['missing'])
+            else:
+                print(gene, typeByGene[gene], elemsByGene[gene]['missing'])
 
         print()
         print()
@@ -532,6 +847,8 @@ if __name__ == '__main__':
         htmlDF.export("/mnt/d/yanc_network/" + network.replace(" ", "_") + ".html", ExportTYPE.HTML)
         htmlDF.export("/mnt/d/yanc_network/" + network.replace(" ", "_") + ".tsv", ExportTYPE.TSV)
 
+
+    print("Network covered genes", network, foundGenes)
 
 
     figidx = 0
@@ -625,6 +942,8 @@ if __name__ == '__main__':
 
             plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".png")
             plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".pdf")
+
+            CytoscapeGrapher.showGraph(networkGraph, location="/mnt/d/yanc_network/", name="cyjs_" + stage.replace(" ", "_"), title=stage)
 
     #plt.show()
 

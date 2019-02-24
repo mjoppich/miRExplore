@@ -13,7 +13,7 @@ sys.path.insert(0, str(os.path.dirname("/mnt/d/dev/git/poreSTAT/")))
 
 from porestat.utils.DataFrame import DataFrame, DataRow, ExportTYPE
 
-from synonymes.mirnaID import miRNA, miRNAPART
+from synonymes.mirnaID import miRNA, miRNAPART, miRNACOMPARISONLEVEL
 from textdb.makeNetworkView import DataBasePlotter
 from utils.cytoscape_grapher import CytoscapeGrapher
 
@@ -42,8 +42,7 @@ if __name__ == '__main__':
         'miR-126-5p',
         'miR-143',
         'miR-145',
-        'miR-146a',
-        'miR-146b',
+        'miR-146',
         'miR-155',
         'miR-181b',
         'miR-221',
@@ -226,7 +225,7 @@ if __name__ == '__main__':
             "go": [{"group": "go", "name": "angiogenesis", "termid": "GO:0001525"}]
         },
         'targetMirsVasRemod': {
-            "cells": [{"group": "cells", "name": "vascular disease", "termid": "DOID:178"}]
+            "cells": [{"group": "disease", "name": "vascular disease", "termid": "DOID:178"}]
         }
         ,'targetMirsTCell': {
             "cells": [{"group": "cells", "name": "T cell", "termid": "META:44"}]
@@ -252,6 +251,7 @@ if __name__ == '__main__':
 
     }
 
+    allMissing = {}
     figidx = 0
 
     for network in networks:
@@ -275,18 +275,25 @@ if __name__ == '__main__':
         allTargetMirna = []
         mirnaObj2str = {}
 
+        newAllMirna = set()
+
         for x in allMirna:
             try:
 
                 oMirna = miRNA(x)
 
                 allTargetMirna.append( oMirna )
-                miStr2mirna[x] = oMirna
-                mirnaObj2str[oMirna] = x
+                miStr = oMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
+
+                miStr2mirna[miStr] = oMirna
+                mirnaObj2str[oMirna] = miStr
+
+                newAllMirna.add( miStr )
 
             except:
                 pass
 
+        allMirna = newAllMirna
         #allMirna = set([str(x) for x in allTargetMirna])
         requestData = None
 
@@ -358,11 +365,26 @@ if __name__ == '__main__':
                 edgeStatus = None
                 oEdge = list(oEdge)
 
+                wasFound = False
                 for miObj in mirnaObj2str:
 
-                    if miObj.accept(oEdge[1]):
+                    if miObj.accept(oEdge[1], compLevel=miRNACOMPARISONLEVEL.PRECURSOR):
                         oEdge[1] = mirnaObj2str[miObj]
+                        wasFound = True
                         break
+
+                if not wasFound:
+
+                    try:
+                        miObj = miRNA(oEdge[1])
+                        miStr = miObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
+
+                        oEdge[1] = miStr
+                    except:
+                        pass
+
+                if "146" in origEdge[1]:
+                    print(oEdge, origEdge)
 
                 allGeneMirna = interactions[oEdge[0]]
                 miAccepted = False
@@ -378,7 +400,7 @@ if __name__ == '__main__':
                     if miObj == None:
                         continue
 
-                    miObjAccepts = miObj.accept(oEdge[1])
+                    miObjAccepts = miObj.accept(oEdge[1], compLevel=miRNACOMPARISONLEVEL.PRECURSOR)
                     miAccepted = miAccepted or miObjAccepts
 
 
@@ -535,6 +557,8 @@ if __name__ == '__main__':
         print("Intersected Mirnas", len(foundMirnas.intersection(allMirna)), list(foundMirnas.intersection(allMirna)))
         print("Missing Mirnas", len(allMirna.difference(foundMirnas)), allMirna.difference(foundMirnas))
 
+        allMissing[network] = allMirna.difference(foundMirnas)
+
         rowDict = {}
         rowDict['Network'] = networkToTitle[network]
         rowDict['Accepted miRNAs'] = "\makecell[l]{" +"\\\\".join(sorted(foundMirnas.intersection(allMirna))) + "}"
@@ -667,5 +691,12 @@ if __name__ == '__main__':
 
     print(summaryDF._makeLatex())
 
+
+    for x in allMissing:
+        for mirna in allMissing[x]:
+            print(x, mirna)
+
+        print()
+        print()
 
 

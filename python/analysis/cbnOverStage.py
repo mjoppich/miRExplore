@@ -1,10 +1,27 @@
+import sys, os
 from collections import Counter, OrderedDict, defaultdict
 
 import networkx
+from natsort import natsorted
+
+from synonymes.mirnaID import miRNAPART
+
+sys.path.insert(0, str(os.path.dirname("/mnt/d/dev/git/poreSTAT/")))
+
+
+from porestat.utils.DataFrame import DataFrame, DataRow, ExportTYPE
 
 from textdb.makeNetworkView import DataBasePlotter
 from utils.cytoscape_grapher import CytoscapeGrapher
 from utils.tmutils import normalize_gene_names
+
+import pandas as pd
+from pandas.tools.plotting import parallel_coordinates
+import matplotlib.pyplot as plt
+
+figidx = 0
+
+
 
 cbn2edges = {
 "CV-IPN-Endothelial_cell-monocyte_interaction_1": {('CXCL16', 'CXCL16'), ('ITGAX', 'ITGAX'), ('CX3CR1', 'CX3CR1'), ('CCL2', 'PIK3CA'), ('ITGAX', 'ITGB2'), ('CXCR6', 'CXCR6'), ('SIRPA', 'ITGB2'), ('ITGB2', 'ITGB2'), ('ITGA4', 'VCAM1'), ('CCL2', 'CCL2'), ('SELE', 'SELE'), ('IL1A', 'CCR2'), ('CCL2', 'RHOA'), ('CX3CL1', 'STAT5A'), ('LTB4R', 'ITGAM'), ('IL8', 'ITGAM'), ('ITGA4', 'ITGA4'), ('CX3CR1', 'ICAM1'), ('ICAM1', 'ETS1'), ('SELP', 'SELPLG'), ('ITGA4', 'ITGB1'), ('ITGAM', 'ITGAM'), ('THY1', 'THY1'), ('CX3CL1', 'CX3CL1'), ('ITGAL', 'ITGB2'), ('ITGAM', 'ICAM1'), ('CX3CL1', 'CX3CR1'), ('ICAM1', 'ITGB2'), ('IFNG', 'CXCL16'), ('ETS1', 'CCL2'), ('ICAM1', 'ICAM1'), ('IL8', 'ITGB2'), ('CXCR6', 'CXCL16'), ('ITGB2', 'ITGAL'), ('STAT5A', 'ICAM1'), ('SELP', 'SELP'), ('ETS1', 'ETS1'), ('SELPLG', 'SELPLG'), ('ITGAL', 'ITGAL'), ('IL8', 'IL8'), ('STAT5A', 'STAT5A'), ('CCR2', 'CCR2'), ('ITGB2', 'ITGAM'), ('VCAM1', 'VCAM1'), ('CCL2', 'CCR2'), ('STAB1', 'STAB1')},
@@ -105,6 +122,14 @@ cbn2restrict = OrderedDict([(
     })
     ])
 
+network2nicename = {
+"CV-IPN-Plaque_destabilization_1": "Plaque destabilization",
+"CV-IPN-Platelet_activation_1": "Platelet activation",
+"CV-IPN-Smooth_muscle_cell_activation_1": "SMC activation",
+"CV-IPN-Foam_cell_formation_1": "Foam cell formation",
+"CV-IPN-Endothelial_cell-monocyte_interaction_1": "EC/MC interaction",
+"CV-IPN-Endothelial_cell_activation_1": "EC activation",
+}
 
 
 def acceptEvidence(ev):
@@ -153,6 +178,9 @@ for cbnNW in cbn2edges:
 
 mirnaNodes = set()
 
+stageMir2Cells = defaultdict(lambda: defaultdict(set))
+stageMir2CellEvidence = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+
 for cbnNW in cbn2edges:
 
     allNWGenes = set()
@@ -183,7 +211,7 @@ for cbnNW in cbn2edges:
 
     print(cbnNW)
 
-    graph, nodeCounts, evcount, json = DataBasePlotter.fetchGenes(requestData, gene2name=genes2name, minPMIDEvCount=0, minTgtCount=0, acceptEv=acceptEvidence)
+    graph, nodeCounts, evcount, json = DataBasePlotter.fetchGenes(requestData, gene2name=genes2name, minPMIDEvCount=0, minTgtCount=0, acceptEv=acceptEvidence, MIRNASTRPARTS=[miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
 
     newNodes = []
 
@@ -235,6 +263,26 @@ for cbnNW in cbn2edges:
 
             edgeEvidenceCounter[elabel] += 1
 
+            miRName = None
+
+            if edge[0].startswith("miR") or edge[0].startswith("let-"):
+                miRName = edge[0]
+            elif edge[1].startswith("miR") or edge[1].startswith("let-"):
+                miRName = edge[1]
+
+
+            if "celldata" in edgeAttr and miRName != None :
+
+                for x in edgeAttr["celldata"]:
+                    stageMir2Cells[cbnNW][miRName].add(x)
+
+                for x in edgeAttr['cellEvidence']:
+                    for pmid in edgeAttr['cellEvidence'][x]:
+                        stageMir2CellEvidence[cbnNW][miRName][x].add(pmid)
+
+            elif miRName == None:
+                print("INVALID MIRNA:", edge, file=sys.stderr)
+
         else:
             print(edge, "not in evcount")
 
@@ -253,6 +301,161 @@ for cbnNW in cbn2edges:
         graph.add_edge(edge[0], edge[1], {'color': '#aa0000'})
 
     cbn2graph[cbnNW] = graph
+
+
+### which cell types are most common per stage?
+print()
+print("cells per stage")
+print()
+print()
+print()
+
+importantCellTypesPerMirna = defaultdict(lambda: Counter())
+
+for stage in stageMir2Cells:
+
+    cellCounter = Counter()
+
+    stageMirnaCellPairs = Counter()
+    mirnaCellPairs = defaultdict(lambda: Counter())
+    stageCellCount = Counter()
+
+    for mirna in stageMir2Cells[stage]:
+
+
+        for cell in stageMir2Cells[stage][mirna]:
+            cellCounter[cell] += 1
+
+        mirnaStageCells = [x for x in stageMir2Cells[stage][mirna]]
+
+        for i in range(0, len(mirnaStageCells)):
+            for j in range(i+1, len(mirnaStageCells)):
+
+                if mirnaStageCells[i][0].startswith("CVCL") or mirnaStageCells[j][0].startswith("CVCL"):
+                    continue
+
+                cellpair = tuple(sorted((mirnaStageCells[i],mirnaStageCells[j])))
+
+                mirnaCellPairs[mirna][cellpair] += 1
+                stageMirnaCellPairs[cellpair] += 1
+
+                stageCellCount[cellpair[0]] += 1
+                stageCellCount[cellpair[1]] += 1
+
+                importantCellTypesPerMirna[mirna][cellpair] += 1
+
+
+    mostCommonCellPairs = []
+    for (mpair, count) in stageMirnaCellPairs.most_common(): #20
+        mostCommonCellPairs.append(mpair)
+
+
+    edge2support = defaultdict(set)
+
+    for mirna in mirnaCellPairs:
+        for cellpair in mirnaCellPairs[mirna]:
+            if cellpair in mostCommonCellPairs:
+
+                edge2support[cellpair].add(mirna)
+
+                print(stage, mirna, cellpair[0], cellpair[1], mirnaCellPairs[mirna][cellpair], stageMirnaCellPairs[cellpair], stageMir2CellEvidence[stage][mirna].get(cellpair[0]),stageMir2CellEvidence[stage][mirna].get(cellpair[1]) )
+
+    cellgraph = networkx.Graph()
+
+    allnodes = set()
+    for edge in edge2support:
+        allnodes.add(edge[0])
+        allnodes.add(edge[1])
+
+    for node in allnodes:
+        cellgraph.add_node(node[1] + " ("+node[0]+")", size=20 + stageCellCount[node])
+
+
+    cellCommunicatorDF = DataFrame()
+    cellCommunicatorDF.addColumns(["miRNA", "cells"])
+
+    mirna2cells = defaultdict(set)
+
+    for edge in edge2support:
+        cellgraph.add_edge(
+            edge[0][1] + " (" + edge[0][0] + ")",
+            edge[1][1] + " (" + edge[1][0] + ")",
+            label=", ".join(edge2support.get(edge, [])))
+
+        mirnas = edge2support.get(edge, [])
+
+        for mirna in mirnas:
+            mirna2cells[mirna].add(edge[0][1] + " (" + edge[0][0] + ")")
+            mirna2cells[mirna].add(edge[1][1] + " (" + edge[1][0] + ")")
+
+
+    cells2mirnas = defaultdict(set)
+    for mirna in mirna2cells:
+        cells = tuple(sorted(mirna2cells[mirna]))
+
+        cells2mirnas[cells].add(mirna)
+
+
+    for cells in cells2mirnas:
+
+        ncells = []
+        for cell in cells:
+            ncells.append( ""+cell+"}" )
+
+        rowdict = {
+            'miRNA': "\\makecell[l]{" + "\\\\".join(sorted(cells2mirnas[cells])) + "}",
+            'cells': "\\makecell[l]{" + "\\\\".join(cells) + "}"
+        }
+        cellCommunicatorDF.addRow(DataRow.fromDict(rowdict))
+
+
+    cellCommunicatorDF.export("/mnt/d/yanc_network/stage_cells_cliques"+stage+".latex", ExportTYPE.LATEX)
+    cellCommunicatorDF.export("/mnt/d/yanc_network/stage_cells_cliques"+stage+".tsv", ExportTYPE.TSV)
+
+
+    CytoscapeGrapher.showGraph(cellgraph, '/mnt/d/yanc_network/', name="stage_cells_" + stage)
+    figidx = CytoscapeGrapher.plotNXGraph(cellgraph, stage, ["/mnt/d/yanc_network/stage_cells_" + stage.replace(" ", "_") + ".png", "/mnt/d/yanc_network/stage_cells_" + stage.replace(" ", "_") + ".pdf"], figidx)
+
+    print()
+    print()
+    print()
+    print()
+    print()
+
+    plotKeys = []
+    plotValues = []
+    for (cell, count) in cellCounter.most_common(20):
+        print(stage, cell[0], cell[1], count)
+        plotKeys.append(cell[1] + " ("+cell[0]+")")
+        plotValues.append(count)
+
+
+    plt.figure(figidx)
+    figidx+= 1
+    plt.bar(plotKeys, plotValues)
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+
+    plt.savefig("/mnt/d/yanc_network/cells_per_stage_" + stage + ".png",bbox_inches='tight')
+    plt.savefig("/mnt/d/yanc_network/cells_per_stage_" + stage + ".pdf",bbox_inches='tight')
+
+    plt.show()
+    print()
+    print()
+    print()
+    print()
+    print()
+
+for mirna in importantCellTypesPerMirna:
+
+    for (cp, count) in importantCellTypesPerMirna[mirna].most_common(10):
+        print(mirna, cp[0], cp[1], count)
+
+print()
+print()
+print()
+print()
+print()
 
 ### which miRNAs play a role in all networks?
 
@@ -344,9 +547,14 @@ for storyTransition in storyTransitions:
 outfile.close()
 
 
-
+latexStageMirsFile = open("/mnt/d/yanc_network/cbn_stages_most_reg.txt", 'w')
 
 mirSByCBN = defaultdict(set)
+
+mir2networks = defaultdict(set)
+interactionsPerNetworkAndMirna = defaultdict(lambda: dict())
+
+overallMostRegulatingMIRs = Counter()
 
 for cbnNW in cbn2restrict:
 
@@ -379,17 +587,85 @@ for cbnNW in cbn2restrict:
     for node in intNodes:
         if node[0].startswith("miR"):
             mirSByCBN[cbnNW].add(node[0])
+            mir2networks[node[0]].add(cbnNW)
 
+            overallMostRegulatingMIRs[node[0]] += node[1]
+
+            interactionsPerNetworkAndMirna[cbnNW][node[0]] = node[1]
 
 
     print(cbnNW)
+    cbnNWMirs = []
     for i in range(0, min(10, len(intNodes))):
         print(i, intNodes[i])
+        cbnNWMirs.append(  intNodes[i][0] + " ("+str(intNodes[i][1])+")"  )
+
+    latexStageMirsFile.write(cbnNW + "&" + ", ".join(cbnNWMirs) + "\n")
 
     print()
+
+
+
     print()
 
     mygraph = CytoscapeGrapher.showGraph(graph, location='/mnt/d/yanc_network/', name=cbnNW)
+
+latexStageMirsFile.close()
+
+print("Overall most regulating")
+print(overallMostRegulatingMIRs.most_common(10))
+print(", ".join([x[0] + " (" + str(x[1]) + ")" for x in overallMostRegulatingMIRs.most_common(10)]))
+print()
+print()
+
+
+mirna2nwcount = Counter()
+for mirna in mir2networks:
+    mirna2nwcount[mirna] = len(mir2networks[mirna])
+
+print("most common mirnas")
+mcMirnas = set()
+for x in mirna2nwcount.most_common(10):
+    print(x)
+    mcMirnas.add(x[0])
+
+print(mcMirnas)
+
+mirna2stagecount = defaultdict(list)
+stages = [x for x in cbn2restrict]
+for mirna in natsorted(mcMirnas):
+
+    mirnarow = [mirna]
+    for stage in stages:
+        icount = interactionsPerNetworkAndMirna[stage].get(mirna, 0)
+        mirnarow.append(icount)
+
+        print(stage, mirna, icount, sep="\t")
+
+
+    mirna2stagecount[mirna] = mirnarow
+
+
+
+
+stageDF = pd.DataFrame.from_dict(mirna2stagecount, orient='index', columns=["miRNA"] + [network2nicename[x] for x in stages])
+
+ax = parallel_coordinates(stageDF, 'miRNA', colormap=plt.get_cmap("Set2"))
+plt.xticks(rotation=90)
+
+lgd = plt.legend(bbox_to_anchor=(0,1.02,1,0.2), loc="lower left",
+                mode="expand", borderaxespad=0, ncol=5)
+
+plt.tight_layout()
+
+plt.savefig("/mnt/d/yanc_network/mirna_stage_parallel.png",bbox_extra_artists=(lgd,), bbox_inches='tight')
+plt.savefig("/mnt/d/yanc_network/mirna_stage_parallel.pdf",bbox_extra_artists=(lgd,), bbox_inches='tight')
+
+plt.show()
+
+
+print()
+print()
 
 
 allSet = None
@@ -407,7 +683,6 @@ print(allSet)
 
 import matplotlib.pyplot as plt
 
-figidx = 0
 for stages in makeStory:
 
     mergedGraph = cbn2graph[stages[0]]
@@ -473,3 +748,6 @@ for stages in makeStory:
 
         plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".png")
         plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".pdf")
+
+
+

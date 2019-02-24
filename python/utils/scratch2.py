@@ -123,7 +123,9 @@ testCases = [
     (u'Lupus neutrophils produce elevated levels of factors known to fuel autoantibody production, including IL-6 and B cell survival factors, but also reactive oxygen intermediates, which can suppress lymphocyte proliferation', 1, 16),
     (u'Human neutrophils mediate trogocytosis rather than phagocytosis of CLL B cells opsonized with anti-CD20 antibodies', 1,9),
     (u'Mycobacterium tuberculosis-induced neutrophil ectosomes decrease macrophage activation.', 4,7),
-    (u'Furthermore, KLF12, HMGB1 and CIT mRNAs were confirmed as direct targets of the p53-induced miR-34a, miR-205 and miR-486-5p, respectively', 1, 14)
+    (u'Furthermore, KLF12, HMGB1 and CIT mRNAs were confirmed as direct targets of the p53-induced miR-34a, miR-205 and miR-486-5p, respectively', 2, 16),
+    (u'It has been shown that macrophage can communicate with endothelial cells via ICAM1 and miR-98', 12, 14),
+(u'It has been shown that macrophage can communicate with endothelial cells via ICAM1 and miR-98', 5, 14)
 ]
 
 #29099614.2.11

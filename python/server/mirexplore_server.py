@@ -586,7 +586,7 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
                         if dbrels == None:
                             continue
 
-                        #allRelsByType['gene'] += dbrels
+                        allRelsByType['gene'] += dbrels
 
                 elif relDB.rtype == "gene":
 

@@ -37,6 +37,8 @@ class Synfile:
         self.synIDs = None
         self.synIDidx = None
 
+        self.location = None
+
         if sFileLocation != None:
             self._load_file(sFileLocation)
 
@@ -54,6 +56,8 @@ class Synfile:
             for line in infile:
                 addSyn(line, idx)
                 idx += 1
+
+            self.location = sFileLocation
 
     def export_flat_obo(self, filepath, termPrefix):
 
