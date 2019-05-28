@@ -8,6 +8,7 @@ import scipy.stats
 from networkx.drawing.nx_agraph import graphviz_layout, pygraphviz_layout
 import os, sys
 
+from synonymes.GeneOntology import GeneOntology
 from utils.tmutils import normalize_gene_names
 
 sys.path.insert(0, str(os.path.dirname("/mnt/d/dev/git/poreSTAT/")))
@@ -23,6 +24,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
+
+    cellObo = GeneOntology("/mnt/d/owncloud/data/miRExplore/obodir/meta_cells.obo")
+
+    cellTypeName2Terms = {
+        "EC": ["META:52"],
+        "MC": ["META:148", "META:99"],
+        "FC": ["CL:0000891"],
+        "SMC": ["META:83"],
+    }
+
+    cellType2AccTerms = {}
+    for cellT in cellTypeName2Terms:
+
+        cellType2AccTerms[cellT] = set()
+
+        for et in cellTypeName2Terms[cellT]:
+
+            oboT = cellObo.getID(et)
+
+            if oboT != None:
+                cellType2AccTerms[cellT].add(et)
+                for x in oboT.getAllChildren():
+                    cellType2AccTerms[cellT].add(x.termid)
+
+            else:
+                print("No such obo term:", et)
 
 
     missRates = sorted([2/19, 5/17, 1/4, 5/12, 0/6, 2/8, 3/12, 1/23])
@@ -81,25 +108,26 @@ if __name__ == '__main__':
         'HUR': ['miR-146'],
         'CXCL12': ['miR-126-3p'],
         'RGS16': ['miR-126-3p'],
-        'ETS1': ['miR-155', 'miR-221', 'miR-222']
+        'ETS1': ['miR-155', 'miR-221', 'miR-222'],
+        'TNPO2': ['miR-181b']
     }
 
     ccl2_macrophage = {
         'CCL2': ['miR-124a', 'miR-150'],
         'CHI3L1': ['miR-24'],
-        'TLR4': ['miR-146'],
+        'TLR4': ['miR-146a'],
         'TRAF6': ['miR-146'],
         'IRAK1': ['miR-146'],
         'AKT1': ['miR-342-5p'],
         'BCL6': ['miR-155'],
-        'LPL': ['miR-467a']
+        'LPL': ['miR-467b']
     }
 
     normGeneSymbols = normalize_gene_names(path="/mnt/d/owncloud/data/miRExplore/obodir/" + "/hgnc_no_withdrawn.syn")
 
-    andreouInts1= {'ICAM1': ['miR-223', 'miR-17-3p'], 'SELE': ['miR-31'], 'VCAM1': ['miR-126', 'miR-126-5p'], 'DLK1': ['miR-126', 'miR-126-5p'], 'JAMA': ['miR-143', 'miR-145'], 'SIRT1': ['miR-217'], 'NOS3': ['miR-155'], 'ETS1': ['miR-155', 'miR-126', 'miR-126-5p'], 'PPARA': ['miR-21'], 'TIMP3': ['miR-712'], 'MAP3K7': ['miR-10'], 'KPNA4': ['miR-181b'], 'TRAF6': ['miR-146a', 'miR-146b'], 'IRAK1': ['miR-146a', 'miR-146b'], 'IRAK2': ['miR-146a', 'miR-146b'], 'KLF2': ['miR-143', 'miR-145', 'miR-126', 'miR-126-5p', 'miR-92a'], 'CXCL12': ['miR-126', 'miR-126-5p'], 'KLF4': ['miR-92a', 'miR-663'], 'SOCS5': ['miR-92a']}
+    andreouInts1= {'ICAM1': ['miR-223', 'miR-17-3p'], 'SELE': ['miR-31'], 'VCAM1': ['miR-126', 'miR-126-5p'], 'DLK1': ['miR-126', 'miR-126-5p'], 'JAMA': ['miR-143', 'miR-145'], 'SIRT1': ['miR-217'], 'NOS3': ['miR-155'], 'ETS1': ['miR-155', 'miR-126', 'miR-126-5p'], 'PPARA': ['miR-21'], 'TIMP3': ['miR-712'], 'MAP3K7': ['miR-10'], 'KPNA4': ['miR-181b'], 'TNPO2': ['miR-181b'], 'TRAF6': ['miR-146a', 'miR-146b'], 'IRAK1': ['miR-146a', 'miR-146b'], 'IRAK2': ['miR-146a', 'miR-146b'], 'KLF2': ['miR-143', 'miR-145', 'miR-126', 'miR-126-5p', 'miR-92a'], 'CXCL12': ['miR-126', 'miR-126-5p'], 'KLF4': ['miR-92a', 'miR-663'], 'SOCS5': ['miR-92a']}
     andreouInts2= {'IFNG': ['miR-29', 'miR-155'], 'CD40': ['miR-146a', 'miR-181a'], 'CD40L': ['miR-146a', 'miR-181a'], 'MMP2': ['miR-21', 'miR-21', 'miR-24', 'miR-29'], 'MMP3': ['miR-21', 'miR-24', 'miR-29'], 'MMP8': ['miR-21', 'miR-24', 'miR-29'], 'MMP9': ['miR-21', 'miR-24', 'miR-29'], 'MMP12': ['miR-21', 'miR-24', 'miR-29'], 'MMP13': ['miR-21', 'miR-24', 'miR-29'], 'MMP14': ['miR-21', 'miR-24', 'miR-29']}
-    andreouInts3= {'MTTP': ['miR-30c'], 'ABCA1': ['miR-33', 'miR-302a'], 'ABCG1': ['miR-33'], 'CPT1A': ['miR-33'], 'KLF2': ['miR-92a'], 'KLF4': ['miR-92a', 'miR-145'], 'SOCS5': ['miR-92a'], 'DLK1': ['miR-126-5p'], 'RGS16': ['miR-126-3p'], 'BCL6': ['miR-155'], 'SOCS1': ['miR-155'], 'MAP3K10': ['miR-155'], 'KPNA4': ['miR-181b'], 'AKT1': ['miR-342-5p'], 'TIMP3': ['miR-712']}
+    andreouInts3= {'MTTP': ['miR-30c'], 'ABCA1': ['miR-33', 'miR-302a'], 'ABCG1': ['miR-33'], 'CPT1A': ['miR-33'], 'KLF2': ['miR-92a'], 'KLF4': ['miR-92a', 'miR-145'], 'SOCS5': ['miR-92a'], 'DLK1': ['miR-126-5p'], 'RGS16': ['miR-126-3p'], 'BCL6': ['miR-155'], 'SOCS1': ['miR-155'], 'MAP3K10': ['miR-155'], 'KPNA4': ['miR-181b'], 'TNPO2': ['miR-181b'],'AKT1': ['miR-342-5p'], 'TIMP3': ['miR-712']}
 
 
     andreouInteractions1 = {}
@@ -181,7 +209,7 @@ if __name__ == '__main__':
                     {"group": "cells", "name": "endothelial cell", "termid": "META:52"}
                 ],
                 "disease": [
-                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                    {'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}
                 ]
             },
         'macrophages':
@@ -213,7 +241,7 @@ if __name__ == '__main__':
                     {"group": "cells", "name": "macrophage", "termid": "META:99"}
                 ],
                 "disease": [
-                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                    {'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}
                 ]
             },
         'large_chemokines': {
@@ -228,10 +256,13 @@ if __name__ == '__main__':
         'large_chemokines_athero': {
             'sentences': "false",
             "disease": [
-                {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                {'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}
             ]},
         'andreou_fig1': {
             'sentences': "false",
+            "cells": [
+                {"group": "cells", "name": "endothelial cell", "termid": "META:52"}
+            ],
         },
         'andreou_fig2': {
             'sentences': "false",
@@ -246,7 +277,10 @@ if __name__ == '__main__':
                 "disease": [
                     {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
                     {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
-                ]
+                ],
+                "cells": [
+                    {"group": "cells", "name": "endothelial cell", "termid": "META:52"}
+                ],
             },
         'andreou_fig2_cv':
             {
@@ -269,24 +303,70 @@ if __name__ == '__main__':
             {
                 'sentences': "false",
                 "disease": [
-                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
-                ]
+                    {'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'} #{'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                ],
+                "cells": [
+                    {"group": "cells", "name": "endothelial cell", "termid": "META:52"}
+                ],
             },
         'andreou_fig2_athero':
             {
                 'sentences': "false",
                 "disease": [
-                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                    {'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}
                 ]
             },
         'andreou_table1_athero':
             {
                 'sentences': "false",
                 "disease": [
-                    {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
+                    {'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}
                 ]
             },
     }
+
+    restrictDF = DataFrame()
+    restrictDF.addColumns(["Network", "Cells", "Disease", "Other"], "")
+
+    for x in networkRestrictions:
+
+        restricts = networkRestrictions[x]
+
+        networkDRdict = defaultdict(str)
+        networkDRdict["Network"] =  x.replace("_", " ")
+
+        diseaseElems = []
+        cellElems = []
+        otherElems = []
+
+        for restrictType in restricts:
+
+            if restrictType == "sentences":
+                continue
+
+            if restrictType in ["disease"]:
+                for elem in restricts[restrictType]:
+                    diseaseElems.append( elem['name'] + " ("+elem['termid']+")")
+
+            elif restrictType in ["cells"]:
+                for elem in restricts[restrictType]:
+                    cellElems.append( elem['name'] + " ("+elem['termid']+")")
+
+            else:
+                for elem in restricts[restrictType]:
+                    otherElems.append( elem['name'] + " ("+elem['termid']+")")
+
+
+        networkDRdict['Cells'] =  "\makecell[l]{" +"\\\\".join(sorted(cellElems)) + "}"
+        networkDRdict['Disease'] = "\makecell[l]{" + "\\\\".join(sorted(diseaseElems)) + "}"
+        networkDRdict['Other'] = "\makecell[l]{" + "\\\\".join(sorted(otherElems)) + "}"
+
+        dr = DataRow.fromDict(networkDRdict)
+        restrictDF.addRow(dr)
+
+    print(restrictDF._makeLatex())
+
+    mirna2cellOut = open("/mnt/d/yanc_network/important_networks.txt", 'w')
 
 
     def acceptEvidence(ev):
@@ -365,7 +445,7 @@ if __name__ == '__main__':
         print(len(jsonRes['rels']))
 
         htmlDF = DataFrame()
-        htmlDF.addColumns(['gene rel', 'gene', 'miRNA Group', 'miRNA', 'Original Network', 'PubMed', 'MIRECORD', 'MIRTARBASE', 'DIANA'])
+        htmlDF.addColumns(['gene rel', 'gene', 'miRNA Group', 'miRNA', 'Original Network', 'PubMed', 'MIRECORD', 'MIRTARBASE', 'DIANA', 'Disease', 'Cells', 'GO'])
 
         foundGenes = set()
 
@@ -396,6 +476,8 @@ if __name__ == '__main__':
         simpleInteractions = set()
         distinctInteractions = set()
 
+        pmidEvidences = set()
+
         for rel in jsonRes['rels']:
 
             orderedEdge = [None, None]
@@ -409,6 +491,9 @@ if __name__ == '__main__':
                 orderedEdge[0] = rel['rid']
             elif rel['rtype'] == "mirna":
                 orderedEdge[1] = rel['rid']
+
+            if orderedEdge[0] == "TNPO2":
+                orderedEdge[0] = "KPNA4"
 
             orderedEdges = set()
 
@@ -435,14 +520,21 @@ if __name__ == '__main__':
             for oEdge in orderedEdges:
 
                 foundGenes.add(oEdge[0])
+                origEdge = tuple(oEdge)
 
                 try:
                     miObj = miRNA(oEdge[1])
                     miStr = miObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
 
+                    selfObj = miRNA(miStr)
+
+                    oEdge = list(oEdge)
                     oEdge[1] = miStr
+                    oEdge = tuple(oEdge)
                 except:
-                    pass
+                    print("Ignoring edge for mirna", origEdge, oEdge)
+                    continue
+                    #pass
 
                 edgeStatus = None
 
@@ -451,7 +543,8 @@ if __name__ == '__main__':
 
                 allAcceptedStr = set()
 
-
+                if network == "macrophages_athero":
+                    print(oEdge)
 
                 for strMirna in allGeneMirna:
                     miObj = miStr2mirna.get(strMirna, None)
@@ -476,6 +569,9 @@ if __name__ == '__main__':
 
                         #print(oEdge[0], oEdge[1], strMirna)
 
+                if network == "macrophages_athero":
+                    print(allAcceptedStr)
+
                 if not miAccepted:
                     edgeStatus = "additional"
 
@@ -487,7 +583,7 @@ if __name__ == '__main__':
 
 
                 # determine kindness of interaction
-                edgeResources = edge2datasourceCount.get((oEdge[0], miRNA(oEdge[1]).getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])), None)
+                edgeResources = edge2datasourceCount.get(origEdge, None)
 
 
                 edgeLabel = ""
@@ -526,7 +622,7 @@ if __name__ == '__main__':
 
 
                 objMirna = miRNA(oEdge[1])
-                simpleMirna = objMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID])
+                simpleMirna = objMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
                 simpleEdge = tuple([oEdge[0], simpleMirna])
 
 
@@ -539,7 +635,7 @@ if __name__ == '__main__':
                 networkGraph.add_edge(oEdge[0], oEdge[1], edgeResources=edgeResources, label=edgeLabel, color= 'g' if edgeStatus == "accepted" else "b")
 
                 typeByGene[oEdge[0]][edgeStatus] += 1
-                elemsByGene[oEdge[0]][edgeStatus].add(oEdge[1])
+                elemsByGene[oEdge[0]][edgeStatus].add( oEdge[1] )
 
                 simpleInteractions.add(simpleEdge)
                 distinctInteractions.add(oEdge)
@@ -551,9 +647,45 @@ if __name__ == '__main__':
                 dianaEvs = set()
 
                 interactionEvidences = set()
-
+                docDiseases = []
+                docCells = []
+                docGOs = []
 
                 for ev in rel['evidences']:
+
+                    if 'docid' in ev:
+                        docid = ev['docid']
+
+                        disEvs = jsonRes['pmidinfo'].get('disease', {}).get(docid, {})
+
+                        for disEv in disEvs:
+                            did = disEv['termid']
+                            dname = disEv['termname']
+
+                            docDiseases.append((dname, did, docid))
+
+                        cellEvs = jsonRes['pmidinfo'].get('cells', {}).get(docid, {})
+
+                        for cellEv in cellEvs:
+                            did = cellEv['termid']
+                            dname = cellEv['termname']
+
+                            docCells.append((dname, did, docid))
+
+                            for ct in cellType2AccTerms:
+
+                                ctTerms = cellType2AccTerms[ct]
+
+                                if did in ctTerms:
+                                    print(network, oEdge[0], oEdge[1], ct, docid, sep="\t", file=mirna2cellOut)
+
+                        goEvs = jsonRes['pmidinfo'].get('go', {}).get(docid, {})
+
+                        for goEv in goEvs:
+                            did = goEv['termid']
+                            dname = goEv['termname']
+
+                            docGOs.append((dname, did, docid))
 
                     if ev['data_source'] == "DIANA":
                         dianaEvs.add( (ev['method'], (ev['direction'])))
@@ -574,6 +706,10 @@ if __name__ == '__main__':
                         interactionEvidences.add("MIRTARBASE")
                         intToSources[simpleEdge].add("MIRTARBASE")
 
+                        if ev['docid'] != None:
+                            pmidEvidences.add(ev['docid'])
+
+
 
                     elif ev['data_source'] == "pmid":
                         pmidEvs.add((ev['docid'],))
@@ -583,12 +719,17 @@ if __name__ == '__main__':
                         interactionEvidences.add("PMID")
                         intToSources[simpleEdge].add("PMID")
 
+                        pmidEvidences.add(ev['docid'])
+
                     elif ev['data_source'] == "mirecords":
                         mirecordsEvs.add((ev['docid']))
                         expDBEdge2Source[oEdge].add(('MIRECORDS', (ev['docid'])))
                         mirnaGeneSourceCounter['mirecords'] += 1
                         interactionEvidences.add("mirecords")
                         intToSources[simpleEdge].add("mirecords")
+
+                        if ev['docid'] != None:
+                            pmidEvidences.add(ev['docid'])
 
                     else:
                         print("Unhandled data source", ev['data_source'])
@@ -625,6 +766,24 @@ if __name__ == '__main__':
                     ]
                 )
 
+                goStr = "<br/>".join(
+                    [
+                        "{method} ({direction}, {docid})".format(method=elem[0], direction=elem[1], docid=elem[2]) for elem in docGOs
+                    ]
+                )
+
+                cellStr = "<br/>".join(
+                    [
+                        "{method} ({direction}, {docid})".format(method=elem[0], direction=elem[1], docid=elem[2]) for elem in docCells
+                    ]
+                )
+
+                diseaseStr = "<br/>".join(
+                    [
+                        "{method} ({direction}, {docid})".format(method=elem[0], direction=elem[1], docid=elem[2]) for elem in docDiseases
+                    ]
+                )
+
                 addRow = {
                     'gene rel': oEdge[0] + "<br/>" + oEdge[1],
                     'gene': oEdge[0],
@@ -637,7 +796,10 @@ if __name__ == '__main__':
                     'PubMed': pmidStr,
                     'MIRECORD': mirecordStr,
                     'MIRTARBASE': mirtarbaseStr,
-                    'DIANA': dianaStr
+                    'DIANA': dianaStr,
+                    "Cells": cellStr,
+                    "Disease": diseaseStr,
+                    "GO": goStr
                 }
 
 
@@ -653,7 +815,7 @@ if __name__ == '__main__':
                 if edgeWasFound:
                     continue
 
-                edgeStatus = "missing"
+                edgeStatus = "missed"
 
                 interactionCountMissing += 1
 
@@ -667,6 +829,10 @@ if __name__ == '__main__':
                 dianaLink = "http://carolina.imis.athena-innovation.gr/diana_tools/web/index.php?r=tarbasev8%2Findex&miRNAs%5B%5D=&genes%5B%5D={geneCap}&genes%5B%5D={geneLow}&sources%5B%5D=1&sources%5B%5D=7&sources%5B%5D=9&publication_year=&prediction_score=&sort_field=&sort_type=&query=1".format(
                     geneCap=gene.upper(), geneLow=gene.capitalize())
 
+                cellStr = ""
+                diseaseStr = ""
+                goStr = ""
+
                 addRow = {
                     'gene rel': gene,
                     'gene': gene,
@@ -679,7 +845,10 @@ if __name__ == '__main__':
                     'PubMed': "",
                     'MIRECORD': "",
                     'MIRTARBASE': "",
-                    'DIANA': ""
+                    'DIANA': "",
+                    "Cells": cellStr,
+                    "Disease": diseaseStr,
+                    "GO": goStr
                 }
 
 
@@ -798,7 +967,7 @@ if __name__ == '__main__':
         # anzahl kanten nur mit exp hinweisen aber zu weak
 
         # anzahl kanten nur durch pubmed aber zu weak
-
+        print("Number of PMIDs", len(pmidEvidences))
 
         print()
         print()
@@ -944,6 +1113,55 @@ if __name__ == '__main__':
             plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".pdf")
 
             CytoscapeGrapher.showGraph(networkGraph, location="/mnt/d/yanc_network/", name="cyjs_" + stage.replace(" ", "_"), title=stage)
+            CytoscapeGrapher.exportGraphML(networkGraph, location="/mnt/d/yanc_network/", name="cyjs_" + stage.replace(" ", "_"))
+
+            CytoscapeGrapher.export_d3Json(networkGraph, location="/mnt/c/Users/mjopp/Desktop/d3test/",name= "cyjs_" + stage.replace(" ", "_"), singletons=True )
+
+
+            if stage == "large_chemokines":
+
+                with open("/mnt/c/Users/mjopp/Desktop/gergely.tsv", "w") as fgout:
+
+                    existingEdges = set()
+
+                    for gene in largeInteractions:
+
+                        for mirna in largeInteractions[gene]:
+                            try:
+                                miObj = miRNA(mirna)
+                                miStr = miObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
+                                selfObj = miRNA(miStr)
+
+                                existingEdges.add((gene, miStr))
+                            except:
+                                continue
+
+
+                    for node in exportGraph.nodes():
+                        nodename = str(node).lower()
+
+                        if nodename.startswith("mir") or nodename.startswith("let"):
+                            fmtNode = "<node y=\"20\" x=\"360\" shape=\"ellipse\" color=\"FFFFFF\" label=\"{elemid}\" id=\"{elemid}\" bgfixed=\"-1\"/>".format(elemid=node)
+                            #print(fmtNode)
+
+                    for edge in exportGraph.edges():
+                        fmtEdge = "<edge dir=\"false\" bold=\"false\" color=\"000000\" width=\"null\" inhibit=\"false\" rev=\"false\" arrowcolor=\"000000\" to=\"{src}\" from=\"{tgt}\"/>".format(src=edge[0], tgt=edge[1])
+                        #print(fmtEdge)
+
+                        if edge[0].lower().startswith("mir") or edge[0].lower().startswith("let"):
+                            mirna = edge[0]
+                            gene = edge[1]
+
+                        else:
+
+                            mirna = edge[1]
+                            gene = edge[0]
+
+                        if (gene, mirna) in existingEdges:
+                            continue
+
+                        print(gene, mirna, sep="\t", file=fgout)
+
 
     #plt.show()
 

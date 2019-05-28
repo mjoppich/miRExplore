@@ -806,9 +806,25 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
                             'evidences': okEvs
                             })
 
+    accDocids = set()
+    for rel in allrels:
+        for ev in rel['evidences']:
+            if 'docid' in ev:
+                accDocids.add(ev['docid'])
+
+    print("Acc DoccIds", len(accDocids))
+
+    addInfoF = defaultdict(lambda: dict())
+
+    for grp in addInfo:
+        for doc in addInfo[grp]:
+
+            if doc in accDocids:
+                addInfoF[grp][doc] = addInfo[grp][doc]
+
     returnObj = {
         'rels': allrels,
-        'pmidinfo': addInfo
+        'pmidinfo': addInfoF
     }
 
     return returnObj

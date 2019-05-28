@@ -130,8 +130,12 @@ testCases = [
 
 #29099614.2.11
 
+lex = nlp.vocab[u'miR-486-5p']
+print(nlp.vocab[u'miR-486-5p'])
 
-testCases = [testCases[-1]]
+nlp.tokenizer.add_special_case(u'miR-486-5p', [{'ORTH': 'miR-486-5p', 'TAG': 'NNP'}])
+
+testCases = [testCases[-3]]
 
 for testCase in testCases:
 

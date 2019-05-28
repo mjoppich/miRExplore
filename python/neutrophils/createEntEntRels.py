@@ -164,12 +164,11 @@ def analyseConjunction(stackL, stackR):
     return ret
 
 
-def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
+def findRelationBySyns(ent1Hit, ent2Hit, sentence, relHits):
     global relexParser
 
     sentHits = relHits[str(ent1Hit.documentID)]
 
-    sentence = sentDB.get_sentence(ent1Hit.documentID)
     #(textBefore, textBetween, textAfter, hitOrder) = sentence.extract_text(mirnaHit.position, hgncHit.position)
 
     negatedSentence = any([x in sentence.text for x in ['not', 'n\'t', 'nega']])
@@ -526,13 +525,29 @@ def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
             ent1Loc = ent1ToSent[x]
             ent2Loc = ent2ToSent[y]
 
+            # TODO is this not equal to some value of x?
+
             if ent1Loc[0] == ent2Loc[0]:
                 foundCooc.sameParagraph = True
 
                 if ent1Loc[1] == ent2Loc[1]:
                     foundCooc.sameSentence = True
 
-                    foundCooc.relation = findRelationBySyns(x, y, sentDB, pmidRelBySent)
+                    sentence = sentDB.get_sentence(x.documentID)
+
+                    allX = [x]
+                    allY = [y]
+
+                    if foundCooc.ent1type == 'MIRNA':
+                        #check whether this is a special version
+                        pass
+                    elif foundCooc.ent2type == 'MIRNA':
+                        # check whether this is a special version
+                        pass
+
+                    for ax in allX:
+                        for ay in allY:
+                            foundCooc.relation = findRelationBySyns(ax, ay, sentence, pmidRelBySent)
 
             allCoocs.append(foundCooc)
 

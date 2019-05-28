@@ -223,7 +223,7 @@ if __name__ == '__main__':
     networks['targetMirsSMCProlif'] = targetMirsSMCProlif
 
     summaryDF = DataFrame()
-    summaryDF.addColumns(["Network", "Accepted miRNAs", 'Additional miRNAs', "Missing miRNAs"])
+    summaryDF.addColumns(["Network", "miRNAs", 'Target Genes'])
 
     networkGraphs = {}
     makeStory = [
@@ -242,18 +242,20 @@ if __name__ == '__main__':
             "cells": [
                 {"group": "cells", "name": "endothelial cell", "termid": "META:52"}
             ]
-            #, "go": [{"group": "go", "name": "", "termid": "GO:0006915"},{"group": "go", "name": "", "termid": "GO:0001775"},{"group": "go", "name": "", "termid": "GO:0006954"}]
+            , "go": [{"group": "go", "name": "apoptotic process", "termid": "GO:0006915"},{"group": "go", "name": "cell activation", "termid": "GO:0001775"},{"group": "go", "name": "inflammatory response", "termid": "GO:0006954"}]
         },
         'targetMirsMonocyte': {
             "cells": [
                 {"group": "cells", "name": "monocyte", "termid": "META:148"},
                 {"group": "cells", "name": "macrophage", "termid": "META:99"}
             ]
-            #, "go": [{"group": "go", "name": "", "termid": "GO:0030224"}, {"group": "go", "name": "", "termid": "GO:0042116"}]
+            , "go": [{"group": "go", "name": "monocyte differentiation", "termid": "GO:0030224"}, {"group": "go", "name": "macrophage activation", "termid": "GO:0042116"}]
         },
         'targetMirsFCF': {
             "cells": [{"group": "cells", "name": "foam cell", "termid": "CL:0000891"}]
-            #, "go": [{"group": "go", "name": "", "termid": "GO:0090077"}]
+            , "go":  [{"group": "go", "name": "cholesterol import", "termid": "GO:0070508"},
+    		{"group": "go", "name": "lipid transporter activity", "termid": "GO:0005319"},
+    		{"group": "go", "name": "cholesterol esterification", "termid": "GO:0034435"},{"group": "go", "name": "foam cell differentiation", "termid": "GO:0090077"}]
         },
         'targetMirsAngio': {
             #"cells": [{"group": "cells", "name": "blood vessel", "termid": "UBERON:0001981"}, {"group": "cells", "name": "blood vessel elastic tissue", "termid": "UBERON:0003614"} , {"group": "cells", "name": "arterial blood vessel", "termid": "UBERON:0003509"}],
@@ -268,16 +270,16 @@ if __name__ == '__main__':
                    ]
         }
         ,'targetMirsTCell': {
-            "cells": [{"group": "cells", "name": "T cell", "termid": "META:44"}],
-            #,"go": [{"group": "go", "name": "", "termid": "GO:0030217"}]
+            "cells": [{"group": "cells", "name": "T cell", "termid": "META:44"}]
+            ,"go": [{"group": "go", "name": "T cell homeostasis", "termid": "GO:0043029"}, {"group": "go", "name": "T cell activation", "termid": "GO:0042110"}, {"group": "go", "name": "T cell proliferation", "termid": "GO:0042098"}, {"group": "go", "name": "T cell differentiation", "termid": "GO:0030217"}]
         },
         'targetMirsCholEfflux': {
-            "cells": [{"group": "cells", "name": "foam cell", "termid": "CL:0000891"}]
-            #,"go": [{"group": "go", "name": "", "termid": "GO:0033344"}]
+            "cells": [{"group": "cells", "name": "foam cell", "termid": "CL:0000891"}],
+            "go": [{"group": "go", "name": "cholesterol efflux", "termid": "GO:0033344"}]
         },
         'targetMirsSMCProlif': {
             "cells": [{"group": "cells", "name": "smooth muscle cell", "termid": "META:83"}]
-            #,"go": [{"group": "go", "name": "", "termid": "GO:0048659"},{"group": "go", "name": "", "termid": "GO:0014909"}]
+            ,"go": [{"group": "go", "name": "smooth muscle cell proliferation", "termid": "GO:0048659"},{"group": "go", "name": "smooth muscle cell migration", "termid": "GO:0014909"}]
         }
 
     }
@@ -294,55 +296,6 @@ if __name__ == '__main__':
 
     }
 
-
-    restrictDF = DataFrame()
-    restrictDF.addColumns(["Network", "Cells", "Disease", "Other"], "")
-
-    for x in networkRestrictions:
-
-        nrestricts = defaultdict(list)
-
-        for rt in networkRestrictions[x]:
-            nrestricts[rt] = networkRestrictions[x][rt]
-
-        nrestricts['disease'] += [{'group':'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}]
-        restricts = nrestricts
-
-
-        networkDRdict = defaultdict(str)
-        networkDRdict["Network"] =  networkToTitle[x]
-
-        diseaseElems = []
-        cellElems = []
-        otherElems = []
-
-        for restrictType in restricts:
-
-            if restrictType == "sentences":
-                continue
-
-            if restrictType in ["disease"]:
-                for elem in restricts[restrictType]:
-                    diseaseElems.append( elem['name'] + " ("+elem['termid']+")")
-
-            elif restrictType in ["cells"]:
-                for elem in restricts[restrictType]:
-                    cellElems.append( elem['name'] + " ("+elem['termid']+")")
-
-            else:
-                for elem in restricts[restrictType]:
-                    otherElems.append( elem['name'] + " ("+elem['termid']+")")
-
-
-        networkDRdict['Cells'] =  "\makecell[l]{" +"\\\\".join(sorted(cellElems)) + "}"
-        networkDRdict['Disease'] = "\makecell[l]{" + "\\\\".join(sorted(diseaseElems)) + "}"
-        networkDRdict['Other'] = "\makecell[l]{" + "\\\\".join(sorted(otherElems)) + "}"
-
-        dr = DataRow.fromDict(networkDRdict)
-        restrictDF.addRow(dr)
-
-    print(restrictDF._makeLatex())
-
     #exit()
 
 
@@ -350,7 +303,9 @@ if __name__ == '__main__':
     allMissing = {}
     figidx = 0
 
-    mirna2cellOut = open("/mnt/d/yanc_network/important_process.txt", 'w')
+    mirna2cellOut = open("/mnt/d/yanc_network/pathway_important_process.txt", 'w')
+
+    usedRequestData = {}
 
     for network in networks:
         figidx+= 1
@@ -411,8 +366,15 @@ if __name__ == '__main__':
         requestData["mirna"]= list(allMirna)
         print(allMirna)
 
-        if not 'disease' in requestData and not network in ['targetMirsVasRemod']:
-            requestData['disease'] = [{'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}]#[{'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},{'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}]
+        if not network in ['targetMirsVasRemod']:
+            if not 'disease' in requestData:
+                requestData['disease'] = []
+            requestData['disease'] += [{'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}]#[{'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},{'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}]
+
+        if network in ["targetMirsTCell"]:
+            if not 'disease' in requestData:
+                requestData['disease'] = []
+            requestData['disease'] += [{'group': 'diease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'}]
 
         #requestData['disease'] += [
         #            {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
@@ -421,6 +383,7 @@ if __name__ == '__main__':
 
 
         print(requestData)
+        usedRequestData[network] = requestData
 
         graph, nodeCounter, edge2datasourceCount, jsonRes = DataBasePlotter.fetchGenes(requestData)
 
@@ -720,19 +683,7 @@ if __name__ == '__main__':
                         elemsByMirna[foundMirna].add(gene)
 
 
-        foundMirnas = set([x for x in elemsByMirna])
-
-        minEvs = 1
-
-        while True:
-
-            addMirnas = [x for x in foundMirnas.difference(allMirna) if len(mirna2evs[x]) >= minEvs]
-
-            if len(addMirnas) > 50:
-                minEvs += 1
-
-            else:
-                break
+        foundMirnas = set([x for x in elemsByMirna if not "US" in x])
 
         print(network)
         print("Found Mirnas", len(foundMirnas), list(foundMirnas))
@@ -740,16 +691,26 @@ if __name__ == '__main__':
         print("Intersected Mirnas", len(foundMirnas.intersection(allMirna)), list(foundMirnas.intersection(allMirna)))
         print("Missing Mirnas", len(allMirna.difference(foundMirnas)), allMirna.difference(foundMirnas))
         print("Additional Mirnas", len(foundMirnas.difference(allMirna)), foundMirnas.difference(allMirna))
-        print("Additional Mirnas filtered", len(addMirnas))
-        print("Filter level", minEvs)
 
         allMissing[network] = allMirna.difference(foundMirnas)
 
+        mirnaEvCountStr = "\\\\".join([x + " (" +str(len(mirna2evs[x]))+ ", "+str(len(elemsByMirna[x]))+")" for x in natsorted(foundMirnas, key=lambda x: x.split("-")[1])])
+        print()
+
+        foundGenes = set()
+        mirnaEvCount = 0
+
+        for mi in foundMirnas:
+            foundGenes = foundGenes.union(elemsByMirna[mi])
+            mirnaEvCount += len(mirna2evs[mi])
+
+        foundGenes = natsorted([x for x in foundGenes if len(x) > 1])
+        halfGene = int(len(foundGenes)/2)
+
         rowDict = {}
-        rowDict['Network'] = "\makecell[l]{"+networkToTitle[network] + "\\\\(min evidences: "+str(minEvs) + ", additionals: "+str(len(foundMirnas.difference(allMirna)))+")" + "}"
-        rowDict['Accepted miRNAs'] = "\makecell[l]{" +"\\\\".join(natsorted(foundMirnas.intersection(allMirna), key=lambda x: x.split("-")[1])) + "}"
-        rowDict['Additional miRNAs'] = "\makecell[l]{" + "\\\\".join(natsorted(addMirnas, key=lambda x: x.split("-")[1])) + "}"
-        rowDict['Missing miRNAs'] = "\makecell[l]{"  + "\\\\".join(natsorted(allMirna.difference(foundMirnas), key=lambda x: x.split("-")[1])) + "}"
+        rowDict['Network'] = "\makecell[l]{{{title}\\\\(evidences: {evcount}\\\\miRNAs: {mirnacount}\\\\genes: {genecount}) }}".format(title=networkToTitle[network], evcount=str(mirnaEvCount), mirnacount=len(foundMirnas), genecount=len(foundGenes))
+        rowDict['miRNAs'] = "\makecell[l]{" +mirnaEvCountStr + "}"
+        rowDict['Target Genes'] = "\makecell[l]{" + "\\\\".join(foundGenes[:halfGene]) + "}" + "&" + "\makecell[l]{" + "\\\\".join(foundGenes[halfGene:]) + "}"
 
         newRow = DataRow.fromDict(rowDict)
 
@@ -777,8 +738,8 @@ if __name__ == '__main__':
 
         networkGraphs[network] = networkGraph
 
-        htmlDF.export("/mnt/d/yanc_network/" + network.replace(" ", "_") + ".html", ExportTYPE.HTML)
-        htmlDF.export("/mnt/d/yanc_network/" + network.replace(" ", "_") + ".tsv", ExportTYPE.TSV)
+        htmlDF.export("/mnt/d/yanc_network/pathway_" + network.replace(" ", "_") + ".html", ExportTYPE.HTML)
+        htmlDF.export("/mnt/d/yanc_network/pathway_" + network.replace(" ", "_") + ".tsv", ExportTYPE.TSV)
 
 
 
@@ -871,19 +832,53 @@ if __name__ == '__main__':
 
             plt.suptitle(stage)
 
-            plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".png")
-            plt.savefig("/mnt/d/yanc_network/" + stage.replace(" ", "_") + ".pdf")
+            plt.savefig("/mnt/d/yanc_network/pathway_" + stage.replace(" ", "_") + ".png")
+            plt.savefig("/mnt/d/yanc_network/pathway_" + stage.replace(" ", "_") + ".pdf")
 
     #plt.show()
 
     print(summaryDF._makeLatex())
 
 
-    for x in allMissing:
-        for mirna in allMissing[x]:
-            print(x, mirna)
+    restrictDF = DataFrame()
+    restrictDF.addColumns(["Network", "Cells", "Disease", "Other"], "")
 
-        print()
-        print()
+    for x in usedRequestData:
 
+        restricts = usedRequestData[x]
+
+
+        networkDRdict = defaultdict(str)
+        networkDRdict["Network"] =  networkToTitle[x]
+
+        diseaseElems = []
+        cellElems = []
+        otherElems = []
+
+        for restrictType in restricts:
+
+            if restrictType in ["sentences", "mirna"]:
+                continue
+
+            if restrictType in ["disease"]:
+                for elem in restricts[restrictType]:
+                    diseaseElems.append( elem['name'] + " ("+elem['termid']+")")
+
+            elif restrictType in ["cells"]:
+                for elem in restricts[restrictType]:
+                    cellElems.append( elem['name'] + " ("+elem['termid']+")")
+
+            else:
+                for elem in restricts[restrictType]:
+                    otherElems.append( elem['name'] + " ("+elem['termid']+")")
+
+
+        networkDRdict['Cells'] =  "\makecell[l]{" +"\\\\".join(sorted(cellElems)) + "}"
+        networkDRdict['Disease'] = "\makecell[l]{" + "\\\\".join(sorted(diseaseElems)) + "}"
+        networkDRdict['Other'] = "\makecell[l]{" + "\\\\".join(sorted(otherElems)) + "}"
+
+        dr = DataRow.fromDict(networkDRdict)
+        restrictDF.addRow(dr)
+
+    print(restrictDF._makeLatex())
 

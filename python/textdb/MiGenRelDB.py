@@ -291,7 +291,7 @@ class MiGenRelDB(DataBaseDescriptor):
 
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None, switchLR=False, lReplaceSc=True, rReplaceSc=True, ignoreDocIDs=None, stopAfter=-1):
+    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None, switchLR=False, lReplaceSc=True, rReplaceSc=True, ignoreDocIDs=None, stopAfter=-1, getDocs=False):
 
 
         if switchLR:
@@ -554,6 +554,9 @@ class MiGenRelDB(DataBaseDescriptor):
         print("Loaded file", filepath)
         print("Accepted Doc IDs", len(takenDocs))
         print("Rejected Doc IDs", len(ignoredDocs))
+
+        if getDocs:
+            return ret, takenDocs
 
         return ret
 

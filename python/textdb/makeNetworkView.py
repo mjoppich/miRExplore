@@ -73,7 +73,7 @@ class DataBasePlotter:
 
             try:
                 target = miRNA(target)
-                target = target.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID] , normalized=True)
+                target = target.getStringFromParts(MIRNASTRPARTS , normalized=True)
 
             except:
                 pass

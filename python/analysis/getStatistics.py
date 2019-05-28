@@ -35,10 +35,10 @@ if __name__ == '__main__':
 
     diseaseObo = GeneOntology(args.obodir + "/doid.obo")
 
-
+    #{'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}
     #{'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
     #{'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
-    elemTerm = diseaseObo['DOID:2349']
+    elemTerm = diseaseObo['DOID:1936']
     elemTerms = [x.term.id for x in elemTerm.getAllChildren()] + [elemTerm.id]
 
     cvTerm = diseaseObo['DOID:1287']
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         for mirna in rdb.all_rtypes:
 
             mirObj = miRNA(mirna)
-            allMirnas.add(mirObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID]))
+            allMirnas.add(mirObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]))
 
     print("Number of mirnas with interaction", len(allMirnas))
 
@@ -75,6 +75,9 @@ if __name__ == '__main__':
 
     interactionsWithAthero = set()
     distinctInteractionsWithAthero = set()
+    atheroPubmeds = set()
+    cvPubmeds = set()
+    allPubmeds = set()
 
     interactionsWithCV = set()
     distinctInteractionsWithCV = set()
@@ -97,7 +100,8 @@ if __name__ == '__main__':
                 if not ('mmu' in relOrgs or 'hsa' in relOrgs):
                     continue
 
-                baseMirna = "miR-" + rel.rid.split("-")[1]
+                mirObj = miRNA(rel.rid)
+                baseMirna = mirObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
 
                 origTuple = (rel.lid, rel.rid)
                 intTuple = (rel.lid, baseMirna)
@@ -111,6 +115,8 @@ if __name__ == '__main__':
                 docID = rel.docid
                 retVal = pmid2disease.getDOC(docID)
 
+                allPubmeds.add(docID)
+
                 if retVal != None:
 
 
@@ -122,10 +128,12 @@ if __name__ == '__main__':
                         if docDisease['termid'] in elemTerms:
                             interactionsWithAthero.add(intTuple)
                             distinctInteractionsWithAthero.add(origTuple)
+                            atheroPubmeds.add(docID)
 
                         if docDisease['termid'] in cvTerms:
                             interactionsWithCV.add(intTuple)
                             distinctInteractionsWithCV.add(origTuple)
+                            cvPubmeds.add(docID)
 
 
     print("Different miRNAs", len(totalMirnas))
@@ -133,16 +141,44 @@ if __name__ == '__main__':
 
     print("total Interactions", len(totalInteractions))
     print("total distinct Interaction", len(totalDistinctInteractions))
+    print("total mirnas in interactions", len(set([x[1] for x in totalInteractions])))
+
 
     print("total interactions with disease", len(interactionsWithDisease))
     print("total distinct interactions with disease", len(distinctInteractionsWithDisease))
+    print("total mirnas in interactions with disease", len(set([x[1] for x in interactionsWithDisease])))
+
+    atheroMirnas = set([x[1] for x in interactionsWithAthero])
+    atheroGenes = set([x[0] for x in interactionsWithAthero])
 
     print("total interactions with athero", len(interactionsWithAthero))
     print("total distinct interactions with athero", len(distinctInteractionsWithAthero))
+    print("total mirnas in interactions with athero", len(atheroMirnas))
+    print("total genes in interactions with athero", len(atheroGenes))
+    print("total pubmeds for interactions with athero", len(atheroPubmeds))
+    print("total pubmeds for interactions with cv", len(cvPubmeds))
+    print("total pubmeds for interactions", len(allPubmeds))
 
     print("total interactions with cv", len(interactionsWithCV))
     print("total distinct interactions with cv", len(distinctInteractionsWithCV))
+    print("total mirnas in interactions with cv", len(set([x[1] for x in interactionsWithCV])))
 
     # number of gene-mirna interactions with cv association
 
     print(allMirnas.difference(totalMirnas))
+
+    print()
+    print()
+    print()
+
+    print("Athero miRNAs")
+    for x in atheroMirnas:
+        print(x)
+
+    print()
+    print()
+    print()
+
+    print("Athero genes")
+    for x in atheroGenes:
+        print(x)

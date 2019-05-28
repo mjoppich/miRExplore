@@ -85,7 +85,7 @@ class MirTarBaseDB(DataBaseDescriptor):
         return self.rtyped
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna',normGeneSymbols=None):
+    def loadFromFile(cls, filepath, ltype='gene', rtype='mirna',normGeneSymbols=None, getDocs=False):
 
 
         ret = MirTarBaseDB(ltype, rtype)
@@ -96,6 +96,8 @@ class MirTarBaseDB(DataBaseDescriptor):
 
         seenMirnas = {}
         geneSymbolsNormalized=0
+
+        docs = set()
 
         for mirtEntry in mirtarbaseEvidences:
 
@@ -139,6 +141,10 @@ class MirTarBaseDB(DataBaseDescriptor):
             expSupport = mirtEntry['Experiments'].split("//")
             supType = mirtEntry['Support Type']
 
+
+            if docID != None and len(docID) > 0:
+                docs.add(docID)
+
             relations = set([
                 MirTarBaseRel((lid, ltype), (rid, rtype), dataSource, dataID, expSupport, supType, docID, orgs)
                 ])
@@ -153,6 +159,8 @@ class MirTarBaseDB(DataBaseDescriptor):
 
         print("Gene Symbols Normalized", geneSymbolsNormalized)
 
+        if getDocs:
+            return ret, docs
 
         return ret
 

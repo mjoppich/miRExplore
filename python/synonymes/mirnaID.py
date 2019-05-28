@@ -187,7 +187,10 @@ class miRNA:
     def accept(self, other, compLevel=miRNACOMPARISONLEVEL.MATUREID):
 
         if type(other) == str:
-            other = miRNA(other)
+            try:
+                other = miRNA(other)
+            except:
+                return False
 
         if not isinstance(other, miRNA):
             raise ValueError("Comparison must be either miRNA object or string convertible to miRNA", other)
@@ -253,6 +256,12 @@ class miRNA:
                 mirnaStr = mirnaStr.replace("micro-RNA-", "miR-")
             elif mirnaStr.startswith("micro-RNA"):
                 mirnaStr = mirnaStr.replace("micro-RNA", "miR-")
+
+        if mirnaStr.startswith("MiRNA"):
+            mirnaStr = mirnaStr.replace("MiRNA", "miR")
+
+        if mirnaStr.startswith("miRNA"):
+            mirnaStr = mirnaStr.replace("miRNA", "miR")
 
         if mirnaStr.upper().startswith("MIR") and len(mirnaStr)>3 and mirnaStr[3].isdigit():
             #print("Going to replace mir ...", mirnaStr)
