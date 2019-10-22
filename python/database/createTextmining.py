@@ -56,6 +56,7 @@ if False:
 
 class Cooccurrence:
 
+
     def __init__(self):
         self.pubmed = None
         self.idtype = None

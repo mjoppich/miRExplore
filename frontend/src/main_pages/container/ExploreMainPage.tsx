@@ -63,7 +63,7 @@ export class ExploreMainPage extends React.Component<ExplorePageProps, ExplorePa
                         <p>You must select an entity for which you would like to explore interactions. This might be one term, but can also be multiple terms.</p>
                         <p>You can restrict your search to such evidences, which must be for a specific organism, or must include a specific messenger or category.</p>
                         <p>You can show a interaction network for your selected evidences, or a sankey chart, showing you also how the interactions are connected to messengers or categories</p>
-                        <p>Enjoy exploring your neutrophils!</p>
+                        <p>Enjoy exploring your miRNAs!</p>
 
 
                     </CardText>

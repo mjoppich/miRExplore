@@ -125,7 +125,8 @@ testCases = [
     (u'Mycobacterium tuberculosis-induced neutrophil ectosomes decrease macrophage activation.', 4,7),
     (u'Furthermore, KLF12, HMGB1 and CIT mRNAs were confirmed as direct targets of the p53-induced miR-34a, miR-205 and miR-486-5p, respectively', 2, 16),
     (u'It has been shown that macrophage can communicate with endothelial cells via ICAM1 and miR-98', 12, 14),
-(u'It has been shown that macrophage can communicate with endothelial cells via ICAM1 and miR-98', 5, 14)
+(u'It has been shown that macrophage can communicate with endothelial cells via ICAM1 and miR-98', 5, 14),
+    (u'MicroRNA-495 regulates the proliferation and apoptosis of human umbilical vein endothelial cells by targeting chemokine CCL2', 0, 15)
 ]
 
 #29099614.2.11
@@ -135,7 +136,7 @@ print(nlp.vocab[u'miR-486-5p'])
 
 nlp.tokenizer.add_special_case(u'miR-486-5p', [{'ORTH': 'miR-486-5p', 'TAG': 'NNP'}])
 
-testCases = [testCases[-3]]
+testCases = [testCases[-1]]
 
 for testCase in testCases:
 

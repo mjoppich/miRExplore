@@ -42,7 +42,12 @@ class DotSetPlot:
         orderSpan = 3
         numberSpan = 1
 
-        maxSpan = len(numbers) * numberSpan + sum([label2orderspan[x] for x in order])
+        maxSpan = 0
+
+        if numbers != None:
+            maxSpan += len(numbers) * numberSpan
+
+        maxSpan += sum([label2orderspan[x] for x in order])
 
         if numbers != None:
             for nidx, colName in enumerate(numbers):
@@ -78,8 +83,12 @@ class DotSetPlot:
                 allAx.append(ax1)
 
 
+        curColIdx = 0
 
-        curColIdx = len(numbers)*numberSpan
+        if numbers != None:
+            curColIdx = len(numbers)*numberSpan
+
+
         for oidx, catLabel in enumerate(order):
 
             if isinstance(order, dict):

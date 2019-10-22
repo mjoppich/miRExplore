@@ -11,7 +11,7 @@
     "start": "npm run build && env-cmd env.uni.prod node src/server-es5.js",
     "start:dev": "env-cmd env.browser.dev nodemon",
     "build": "env-cmd env.browser.prod webpack -p --profile --display-modules --optimize-minimize",
-    "build:dev": "env-cmd env.browser.dev webpack -d",
+    "build:dev": "env-cmd -f env.browser.dev webpack -d",
     "build:dev:watch": "env-cmd env.browser.dev webpack -d --watch"
   },
   "author": "Markus Joppich",

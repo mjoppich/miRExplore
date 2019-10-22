@@ -105,23 +105,24 @@ export default class QueryComponent extends React.Component<QueryComponentProps,
 
         if (!(this.state.selectedElements) || (this.state.selectedElements.length == 0))
         {
-            return;
-        }
-
-        for (var i = 0; i < this.state.selectedElements.length; ++i)
-        {
-            let elem = this.state.selectedElements[i];
-
-            let elemGroup = elem['group'];
-            let elemName = elem['name'];
-
-            if (elemGroup in sendData)
+            console.log("Empty selection of genes/mirnas")
+            sendData["gene"] = [];
+        } else {
+            for (var i = 0; i < this.state.selectedElements.length; ++i)
             {
-                sendData[elemGroup].push(elemName);
-            } else {
-                sendData[elemGroup] = [elemName];
+                let elem = this.state.selectedElements[i];
+    
+                let elemGroup = elem['group'];
+                let elemName = elem['name'];
+    
+                if (elemGroup in sendData)
+                {
+                    sendData[elemGroup].push(elemName);
+                } else {
+                    sendData[elemGroup] = [elemName];
+                }
             }
-}
+        }
 
         if ((this.state.selectedCells) && (this.state.selectedCells.length > 0))
         {

@@ -11,7 +11,7 @@ from utils.cytoscape_grapher import CytoscapeGrapher
 class DataBasePlotter:
 
     @classmethod
-    def fetchGenes(cls, requestDict, gene2name=None, minPMIDEvCount=0, minTgtCount=0, MIRNASTRPARTS=[miRNAPART.MATURE, miRNAPART.ID], acceptEv = None):
+    def fetchGenes(cls, requestDict, gene2name=None, minPMIDEvCount=0, minTgtCount=0, MIRNASTRPARTS=[miRNAPART.MATURE, miRNAPART.ID], acceptEv = None, verbose=False):
         serverAddress = "https://turingwww.bio.ifi.lmu.de"
         serverPort = None
         serverPath = "yancDB"
@@ -35,14 +35,15 @@ class DataBasePlotter:
         r = requests.post(makeServerAddress(serverAddress, serverPort, serverPath) + "/find_interactions",
                           data=json.dumps(requestDict))
 
-        print(r)
+        if verbose:
+            print(r)
 
         jsonRes = r.json()
 
         graph = networkx.Graph()
 
-
-        print(len(jsonRes['rels']))
+        if verbose:
+            print(len(jsonRes['rels']))
         nodeCounter = Counter()
 
 
@@ -155,7 +156,8 @@ class DataBasePlotter:
             otherEvCount = sum([1 for x in edgeCounts if x != "pmid"])
 
             if allEvCount == 0:
-                print("Removing edge", edge, "for 0 count")
+                if verbose:
+                    print("Removing edge", edge, "for 0 count")
                 continue
 
             if otherEvCount == 0 and edge2datasourceCount[edge]["pmid"] < minPMIDEvCount:
