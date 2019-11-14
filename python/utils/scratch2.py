@@ -1,7 +1,7 @@
 import spacy
 from spacy import displacy
 
-nlp = spacy.load('en_core_web_lg')
+nlp = spacy.load('en')
 #alldeps = [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]
 
 
@@ -101,8 +101,7 @@ doc = nlp(u'Mycobacterium tuberculosis neutrophil ectosomes decrease macrophage 
 doc = nlp(u'Neutrophils are often regarded as cells causing tissue damage, but in recent years it has become clear that a subset of human neutrophils is capable of suppressing T-cells, which is dependent on Mac-1 (CD11b/CD18)')
 doc = nlp(u'UBI may enhance the phagocytic capacity of various phagocytic cells (neutrophils and dendritic cells), inhibit lymphocytes, and oxidize blood lipids')
 
-for x in [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]:
-    print(x)
+
 
 #displacy.serve(doc, style='dep', port=5005)
 
@@ -126,7 +125,9 @@ testCases = [
     (u'Furthermore, KLF12, HMGB1 and CIT mRNAs were confirmed as direct targets of the p53-induced miR-34a, miR-205 and miR-486-5p, respectively', 2, 16),
     (u'It has been shown that macrophage can communicate with endothelial cells via ICAM1 and miR-98', 12, 14),
 (u'It has been shown that macrophage can communicate with endothelial cells via ICAM1 and miR-98', 5, 14),
-    (u'MicroRNA-495 regulates the proliferation and apoptosis of human umbilical vein endothelial cells by targeting chemokine CCL2', 0, 15)
+    (u'MicroRNA-495 regulates the proliferation and apoptosis of human umbilical vein endothelial cells by targeting chemokine CCL2', 0, 15),
+    (u'miR-100 suppresses the migration of phages by targeting FZD-8', 0, 8),
+    (u'Furthermore, luciferase reporter assay analysis identified ZEB2 as a direct target of miR-215', 7, 13)
 ]
 
 #29099614.2.11
@@ -135,6 +136,7 @@ lex = nlp.vocab[u'miR-486-5p']
 print(nlp.vocab[u'miR-486-5p'])
 
 nlp.tokenizer.add_special_case(u'miR-486-5p', [{'ORTH': 'miR-486-5p', 'TAG': 'NNP'}])
+nlp.tokenizer.add_special_case(u'miR-100', [{'ORTH': 'miR-100', 'TAG': 'NNP'}])
 
 testCases = [testCases[-1]]
 
@@ -146,6 +148,9 @@ for testCase in testCases:
     doc = nlp(testCase[0])
     lWord = doc[testCase[1]]
     rWord = doc[testCase[2]]
+
+    for x in [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]:
+        print(x)
 
     print(testCase[0])
     print(lWord, rWord)

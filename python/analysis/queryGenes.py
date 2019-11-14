@@ -76,7 +76,7 @@ for geneName in ["MEG3", "NEAT1","MMP2", "MMP9", "MMP12"]:
         mirnastr = x["rid"]
 
         omir = miRNA(mirnastr)
-        simpleStr = omir.getStringFromParts(miRNACOMPARISONLEVEL.MATUREID.value)
+        simpleStr = omir.getStringFromParts(miRNACOMPARISONLEVEL.PRECURSOR.value)
 
         if simpleStr == "miR-7":
             simpleStr = "let-7"

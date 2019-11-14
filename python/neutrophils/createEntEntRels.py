@@ -21,12 +21,14 @@ from synonymes.SynonymFile import Synfile, AssocSynfile
 from synonymes.mirnaID import miRNA, miRNAPART
 from textmining.SentenceDB import SentenceDB, RegPos
 from textmining.SyngrepHitFile import SyngrepHitFile
+import copy
 
+import pyparsing as pp
 
 from utils.parallel import MapReduce
 from enum import Enum
 
-nlp = spacy.load('en_core_web_lg')  # create blank Language class
+nlp = spacy.load('en')  # create blank Language class #en_core_web_lg
 
 
 class Cooccurrence:
@@ -55,6 +57,28 @@ class Cooccurrence:
     def getIdTuple(self):
         return (self.gene, self.mirna)
 
+def get_sdp_path(doc, subj, obj, lca_matrix):
+    lca_matrix = doc.get_lca_matrix()
+    lca = lca_matrix[subj, obj]
+
+    current_node = doc[subj]
+    subj_path = [current_node]
+    if lca != -1:
+        if lca != subj:
+            while current_node.head.i != lca:
+                current_node = current_node.head
+                subj_path.append(current_node)
+            subj_path.append(current_node.head)
+            current_node = doc[obj]
+    obj_path = [current_node]
+    if lca != -1:
+        if lca != obj:
+            while current_node.head.i != lca:
+                current_node = current_node.head
+                obj_path.append(current_node)
+            obj_path.append(current_node.head)
+
+    return subj_path + obj_path[::-1][1:]
 
 def findAssocs(assocs, text, textLoc):
     res = []
@@ -535,8 +559,83 @@ def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
 
                     sentence = sentDB.get_sentence(x.documentID)
 
+                    #get sentence from position to next blank
+                    nextWord = sentence.text.find(" ", y.position[1])
+
                     allX = [x]
                     allY = [y]
+
+                    if nextWord > y.position[1]:
+
+                        newMirna = []
+
+                        textForSent = sentence.text.encode("utf-8")
+
+                        foundText = textForSent[y.position[0]:nextWord]
+                        addText = textForSent[y.position[1]:nextWord]
+
+                        if len(addText) > 1 and not foundText in [",", ";", "-"] and foundText.startswith("miR"):
+
+                            mirnapp = "miR" + pp.Optional("-") + pp.Group(
+                                pp.Combine(pp.Word(pp.nums)).setResultsName("mirnum") + pp.Optional(
+                                    pp.Word(pp.alphas, max=1)).setResultsName("var") + pp.Optional(
+                                    pp.Or(["-3p", "-5p"])).setResultsName("mod"))
+                            mirnapp += pp.ZeroOrMore(
+                                pp.Group(
+                                    pp.Combine("/" + pp.Optional("-")) + pp.Combine(
+                                        pp.Optional(pp.Word(pp.nums))).setResultsName("mirnum") +
+                                    pp.Combine(pp.Optional(pp.Word(pp.srange("[a-z]"), max=1))).setResultsName("var") +
+                                    pp.Optional(pp.Or(["-3p", "-5p"])).setResultsName("mod")
+                                )
+                            )
+
+                            ppRes = mirnapp.parseString( foundText )
+
+                            ppResMir = []
+
+                            for ppr in ppRes:
+                                if type(ppr) == pp.ParseResults:
+                                    ppResMir.append(ppr)
+
+                            ppMirNum = None
+                            ppMirVar = ""
+                            ppMirMod = ""
+                            for pi, ppr in enumerate(ppResMir):
+                                print(ppr, ppr.get("mirnum", "--"), ppr.get("var", "--"), ppr.get("mod", '--'))
+
+                                if ppr.get("mirnum", None) == None and ppr.get("var", None) == None and ppr.get("mod", None) == None:
+                                    continue
+
+                                if len(ppr.get("mirnum", "")) == 0 and len(ppr.get("var", "")) == 0 and len(ppr.get("mod", "")) == 0:
+                                    continue
+
+                                ppMirNumTmp = ppr.get("mirnum", None)
+
+                                if ppMirNumTmp != None and len(ppMirNumTmp) > 0:
+                                    ppMirNum = ppMirNumTmp
+
+                                ppMirVar = ppr.get("var", "")
+                                ppMirMod = ppr.get("mod", "")
+
+                                if ppMirNum == None:
+                                    continue
+
+                                newMIRNA = "miR-{}{}{}".format(ppMirNum, ppMirVar, ppMirMod)
+
+                                ynew = copy.deepcopy(y)
+                                ynew.hitSyn = newMIRNA
+                                ynew.position = (ynew.position[0], nextWord)
+
+                                hmirna = handleHarmonizedNameMirna(ynew)
+
+                                if hmirna == None:
+                                    continue
+
+                                newMirna.append(ynew)
+
+                        if len(newMirna) > 0:
+                            allY = newMirna
+
 
                     if foundCooc.ent1type == 'MIRNA':
                         #check whether this is a special version
@@ -659,19 +758,19 @@ if __name__ == '__main__':
 
     ent1Syns = SynfileMap(resultBase + "/"+args.folder1+"/synfile.map")
     #ent1Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
-    ent1Syns.loadSynFiles(('/mnt/c/ownCloud/data/miRExplore/', dataDir))
+    ent1Syns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
     ent2Syns = SynfileMap(resultBase + "/"+args.folder2+"/synfile.map")
     #ent2Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
-    ent2Syns.loadSynFiles(('/mnt/c/ownCloud/data/miRExplore/', dataDir))
+    ent2Syns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
 
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
     #relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
-    relSyns.loadSynFiles(('/mnt/c/ownCloud/data/miRExplore/', dataDir))
+    relSyns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
 
-    relationSyns = AssocSynfile(args.datadir + '/obodir/allrels.csv')
+    relationSyns = AssocSynfile(args.datadir + '/miRExplore/obodir/allrels.csv')
 
     accept_pmids = None
 
@@ -758,5 +857,11 @@ if __name__ == '__main__':
         return printed
 
 
-    ll = MapReduce(threads)
-    result = ll.exec(allfileIDs, analyseFile, None, 1, None)
+    if threads > 1:
+        ll = MapReduce(threads)
+        result = ll.exec(allfileIDs, analyseFile, None, 1, None)
+
+    else:
+
+        for fileID in allfileIDs:
+            analyseFile([fileID], env=None)

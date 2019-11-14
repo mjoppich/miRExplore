@@ -49,9 +49,13 @@ class Synonym:
 
     def removeCommonSynonymes(self, commonSyns):
 
-        for x in commonSyns:
-            if x in self:
-                self.removeSyn(x)
+        syn2rem = set()
+        for x in self:
+            if x in commonSyns:
+                syn2rem.add(x)
+
+        for x in syn2rem:
+            self.removeSyn(x)
 
     def getSynonymes(self):
 
@@ -165,10 +169,63 @@ class Synonym:
         self.__searchReplaceVariant('A', 'alpha', [u"\u03B1", '-'+u"\u03B1"])
         self.__searchReplaceVariant('B', 'beta', [u"\u03B2", '-' + u"\u03B2"])
 
+        self.__searchReplaceVariantInner('alpha', 'a', [u"\u03B1"])
+        self.__searchReplaceVariantInner('beta','b', [u"\u03B2"])
+        self.__searchReplaceVariantInner('gamma','c', [u"\u03B3"])
+
+    def __searchReplaceVariantInner(self, sword, shortw, replaceWith):
+
+        newsyns = set()
+        isword = " " + sword + " "
+
+        longHasSWORD = False
+
+        for x in self.syns:
+            if isword in x or x.endswith(sword):
+                longHasSWORD = True
+                break
+
+        if not longHasSWORD:
+            return
+
+        for x in self.syns:
+
+            m = re.search(r'{shortw}\d+$'.format(shortw=shortw), x)
+
+            for repWith in replaceWith:
+
+                if isword in x:
+                    nsyn = x.replace(sword, repWith)
+                    newsyns.add(nsyn)
+
+                    nsyn = x.replace(isword, repWith)
+                    newsyns.add(nsyn)
+
+                elif x.endswith(sword):
+
+                    nsyn = x[:-len(sword)] + repWith
+                    newsyns.add(nsyn)
+
+                elif m:
+                    fnumber = m.group()
+
+                    xo = x[:-len(fnumber)]
+
+                    if len(xo) > 1 and (xo[-1].isdigit() or xo[-1].isalpha()) and xo[-1] not in ["I"]:
+                        nnumber = fnumber.replace(shortw, repWith)
+                        nsyn = xo + nnumber
+                        newsyns.add(nsyn)
+
+
+        if len(newsyns) > 0:
+            print(self.id, newsyns)
+            for x in newsyns:
+                self.syns.append(x)
+
+
+
 
     def __searchReplaceVariant(self, endChar, endWord, replaceWith):
-
-        endsWithChar = self.id.endswith(endChar)
         endsWithWord = False
 
         for x in self.syns:
@@ -176,16 +233,69 @@ class Synonym:
                 endsWithWord = True
                 break
 
-        if endsWithChar and endsWithWord:
+        newsyns = set()
+        for syn in self.syns:
 
-            for x in replaceWith:
-                aid = self.id.rsplit(endChar, 1)
-                aid.append(x)
+            endsWithChar = syn.endswith(endChar)#self.id.endswith(endChar)
 
-                newsyn = "".join(aid)
+            if endsWithChar and endsWithWord:
 
-                print(self.id + " ADD SYN " + newsyn)
-                self.syns.append(newsyn)
+                for x in replaceWith:
+                    aid = syn.rsplit(endChar, 1)
+                    aid.append(x)
+
+                    newsyn = "".join(aid)
+
+                    print(self.id + ": " + syn + " ADD SYN " + newsyn)
+                    newsyns.add(newsyn)
+
+        for x in newsyns:
+            self.syns.append(x)
+
+    def addHyphenVariants(self):
+
+        newSyns = set()
+        for x in self.syns:
+
+            if x.startswith("HGNC") or x.startswith("MGI"):
+                continue
+
+            if x.startswith("PRKAA1") or self.id == "PRKAA1":
+                print(x)
+
+            m = re.search(r'\d+$', x)
+
+            if m:
+                fnumber = m.group()
+
+                xo = x[:-len(fnumber)]
+                if not xo[-1].isalpha():
+                    continue
+
+                addSyn = xo + "-" + fnumber
+
+                newSyns.add( addSyn )
+
+            m = re.search(r'\d+[AB]$', x)
+
+            if m:
+                fnumber = m.group()
+
+                xo = x[:-len(fnumber)]
+
+                if len(xo) == 0:
+                    continue
+
+                if not xo[-1].isalpha():
+                    continue
+
+                addSyn = xo + "-" + fnumber
+
+                newSyns.add( addSyn )
+
+        for x in newSyns:
+            self.syns.append(x)
+
 
 
     def removeNumbers(self):

@@ -14,6 +14,9 @@ from collections import Counter, defaultdict
 
 import nltk
 
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../../../poreSTAT/")
+
+
 from porestat.utils.DataFrame import DataFrame
 import re
 
@@ -28,7 +31,7 @@ from textmining.SyngrepHitFile import SyngrepHitFile
 from utils.parallel import MapReduce
 from enum import Enum
 
-nlp = spacy.load('en')  # create blank Language class
+nlp = spacy.load('en')  # create blank Language class #en_core_web_lg
 
 
 class Cooccurrence:
@@ -468,13 +471,13 @@ if __name__ == '__main__':
     dataDir = args.datadir
 
     ent1Syns = SynfileMap(resultBase + "/"+args.folder1+"/synfile.map")
-    ent1Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent1Syns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
     ent2Syns = SynfileMap(resultBase + "/"+args.folder2+"/synfile.map")
-    ent2Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent2Syns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
-    relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    relSyns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
     relationSyns = AssocSynfile(args.datadir + '/miRExplore/relations/allrels.csv')
 
