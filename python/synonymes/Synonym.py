@@ -45,6 +45,12 @@ class Synonym:
 
         return None
 
+    def match(self, other):
+
+        if other in self.syns:
+            return True
+
+        return False
 
 
     def removeCommonSynonymes(self, commonSyns):

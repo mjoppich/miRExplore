@@ -11,7 +11,8 @@ from utils.cytoscape_grapher import CytoscapeGrapher
 class DataBasePlotter:
 
     @classmethod
-    def fetchGenes(cls, requestDict, gene2name=None, minPMIDEvCount=0, minTgtCount=0, MIRNASTRPARTS=[miRNAPART.MATURE, miRNAPART.ID], acceptEv = None, verbose=False):
+    def fetchSimple(cls, requestDict):
+
         serverAddress = "https://turingwww.bio.ifi.lmu.de"
         serverPort = None
         serverPath = "yancDB"
@@ -35,10 +36,15 @@ class DataBasePlotter:
         r = requests.post(makeServerAddress(serverAddress, serverPort, serverPath) + "/find_interactions",
                           data=json.dumps(requestDict))
 
-        if verbose:
-            print(r)
 
         jsonRes = r.json()
+
+        return jsonRes
+
+    @classmethod
+    def fetchGenes(cls, requestDict, gene2name=None, minPMIDEvCount=0, minTgtCount=0, MIRNASTRPARTS=[miRNAPART.MATURE, miRNAPART.ID], acceptEv = None, verbose=False):
+
+        jsonRes = cls.fetchSimple(requestDict)
 
         graph = networkx.Graph()
 

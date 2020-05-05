@@ -22,16 +22,19 @@ import re
 
 from database.ORGMIRs import ORGMIRDB
 from synonymes.SynfileMap import SynfileMap
+from textmining.SyngrepHitFile import SyngrepHitFile
 from synonymes.SynonymFile import Synfile, AssocSynfile
 from synonymes.mirnaID import miRNA, miRNAPART
 from textmining.SentenceDB import SentenceDB, RegPos
-from textmining.SyngrepHitFile import SyngrepHitFile
+
 
 
 from utils.parallel import MapReduce
 from enum import Enum
 
-nlp = spacy.load('en')  # create blank Language class #en_core_web_lg
+nlp = spacy.load('/mnt/d/spacy/models/en_core_web_lg-2.2.0/en_core_web_lg/en_core_web_lg-2.2.0/')
+
+#nlp = spacy.load('en')  # create blank Language class #en_core_web_lg
 
 
 class Cooccurrence:

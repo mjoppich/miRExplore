@@ -234,6 +234,50 @@ class miRNA:
             self.part2idx[part] = part.value
             self.idx2part[part.value[1]] = part
 
+        self.mirnaStr = None#mirnaStr
+        self.parts = OrderedDict()
+
+        self.armAlternatives = defaultdict(list)
+
+        self.armAlternatives['5p'] = ['5p', 's' , '']
+        self.armAlternatives['3p'] = ['3p', 'as', '*']
+
+        self.armAlternatives['s'] = ['5p', 's' , '']
+        self.armAlternatives['as'] = ['3p', 'as', '*']
+
+        self.armAlternatives['*'] = ['3p', 'as', '*']
+
+        if mirnaStr != None:
+            self.parseMirnaStr(mirnaStr)
+
+    @classmethod
+    def parseFromComponents(cls, org=None, mature=None, mirid=None, prec=None, mseq=None, arm=None):
+
+        retMir = miRNA(mirnaStr=None)
+
+        if org != None and len(org) > 0:
+            retMir.parts[miRNAPART.ORGANISM] = org
+
+        if mature != None and len(mature) > 0:
+            retMir.parts[miRNAPART.MATURE] = mature
+
+        if mirid != None and len(mirid) > 0:
+            retMir.parts[miRNAPART.ID] = mirid
+
+        if prec != None and len(prec) > 0:
+            retMir.parts[miRNAPART.PRECURSOR] = prec
+
+        if mseq != None and len(mseq) > 0:
+            retMir.parts[miRNAPART.MATURE_SEQS] = mseq
+
+        if arm != None and len(arm) > 0:
+            retMir.parts[miRNAPART.ARM] = arm
+
+        return retMir
+        #miRNAPART.ORGANISM, miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR, miRNAPART.MATURE_SEQS, miRNAPART.ARM
+
+
+    def parseMirnaStr(self, mirnaStr):
 
         if mirnaStr.upper().startswith("MICRO"):
 

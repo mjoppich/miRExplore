@@ -16,7 +16,7 @@ from collections import Counter, defaultdict
 from porestat.utils.DataFrame import DataFrame
 import re
 
-from synonymes.SynfileMap import SynfileMap
+from synonymes.SynfileMap import SynfileMap, SynonymID
 from synonymes.SynonymFile import Synfile, AssocSynfile
 from synonymes.mirnaID import miRNA, miRNAPART
 from textmining.SentenceDB import SentenceDB, RegPos
@@ -28,7 +28,7 @@ import pyparsing as pp
 from utils.parallel import MapReduce
 from enum import Enum
 
-nlp = spacy.load('en')  # create blank Language class #en_core_web_lg
+nlp = spacy.load('/mnt/d/spacy/models/en_core_web_lg-2.2.0/en_core_web_lg/en_core_web_lg-2.2.0/')  # create blank Language class #en_core_web_lg
 
 
 class Cooccurrence:
@@ -57,28 +57,41 @@ class Cooccurrence:
     def getIdTuple(self):
         return (self.gene, self.mirna)
 
-def get_sdp_path(doc, subj, obj, lca_matrix):
+def get_sdp_path(doc, subj, obj):
     lca_matrix = doc.get_lca_matrix()
     lca = lca_matrix[subj, obj]
 
+    #    for x in [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]:
+
+
     current_node = doc[subj]
-    subj_path = [current_node]
+    subj_path = [(current_node, current_node.pos_, current_node.dep_, False)]
     if lca != -1:
         if lca != subj:
             while current_node.head.i != lca:
+
+                if current_node.i == current_node.head.i:
+                    break
+
                 current_node = current_node.head
-                subj_path.append(current_node)
-            subj_path.append(current_node.head)
+                subj_path.append((current_node, current_node.pos_, current_node.dep_, subj_path[-1][0] in current_node.conjuncts))
+            subj_path.append((current_node.head, current_node.head.pos_, current_node.head.dep_, subj_path[-1][0] in current_node.head.conjuncts))
             current_node = doc[obj]
-    obj_path = [current_node]
+    obj_path = [(current_node, current_node.pos_, current_node.dep_, False)]
     if lca != -1:
         if lca != obj:
             while current_node.head.i != lca:
-                current_node = current_node.head
-                obj_path.append(current_node)
-            obj_path.append(current_node.head)
+                if current_node.i == current_node.head.i:
+                    break
 
-    return subj_path + obj_path[::-1][1:]
+                current_node = current_node.head
+                obj_path.append((current_node, current_node.pos_, current_node.dep_, obj_path[-1][0] in current_node.conjuncts))
+            obj_path.append((current_node.head, current_node.head.pos_, current_node.head.dep_, obj_path[-1][0] in current_node.head.conjuncts))
+
+    intElem = (subj_path[-1][0], subj_path[-1][1], subj_path[-1][2], subj_path[-1][3] or obj_path[-1][3])
+
+    retpath = subj_path[:-1] + [intElem] + obj_path[::-1][1:]
+    return retpath
 
 def findAssocs(assocs, text, textLoc):
     res = []
@@ -209,6 +222,9 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentence, relHits):
 
     if len(sentHits) > 0:
 
+        nlp.tokenizer.add_special_case(ent1Hit.hitSyn, [{'ORTH': ent1Hit.hitSyn, 'TAG': 'NNP'}])
+        nlp.tokenizer.add_special_case(ent2Hit.hitSyn, [{'ORTH': ent2Hit.hitSyn, 'TAG': 'NNP'}])
+
         doc = nlp(sentence.text)
         alldeps = [(t.i, t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]
         verbDeps = [x for x in alldeps if x[3] == 'VERB']
@@ -286,12 +302,53 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentence, relHits):
 
 
 
-        stackRes = analyseStacks(stacks[0], stacks[1])
-        #analyseConjugation(doc[22], doc[27])
-        verbRes = analyseVerbs(doc, doc[lWord], doc[rWord])
-        conjRes = analyseConjunction(stacks[0], stacks[1])
+        if lWord < rWord:
+            stackRes = analyseStacks(stacks[0], stacks[1])
+            #analyseConjugation(doc[22], doc[27])
+            verbRes = analyseVerbs(doc, doc[lWord], doc[rWord])
+            conjRes = analyseConjunction(stacks[0], stacks[1])
+            sdpRes = get_sdp_path(doc, lWord, rWord)
+        else:
+            stackRes = analyseStacks(stacks[1], stacks[0])
+            # analyseConjugation(doc[22], doc[27])
+            verbRes = analyseVerbs(doc, doc[rWord], doc[lWord])
+            conjRes = analyseConjunction(stacks[1], stacks[0])
+            sdpRes = get_sdp_path(doc, rWord, lWord)
 
-        if (len(stackRes) > 0 or len(verbRes) > 0) and False:
+
+        #sdp must have 'VERB' which is not "acl"
+        #sdp must have one nsubj or nsubjpass
+        #sdp may not have two nsubj
+
+        # passive: endswith('pass') in sdp
+
+        def checkSDP(sdps):
+            sdpPass = True
+            passive = False
+            negated = False
+            subjCount = 0
+
+            for sdp in sdps:
+                if sdp[1] == "VERB" and sdp[2] == "acl":
+                    sdpPass = False
+
+                if sdp[2] in ['nsubjpass']:
+                    passive=True
+
+                if sdp[2] in ['nsubj', 'nsubjpass']:
+                    subjCount += 1
+
+                if sdp[2] in ['neg']:
+                    negated = True
+
+            if subjCount > 1: # hint for conj. sentence parts
+                sdpPass = False
+
+            return sdpPass, passive, negated
+        #verb before conj??? #verbcount >= 1
+        sdpPass, assocPassive, assocNegated = checkSDP(sdpRes)
+
+        if (len(stackRes) > 0 or len(verbRes) > 0) != sdpPass or True:
             print(sentence.text, file=sys.stderr)
             print(lWord, doc[lWord], file=sys.stderr)
             print(rWord, doc[rWord], file=sys.stderr)
@@ -300,8 +357,13 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentence, relHits):
             print("analyseVerbs", verbRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in verbRes], file=sys.stderr)
             print("analyseConjunction", conjRes,
                   [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (t, s, r) in conjRes], file=sys.stderr)
+            print("SDP", sdpRes, file=sys.stderr)
+
+            print("Negated", assocNegated, "Passive", assocPassive, "SDP passed", sdpPass, file=sys.stderr)
 
             print( file=sys.stderr)
+            print( file=sys.stderr)
+
 
 
 
@@ -334,7 +396,6 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentence, relHits):
 
             assocSent = str(ent1Hit.documentID)
             assocWord = rel.synonym.id
-
             assocType = relationSyns.synid2class[rel.synonym.id]
 
             allRelations.append(
@@ -352,7 +413,10 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentence, relHits):
                     len(stackRes),
                     len(verbRes),
                     len(conjRes),
-                    relexRes
+                    relexRes,
+                    sdpPass,
+                    assocPassive,
+                    assocNegated
                 )
             )
 
@@ -376,7 +440,7 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentence, relHits):
                 ent2Hit.position,
                 None,
                 None,
-                0,0,0,relexRes
+                0,0,0,relexRes,0,None, None
             )
         )
 
@@ -452,12 +516,32 @@ def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
     setAllEnt1 = set()
     if args.folderType1.upper() == 'MIRNA':
         setAllEnt1 = set([x for x in ent1Hits if chekSynHitMirna(x)])
+
+        allAugmentEnts = []
+        for entHit in setAllEnt1:
+            sentence = sentDB.get_sentence(entHit.documentID)
+            allY = augmentMiRNAs(sentence, entHit, ent1Syns)
+            allAugmentEnts += allY
+
+        ent1Hits = allAugmentEnts
+        setAllEnt1 = allAugmentEnts
     else:
         setAllEnt1 = set([x for x in ent1Hits if checkSynHit(x)])
 
     setAllEnt2 = set()
     if args.folderType2.upper() == 'MIRNA':
         setAllEnt2 = set([x for x in ent2Hits if chekSynHitMirna(x)])
+
+        allAugmentEnts = []
+        for entHit in setAllEnt2:
+            sentence = sentDB.get_sentence(entHit.documentID)
+            allY = augmentMiRNAs(sentence, entHit, ent2Syns)
+            allAugmentEnts += allY
+
+        ent2Hits = allAugmentEnts
+        setAllEnt2 = allAugmentEnts
+
+
     else:
         setAllEnt2 = set([x for x in ent2Hits if checkSynHit(x)])
 
@@ -558,84 +642,8 @@ def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
                     foundCooc.sameSentence = True
 
                     sentence = sentDB.get_sentence(x.documentID)
-
-                    #get sentence from position to next blank
-                    nextWord = sentence.text.find(" ", y.position[1])
-
                     allX = [x]
                     allY = [y]
-
-                    if nextWord > y.position[1]:
-
-                        newMirna = []
-
-                        textForSent = sentence.text.encode("utf-8")
-
-                        foundText = textForSent[y.position[0]:nextWord]
-                        addText = textForSent[y.position[1]:nextWord]
-
-                        if len(addText) > 1 and not foundText in [",", ";", "-"] and foundText.startswith("miR"):
-
-                            mirnapp = "miR" + pp.Optional("-") + pp.Group(
-                                pp.Combine(pp.Word(pp.nums)).setResultsName("mirnum") + pp.Optional(
-                                    pp.Word(pp.alphas, max=1)).setResultsName("var") + pp.Optional(
-                                    pp.Or(["-3p", "-5p"])).setResultsName("mod"))
-                            mirnapp += pp.ZeroOrMore(
-                                pp.Group(
-                                    pp.Combine("/" + pp.Optional("-")) + pp.Combine(
-                                        pp.Optional(pp.Word(pp.nums))).setResultsName("mirnum") +
-                                    pp.Combine(pp.Optional(pp.Word(pp.srange("[a-z]"), max=1))).setResultsName("var") +
-                                    pp.Optional(pp.Or(["-3p", "-5p"])).setResultsName("mod")
-                                )
-                            )
-
-                            ppRes = mirnapp.parseString( foundText )
-
-                            ppResMir = []
-
-                            for ppr in ppRes:
-                                if type(ppr) == pp.ParseResults:
-                                    ppResMir.append(ppr)
-
-                            ppMirNum = None
-                            ppMirVar = ""
-                            ppMirMod = ""
-                            for pi, ppr in enumerate(ppResMir):
-                                print(ppr, ppr.get("mirnum", "--"), ppr.get("var", "--"), ppr.get("mod", '--'))
-
-                                if ppr.get("mirnum", None) == None and ppr.get("var", None) == None and ppr.get("mod", None) == None:
-                                    continue
-
-                                if len(ppr.get("mirnum", "")) == 0 and len(ppr.get("var", "")) == 0 and len(ppr.get("mod", "")) == 0:
-                                    continue
-
-                                ppMirNumTmp = ppr.get("mirnum", None)
-
-                                if ppMirNumTmp != None and len(ppMirNumTmp) > 0:
-                                    ppMirNum = ppMirNumTmp
-
-                                ppMirVar = ppr.get("var", "")
-                                ppMirMod = ppr.get("mod", "")
-
-                                if ppMirNum == None:
-                                    continue
-
-                                newMIRNA = "miR-{}{}{}".format(ppMirNum, ppMirVar, ppMirMod)
-
-                                ynew = copy.deepcopy(y)
-                                ynew.hitSyn = newMIRNA
-                                ynew.position = (ynew.position[0], nextWord)
-
-                                hmirna = handleHarmonizedNameMirna(ynew)
-
-                                if hmirna == None:
-                                    continue
-
-                                newMirna.append(ynew)
-
-                        if len(newMirna) > 0:
-                            allY = newMirna
-
 
                     if foundCooc.ent1type == 'MIRNA':
                         #check whether this is a special version
@@ -651,6 +659,126 @@ def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
             allCoocs.append(foundCooc)
 
     return allCoocs
+
+
+def augmentMiRNAs(sentence, y, entSyns):
+    # get sentence from position to next blank
+    nextWord = sentence.text.find(" ", y.position[1])
+
+    allY = [y]
+
+    if nextWord > y.position[1]:
+
+        newMirna = []
+
+        textForSent = sentence.text.encode("utf-8")
+
+        foundText = textForSent[y.position[0]:nextWord].decode(errors="replace")
+        addText = textForSent[y.position[1]:nextWord].decode(errors="replace")
+
+        if len(addText) > 1 and not foundText in [",", ";", "-"] and foundText.startswith("miR"):
+
+            ppResMir = []
+
+            try:
+
+                mirnapp = "miR-" + pp.Group(pp.Combine(pp.Word(pp.nums)).setResultsName("mirnum") + pp.Optional(
+                    pp.Word(pp.alphas, max=1)).setResultsName("var") + pp.Optional(
+                    "-" + pp.Combine(pp.Word(pp.nums, max=1)).setResultsName("prec") + pp.FollowedBy(
+                        pp.Or(["-", "/"]))) + pp.Optional(pp.Or(["-3p", "-5p"])).setResultsName("mod"))
+                mirnapp += pp.ZeroOrMore(
+                    pp.Group(
+                        pp.Combine("/" + pp.Optional("-")) + pp.Combine(pp.Optional(pp.Word(pp.nums))).setResultsName(
+                            "mirnum") +
+                        pp.Combine(pp.Optional(pp.Word(pp.srange("[a-z]"), max=1))).setResultsName("var") +
+                        pp.Optional("-" + pp.Combine(pp.Word(pp.nums, max=1)).setResultsName("prec") + pp.FollowedBy(
+                            pp.Or(["-", "/"]))) +
+                        pp.Optional(pp.Or(["-3p", "-5p"])).setResultsName("mod")
+                    )
+                )
+                mirnapp += pp.StringEnd()
+
+                ppRes = mirnapp.parseString(foundText, parseAll=True)
+
+
+                for ppr in ppRes:
+                    if type(ppr) == pp.ParseResults:
+                        ppResMir.append(ppr)
+
+            except pp.ParseException as e:
+                pass
+
+            if len(ppResMir) > 1:
+
+                ppMirNum = None
+                ppMirVar = ""
+                ppMirMod = ""
+                for pi, ppr in enumerate(ppResMir):
+
+                    if ppr.get("mirnum", None) == None and ppr.get("var", None) == None and ppr.get("prec", None) == None and ppr.get("mod", None) == None:
+                        continue
+
+                    if len(ppr.get("mirnum", "")) == 0 and len(ppr.get("var", "")) == 0 and len(ppr.get("prec", "")) == 0 and len(ppr.get("mod", "")) == 0:
+                        continue
+
+                    ppMirNumTmp = ppr.get("mirnum", None)
+
+                    if ppMirNumTmp != None and len(ppMirNumTmp) > 0:
+                        ppMirNum = ppMirNumTmp
+
+                    ppMirVar = ppr.get("var", "")
+                    ppMirMod = ppr.get("mod", "")
+                    ppMirPrec = ppr.get("prec", "")
+
+                    if ppMirNum == None:
+                        continue
+
+                    #print(ppr, ppr.get("mirnum", "--"), ppr.get("var", "--"), ppr.get("prec", "--"), ppr.get("mod", '--'))
+
+                    newMIRNA = "miR-{}{}{}".format(ppMirNum, ppMirVar, ppMirMod)
+
+                    miObj = miRNA.parseFromComponents(mature="miR", mirid=ppMirNum, prec=ppMirVar, mseq=ppMirPrec, arm=ppMirMod)
+
+                    #print(newMIRNA,miObj)
+
+                    accSyns = []
+
+                    for synFileID in entSyns.loadedSynFiles:
+                        synFile = entSyns.loadedSynFiles[synFileID]
+                        for sidx, syn in enumerate(synFile.mSyns):
+
+                            synObj = synFile.mSyns[syn]
+
+                            if synObj.match(newMIRNA):
+                                accSyns.append((synFileID, synObj, sidx))
+
+
+                    for (synFileID, accSyn, sidx) in accSyns:
+                        ynew = copy.deepcopy(y)
+                        ynew.hitSyn = newMIRNA
+                        ynew.foundSyn = newMIRNA
+
+                        ynew.position = (ynew.position[0], nextWord)
+                        ynew.synonym = accSyn
+
+                        newSynID = SynonymID()
+                        newSynID.synfile = synFileID
+                        newSynID.synid = sidx
+
+                        ynew.synonymID = newSynID
+
+                        hmirna = handleHarmonizedNameMirna(ynew)
+
+                        if hmirna == None:
+                            continue
+
+                        newMirna.append(ynew)
+
+        if len(newMirna) > 1:
+            allY = newMirna
+
+    return allY
+
 
 def analyseFile(splitFileIDs, env):
 
@@ -769,6 +897,28 @@ if __name__ == '__main__':
     #relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
     relSyns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
+
+    """
+    # for all syns
+    def addSynWords(synfilemap):
+        for synfileID in synfilemap.loadedSynFiles:
+            synfile = synfilemap.loadedSynFiles[synfileID]
+
+            print(synfileID, file=sys.stderr)
+
+            for synID in synfile.mSyns:
+                synonym = synfile.mSyns[synID]
+
+                allSyns = sorted([x for x in synonym.syns], key=lambda x: len(x))
+
+                for syn in allSyns[:min(3, len(allSyns))]:
+                    synName = syn
+                    #nlp.vocab[synName]
+                    nlp.tokenizer.add_special_case(synName, [{'ORTH': syn, 'TAG': 'NNP'}])
+
+    addSynWords(ent1Syns)
+    addSynWords(ent2Syns)
+    """
 
     relationSyns = AssocSynfile(args.datadir + '/miRExplore/obodir/allrels.csv')
 

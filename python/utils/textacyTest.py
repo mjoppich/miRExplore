@@ -1,8 +1,10 @@
+from collections import Counter
+
 import spacy
 from spacy import displacy
 import textacy
 
-nlp = spacy.load('en')
+
 #alldeps = [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]
 
 
@@ -73,14 +75,15 @@ def analyseConjunction(stackL, stackR):
     tokensL = [x[0] for x in stackL]
     tokensR = [x[0] for x in stackR]
 
-    ret = []
+    retL = [stackL[0]]
+    retR = [stackR[0]]
 
     for elem in stackL:
 
         if elem[0].dep_ == "conj":
             if elem[0].head in tokensL:
-                if not elem in ret:
-                    ret.append(elem)
+                if not elem in retL:
+                    retL.append(elem)
 
         if elem[0] in tokensR:
             break
@@ -90,13 +93,14 @@ def analyseConjunction(stackL, stackR):
         if elem[0].dep_ == "conj":
             if elem[0].head in tokensR:
 
-                if not elem in ret:
-                    ret.append(elem)
+                if not elem in retR:
+                    retR.append(elem)
 
         if elem[0] in tokensL:
             break
 
-    return ret
+    return set(retL).intersection(set(retR))
+
 
 
 
@@ -124,25 +128,35 @@ testCases = [
 (u'It has been shown that macrophage can communicate with endothelial cells via ICAM1 and miR-98', 5, 14),
     (u'MicroRNA-495 regulates the proliferation and apoptosis of human umbilical vein endothelial cells by targeting chemokine CCL2', 0, 15),
     (u'miR-100 suppresses the migration of phages by targeting FZD-8', 0, 8),
-    (u'Furthermore, luciferase reporter assay analysis identified ZEB2 as a direct target of miR-215', 7, 13),
-(u'Furthermore, some chemical influences both ZEB2 and miR-215', 6, 8),
+    (u'Furthermore, luciferase reporter assay analysis identified ZEB2 as a direct target of miR-215', [(7, 13)]),
+    (u'Furthermore, some chemical influences both ZEB2 and miR-215', [(6, 8)]),
     (u'Dual-luciferase reporter assays showed that miR-195-5p binds the 3\'-untranslated region (UTR) of CDK8, suggesting that CDK8 should be a direct target of miR-195-5p', 7,16),
     (u'Antitumor miR-150-5p and miR-150-3p inhibit cancer cell aggressiveness by targeting SPOCK1 in head and neck squamous cell carcinoma', 1, 10),
-    (u'These findings demonstrated that miR‑186 acted as a tumor suppressor by targeting IGF‑1R in glioma, suggesting miR‑186 may be a potential therapeutic target for the treatment of this disease.', 4,12)
+    (u'These findings demonstrated that miR‑186 acted as a tumor suppressor by targeting IGF‑1R in glioma, suggesting miR‑186 may be a potential therapeutic target for the treatment of this disease.', 4,12),
+    (u'One potential microRNA that regulates Bcan is miR-9 and overexpression of miR-9 can partly rescue the effects of Dicer1 deletion on the MG phenotype', [(5, 7), (12, 19)]),
+    (u'The levels of miR-330-3p were positively correlated with the status of TNM stage (p = 0.011) and lymph node metastasis', [(3, 12)]),
+    (u'In conclusion, our findings show that miR-140 acts as a tumor suppressor in OS by targeting HDAC4', [(17, 7)]),
+    (u'Moreover, a bioinformatics prediction indicated that the histone deacetylase 4 (HDAC4) is a target gene of miR-140 and is involved in miR-140-mediated suppressive effects', [(9, 19)])
+    #(u'One potential microRNA that regulates Bcan is miR-9', [(5, 7)])
 ]
 
+"We provide evidence that exposure of monocyte-derived dendritic cells (MDDCs) to recombinant HIV-1 R5 gp120, but not to CCR5 natural ligand CCL4, influences the expression of a panel of miRs"
+
+
 #29099614.2.11
-userMirs = ['miR-150-5p', 'miR-150-3p', 'miR-195-5p', 'miR-486-5p', 'miR‑186']
+userMirs = ['miR-150-5p', 'miR-150-3p', 'miR-195-5p', 'miR-486-5p', 'miR‑186', 'miR-9', 'miR-330-3p', 'miR-140']
+nlp = spacy.load('/mnt/d/spacy/models/en_core_web_lg-2.2.0/en_core_web_lg/en_core_web_lg-2.2.0/')  # create blank Language class #en_core_web_lg
+#nlp = spacy.load('/mnt/d/spacy/models/en_core_web_sm-2.2.0/en_core_web_sm/en_core_web_sm-2.2.0/')
 
 for mir in userMirs:
 
     umir = mir
 
     nlp.vocab[umir]
-    nlp.tokenizer.add_special_case(umir, [{'ORTH': mir, 'TAG': 'NNP'}])
+    nlp.tokenizer.add_special_case(umir, [{'ORTH': mir, 'POS': 'NOUN', 'TAG': 'NN', "NER": "MIRNA"}])
 
 
-testCases = [testCases[-1]]
+testCases = [testCases[-2]]
 
 
 def get_sdp_path(doc, subj, obj, lca_matrix):
@@ -150,66 +164,85 @@ def get_sdp_path(doc, subj, obj, lca_matrix):
 
     current_node = doc[subj]
     subj_path = [current_node]
+
+    seenNodes = Counter()
+
     if lca != -1:
         if lca != subj:
             while current_node.head.i != lca:
                 current_node = current_node.head
                 subj_path.append(current_node)
+                seenNodes[current_node] += 1
+
+                if seenNodes[current_node] > 15:
+                    return subj_path + [obj]
+
             subj_path.append(current_node.head)
             current_node = doc[obj]
+
+    seenNodes = Counter()
+
     obj_path = [current_node]
     if lca != -1:
         if lca != obj:
             while current_node.head.i != lca:
                 current_node = current_node.head
                 obj_path.append(current_node)
+                seenNodes[current_node] += 1
+
+                if seenNodes[current_node] > 15:
+                    return subj_path + [obj]
+
             obj_path.append(current_node.head)
 
     return subj_path + obj_path[::-1][1:]
 
 for testCase in testCases:
 
+    for lwIdx, rwIdx in testCase[1]:
 
+        doc = nlp(testCase[0])
+        lWord = doc[lwIdx]
+        rWord = doc[rwIdx]
 
-    if testCase[1] == 0 and testCase[2] == 0:
-        continue
+        for t in doc:
+            x = (t.idx, t.text, t.dep_, t.pos_, t.head.text)
+            print(x)
 
-    doc = nlp(testCase[0])
-    lWord = doc[testCase[1]]
-    rWord = doc[testCase[2]]
+        print(testCase[0])
+        print(lWord, rWord, lwIdx, rwIdx)
 
-    for t in doc:
-        x = (t.idx, t.text, t.dep_, t.pos_, t.head.text)
-        print(x)
+        for chunk in doc.noun_chunks:
+            print(chunk.text, chunk.root.text, chunk.root.dep_,
+                  chunk.root.head.text)
 
-    print(testCase[0])
-    print(lWord, rWord)
+        sdp = get_sdp_path(doc, lwIdx, rwIdx, doc.get_lca_matrix())
+        print(sdp)
 
-    sdp = get_sdp_path(doc, testCase[1], testCase[2], doc.get_lca_matrix())
-    print(sdp)
+        tuples = textacy.extract.subject_verb_object_triples(doc)
+        ntuples = []
+        if tuples:
+            ntuples = list(tuples)
 
-    tuples = textacy.extract.subject_verb_object_triples(doc)
+        print("svo", ntuples)
 
-    if tuples:
-        ntuples = list(tuples)
+        #for x in [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]:
+        #    print(x)
 
-    #for x in [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]:
-    #    print(x)
+        stacks = []
+        for token in [lWord, rWord]:
+            stack = getStack(token)
+            stacks.append(stack)
+            print("Stack", token, ":", stack)
 
-    stacks = []
-    for token in [lWord, rWord]:
-        stack = getStack(token)
-        stacks.append(stack)
-        print(stack)
+        stackRes = analyseStacks(stacks[0], stacks[1])
+        print("analyseStacks", stackRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (l, r, t) in stackRes])
+        # analyseConjugation(doc[22], doc[27])
+        verbRes = analyseVerbs(doc, lWord, rWord)
+        print("analyseVerbs", verbRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in verbRes])
 
-    stackRes = analyseStacks(stacks[0], stacks[1])
-    print("analyseStacks", stackRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (l, r, t) in stackRes])
-    # analyseConjugation(doc[22], doc[27])
-    verbRes = analyseVerbs(doc, lWord, rWord)
-    print("analyseVerbs", verbRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in verbRes])
-
-    conjRes = analyseConjunction(stacks[0], stacks[1])
-    print("analyseConjunction", conjRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (t, s, r) in conjRes])
+        conjRes = analyseConjunction(stacks[0], stacks[1])
+        print("analyseConjunction", conjRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (t, s, r) in conjRes])
 
     if len(testCases) == 1:
         displacy.serve(doc, style="dep", port=5005)

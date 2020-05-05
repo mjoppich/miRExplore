@@ -1,6 +1,6 @@
 from collections import defaultdict
-from nertoolkit.geneontology.GeneOntology import GeneOntology
 
+from synonymes.GeneOntology import GeneOntology
 from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID

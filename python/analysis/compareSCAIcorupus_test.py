@@ -173,6 +173,8 @@ with open(os.path.join(scaiBase, scaiFile), 'r') as fin:
         if not x in foundRels:
             print("scai has more", x)
 
+    relevantDocs = set()
+
     for docid in scaiRels:
 
         if docid in invalidDocs:
@@ -193,4 +195,8 @@ with open(os.path.join(scaiBase, scaiFile), 'r') as fin:
 
         resInts = (scaiInts.difference(mirInts), mirInts.difference(scaiInts), mirInts.intersection(scaiInts))
 
-        print(docid, resInts[0], resInts[1], resInts[2], sep="\t")
+        #print(docid, resInts[0], resInts[1], resInts[2], sep="\t")
+        print(docid, scaiInts, mirInts, sep="\t")
+        relevantDocs.add(docid)
+
+    print("\n".join(relevantDocs))

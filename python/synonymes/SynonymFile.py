@@ -33,6 +33,7 @@ class Synfile:
 
         self.mSyns = {}
         self.line2syn = {}
+        self.synid2line = {}
 
         self.synIDs = None
         self.synIDidx = None
@@ -50,6 +51,7 @@ class Synfile:
 
             self.mSyns[ oSyn.id ] = oSyn
             self.line2syn[iLine] = oSyn.id
+            self.synid2line[oSyn.id] = iLine
 
         with codecs.open(sFileLocation, 'r', 'latin1') as infile:
             idx = 0
