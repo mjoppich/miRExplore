@@ -11,16 +11,25 @@ from utils.tmutils import normalize_gene_names
 
 
 scaiBase = "/mnt/d/owncloud/data/miRExplore/scai_corpus/"
-scaiFile = "miRNA_train_fixed.xml"
-#scaiFile = "miRNA_test_fixed.xml"
+
+
+if sys.argv[1].upper() == "TRAIN":
+    scaiFile = "miRNA_train_fixed.xml"
+elif sys.argv[1].upper() == "TEST":
+    scaiFile = "miRNA_test_fixed.xml"
+else:
+    exit(-1)
 
 normGeneSymbols = normalize_gene_names(path=scaiBase + "/../obodir/" + "/hgnc_no_withdrawn.syn")
 
 
 from lxml import etree
+import spacy
+
+nlp = spacy.load('/mnt/d/spacy/models/en_core_sci_lg-0.2.4/en_core_sci_lg/en_core_sci_lg-0.2.4/')
 
 
-relChecker = SentenceRelationChecker()
+relChecker = SentenceRelationChecker(nlp)
 
 correctIdentified = 0
 incorrectIdentified = 0

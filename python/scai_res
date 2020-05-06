@@ -1578,6 +1578,7 @@ full sentence Western blot analysis revealed unchanged total Smad2/3 protein lev
 {'accept_relation': True, 'check_results': {'conj': True, 'sdp': True, 'compartment': True, 'context': True, 'passive': False, 'negation': False}, 'tagged_sent': 'Western blot analysis revealed unchanged total Smad2/3 protein levels, but reduced <e2>phospho-Smad2/3</e2> (p-Smad2/3) and increased Smad6/7 protein levels in the <e1>miR-106b</e1> stably transfected cell line.', 'full_sentence': '', 'entity1': {'entity_type': 'gene', 'entity_type_token': 'e2', 'entity_location': (83, 98), 'entity_text': 'phospho-Smad2/3'}, 'entity2': {'entity_type': 'mirna', 'entity_type_token': 'e1', 'entity_location': (155, 163), 'entity_text': 'miR-106b'}}
 Incorrect Sentence End
 
+transfected context
 
 geneword p-Smad2/3 mirword miR-106b
 Incorrect Sentence Start
@@ -1702,6 +1703,7 @@ full sentence Interestingly, both miRNAs are capable of binding directly to <e2>
 {'accept_relation': False, 'check_results': {'conj': True, 'sdp': True, 'compartment': False, 'context': True, 'passive': False, 'negation': False}, 'tagged_sent': 'Interestingly, both miRNAs are capable of binding directly to <e2>TDP-43</e2> in different positions: within the miRNA sequence itself (let-7b) or in the hairpin precursor (<e1>miR-663</e1>).', 'full_sentence': '', 'entity1': {'entity_type': 'gene', 'entity_type_token': 'e2', 'entity_location': (62, 68), 'entity_text': 'TDP-43'}, 'entity2': {'entity_type': 'mirna', 'entity_type_token': 'e1', 'entity_location': (164, 171), 'entity_text': 'miR-663'}, 'sentfrags_check': False}
 Incorrect Sentence End
 
+": " must not split sentence
 
 geneword (APP)-converting mirword miR-298
 Incorrect Sentence Start
@@ -1730,6 +1732,7 @@ full sentence Using transiently transfected murine neuronal N2a cells in culture
 {'accept_relation': True, 'check_results': {'conj': True, 'sdp': True, 'compartment': True, 'context': True, 'passive': False, 'negation': False}, 'tagged_sent': 'Using transiently transfected murine neuronal N2a cells in culture, in parallel to a mouse model of AD, we were able to demonstrate a role for two miRNAs (<e1>miR-298</e1> and miR-328) in the regulation of beta-amyloid (Abeta) precursor protein (<e2>APP</e2>)-converting enzyme (BACE) messenger RNA (mRNA) translation, thereby providing key insights into the molecular basis underlying BACE deregulation in AD.', 'full_sentence': '', 'entity1': {'entity_type': 'mirna', 'entity_type_token': 'e1', 'entity_location': (155, 162), 'entity_text': 'miR-298'}, 'entity2': {'entity_type': 'gene', 'entity_type_token': 'e2', 'entity_location': (237, 240), 'entity_text': 'APP'}}
 Incorrect Sentence End
 
+impossible
 
 geneword BACE mirword miR-298
 geneword BACE mirword miR-298
@@ -1761,6 +1764,7 @@ full sentence Using transiently transfected murine neuronal N2a cells in culture
 {'accept_relation': True, 'check_results': {'conj': True, 'sdp': True, 'compartment': True, 'context': True, 'passive': False, 'negation': False}, 'tagged_sent': 'Using transiently transfected murine neuronal N2a cells in culture, in parallel to a mouse model of AD, we were able to demonstrate a role for two miRNAs (miR-298 and <e1>miR-328</e1>) in the regulation of beta-amyloid (Abeta) precursor protein (<e2>APP</e2>)-converting enzyme (BACE) messenger RNA (mRNA) translation, thereby providing key insights into the molecular basis underlying BACE deregulation in AD.', 'full_sentence': '', 'entity1': {'entity_type': 'mirna', 'entity_type_token': 'e1', 'entity_location': (167, 174), 'entity_text': 'miR-328'}, 'entity2': {'entity_type': 'gene', 'entity_type_token': 'e2', 'entity_location': (237, 240), 'entity_text': 'APP'}}
 Incorrect Sentence End
 
+impossible from co-occ
 
 geneword BACE mirword miR-328
 geneword BACE mirword miR-328
@@ -1850,6 +1854,7 @@ full sentence Because of its known connection to glioma biology, we focused on <
 {'accept_relation': True, 'check_results': {'conj': True, 'sdp': True, 'compartment': True, 'context': True, 'passive': False, 'negation': False}, 'tagged_sent': 'Because of its known connection to glioma biology, we focused on <e1>miR-21</e1> among seven miRNAs influenced by <e2>IFN-beta</e2>.', 'full_sentence': '', 'entity1': {'entity_type': 'mirna', 'entity_type_token': 'e1', 'entity_location': (65, 71), 'entity_text': 'miR-21'}, 'entity2': {'entity_type': 'gene', 'entity_type_token': 'e2', 'entity_location': (105, 113), 'entity_text': 'IFN-beta'}}
 Incorrect Sentence End
 
+is interaction
 
 geneword IFN-beta mirword miR-21
 geneword IFN-beta mirword miR-21
@@ -1885,6 +1890,8 @@ SDP     : [(IFN-beta-mediated, 'ADJ', 'amod', False), (suppression, 'NOUN', 'dob
 full sentence We did reporter assays to elucidate the <e2>IFN-beta</e2>-mediated suppression of <e1>miR-21</e1>.
 {'accept_relation': True, 'check_results': {'conj': True, 'sdp': True, 'compartment': True, 'context': True, 'passive': False, 'negation': False}, 'tagged_sent': 'We did reporter assays to elucidate the <e2>IFN-beta</e2>-mediated suppression of <e1>miR-21</e1>.', 'full_sentence': '', 'entity1': {'entity_type': 'gene', 'entity_type_token': 'e2', 'entity_location': (40, 48), 'entity_text': 'IFN-beta'}, 'entity2': {'entity_type': 'mirna', 'entity_type_token': 'e1', 'entity_location': (73, 79), 'entity_text': 'miR-21'}}
 Incorrect Sentence End
+
+is interaction!
 
 
 geneword (STAT3)-expressing mirword miR-21

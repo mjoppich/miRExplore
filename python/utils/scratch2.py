@@ -199,6 +199,13 @@ testCases = [
     (u"We further demonstrate that miR-659 can regulate GRN expression in vitro, with miR-659 binding more efficiently to the high risk T-allele of rs5848 resulting in augmented translational inhibition of GRN.", 7, 13),
     (u"These findings support a causal link between let-7 and high-mobility group A2 whereby loss of let-7 expression induces high-mobility group A2 upregulation that represents an important mechanism in pituitary tumorigenesis and progression.", 7, 20),
     (u"Here we found that miR-106b and TGF-β type II receptor (TβR II) were aberrantly expressed in APPswe/PS∆E9 mice (a double transgenic mouse model for AD).", 4, 12),
+    (u"Interestingly, both miRNAs are capable of binding directly to TDP-43 in different positions: within the miRNA sequence itself (let-7b) or in the hairpin precursor (miR-663).", 10, 21),
+    (u"We further demonstrate that miRNAs belonging to the miR-15 family are potent regulators of ERK1 expression in mouse neuronal cells and co-expressed with ERK1/2 in vivo.", 8, 23),
+    (u"A direct correlation was found between the downregulation of miR-200a and the upregulation of beta-catenin in human meningioma samples.", 9, 14),
+    (u"Three bioinformatics-verified miRNA-128 targets, angiopoietin-related growth factor protein 5 (ARP5; ANGPTL6), a transcription suppressor that promotes stem cell renewal and inhibits the expression of known tumor suppressor genes involved in senescence and differentiation, Bmi-1, and a transcription factor critical for the control of cell-cycle progression, E2F-3a, were found to be up-regulated.", 2, 39),
+(u"Reduction of miR-21 induces glioma cell apoptosis via activating caspase 9 and 3.  Extensive data indicate that miR-21 plays a critical role in gliomagenesis, however, knowledge is limited on the mechanism of action of miR-21, including cell proliferation, apoptosis, and migration.", 2, 10),
+
+
 ]
 
 #29099614.2.11

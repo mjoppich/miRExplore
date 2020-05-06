@@ -1,15 +1,14 @@
 from collections import defaultdict
-import spacy
 import regex as re
 
-nlp = spacy.load('/mnt/d/spacy/models/en_core_sci_lg-0.2.4/en_core_sci_lg/en_core_sci_lg-0.2.4/')
 #nlp = spacy.load("/mnt/d/spacy/models/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
 
 
 class SentenceRelationChecker:
 
-    def __init__(self):
+    def __init__(self, nlp):
         self.relCheck = MirGeneRelCheck()
+        self.nlp = nlp
 
     def fixPos(self, pos, sentence):
         posElems = [(idx, i, ord(i)) for idx, i in enumerate(sentence) if ord(i) > 127 and idx < pos]
@@ -39,7 +38,7 @@ class SentenceRelationChecker:
         if not sent.endswith("."):
             sent += "."
 
-        doc = nlp(sent)
+        doc = self.nlp(sent)
 
         e1Token = None
         e2Token = None
@@ -173,7 +172,7 @@ class SentenceRelationChecker:
         for entity in [ent1, ent2]:
             if verbose:
                 print("add special case", entity)
-            nlp.tokenizer.add_special_case(entity, [{'ORTH': entity, 'TAG': 'NNP'}])
+            self.nlp.tokenizer.add_special_case(entity, [{'ORTH': entity, 'TAG': 'NNP'}])
 
 
         """
@@ -249,7 +248,7 @@ class SentenceRelationChecker:
             pDict["entity1"] = e1
             pDict["entity2"] = e2
 
-            if len(sentFrags) > 1:
+            if not ": " in sentence and len(sentFrags) > 1:
                 pDict['accept_relation'] = False
                 pDict["sentfrags_check"] = False
 
@@ -275,7 +274,7 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=1}' % "signaling through"), 22),
             (re.compile('(%s){e<=1}' % "signaling"), 10),
             (re.compile('(%s){e<=1}' % "knockout"), 15),
-            #(re.compile('(%s){e<=1}' % "treatment"), 15),
+            (re.compile('(%s){e<=1}' % "treatment"), 10),
             (re.compile('(%s){e<=1}' % "strains"), 20), # was 15
             (re.compile('(%s){e<=1}' % "treated"), 15),
             (re.compile('(%s){e<=1}' % "-positive"), 15),
@@ -294,9 +293,12 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=2}' % "treatment"), 15),
             (re.compile('(%s){e<=1}' % "seed site"), 15),
             (re.compile('(%s){e<=2}' % "luciferase reporter"), 30),
+            (re.compile('(%s){e<=2}' % "transfected"), 30),
         ]
 
         self.surPreGeneContexts = [
+            (re.compile('(%s){e<=2}' % "analysis of active"), 30),
+            
         ]
 
         self.surPreMiRContexts = [
@@ -330,19 +332,48 @@ class MirGeneRelCheck:
 
                 subsentCheck = True#any(["subj" in x.dep_ for x in newSubtree])
 
-                for i in range(0, min(len(newSubtree), 3)):
-                    if str(newSubtree[i]).lower() in ["by", "including", "because", "through"]:
+                for i in range(0, min(len(newSubtree), 2)):
+                    
+                    if newSubtree[i].pos_ in ["NOUN", "PROPN"]:
+                        if verbose:
+                            print("deepcheck connection rule noun found", token, newSubtree[i], newSubtree)
+                        break
+
+                    if str(newSubtree[i]).lower() in ["by", "including", "because", "through", "of", "via", "to"]:
+                        
+                        if verbose:
+                            print("deepcheck connection rule", newSubtree)
+
                         subsentCheck = False
                         break
 
-                #leftTree = [x for x in token.lefts]
-                #nounFound = False
-                #for x in leftTree:
-                #    if x.pos_ in ["NOUN", "PROPN"]:
-                #        nounFound = True
+                if token.dep_ in ["conj"]:
+                    #should only be applied to "and" conjunction
+                    allToks = [(t.i, t) for t in doc]
+
+                    for tidx, t in allToks:
+                        if tidx < token.i and token.i -3 < tidx:
+                            if t.dep_ in ["cc"] and str(t) in ["and"]:
+                                
+                                leftTree = [x for x in token.lefts]
+
+                                if verbose:
+                                    print("deepcheck left rule", token, leftTree)
+
+                                nounFound = False
+                                for x in leftTree:
+                                    if x.pos_ in ["NOUN", "PROPN"]:
+                                        nounFound = True
+                                        break
+
+                                if not nounFound:
+                                    subsentCheck = False
+
+                                break
+
+                    
 
                 #subsentCheck = subsentCheck and nounFound
-
                 createCompartment = createCompartment or subsentCheck
 
 
@@ -498,31 +529,29 @@ class MirGeneRelCheck:
         BLA-mediated blubb
         BLA-signaling pathway
         """
-        for surContext, preview in self.surGeneContexts:
 
-            geneEnd = geneword.idx+1
-            maxEnd = min(len(doc.text_with_ws), geneEnd + len(geneword) + preview)
-            contextStr = doc.text_with_ws[geneEnd:maxEnd]
+        def checkPostContext(doc, word, contexts):
 
-            mRes = surContext.search(contextStr)
+            for surContext, preview in contexts:
 
-            if mRes != None:
-                if verbose:
-                    print("Context Fail", mRes, surContext)
-                return False
+                geneEnd = word.idx+1
+                maxEnd = min(len(doc.text_with_ws), geneEnd + len(word) + preview)
+                contextStr = doc.text_with_ws[geneEnd:maxEnd]
 
-        for surContext, preview in self.surMiRContexts:
+                mRes = surContext.search(contextStr)
 
-            mirEnd = mirword.idx+1
-            maxEnd = min(len(doc.text_with_ws), mirEnd+len(mirword) + preview)
-            contextStr = doc.text_with_ws[mirEnd:maxEnd]
+                if mRes != None:
+                    if verbose:
+                        print("Context Fail", mRes, surContext)
+                    return False
 
-            mRes = surContext.search(contextStr)
+            return True
 
-            if mRes != None:
-                if verbose:
-                    print("Context Fail", mRes, surContext)
-                return False
+        if not checkPostContext(doc, geneword, self.surGeneContexts):
+            return False
+
+        if not checkPostContext(doc, mirword, self.surMiRContexts):
+            return False
 
 
         for surContext, preview in self.surPreGeneContexts:
@@ -564,12 +593,16 @@ class MirGeneRelCheck:
             if geneword in edges:
 
                 if any([y in edgeStr for y in ["cells", ]]):
+                    if verbose:
+                        print("Context Fail for cells")
                     return False
 
         """
         GENE-miR-126-GENE signaling circuit
         """
         if mirword.idx == geneword.idx:
+            if verbose:
+                print("Context Fail for same entity")
             return False
 
         """
@@ -584,9 +617,47 @@ class MirGeneRelCheck:
                 allRights = [x for x in t.rights]
 
                 if (mirword in allLefts and geneword in allRights) or (mirword in allRights and geneword in allLefts):
-                    return False
+                    if verbose:
+                        print("Context Fail for Noun Rule")
+                    #return False
     
-        
+        """
+        all gene tokes
+        """
+
+        allGeneTokens = []
+        if geneword.dep_ in ["nummod"]:
+
+            allGeneTokens.append(geneword)
+            allGeneTokens.append(geneword.head)
+
+            for child in geneword.head.children:
+                if child.dep_ in ["nummod", "compound"] and not child in allGeneTokens:
+                    allGeneTokens.append(child)
+
+            allGeneTokens = sorted(allGeneTokens, key=lambda x: x.i)
+
+            print("all gene tokens", allGeneTokens)
+
+            for gt in allGeneTokens:
+
+                for gtc in gt.children:
+
+                    if gtc.dep_ in ["conj"]:
+                        
+                        gtcStr = str(gtc)
+
+                        for surContext, preview in self.surGeneContexts:
+                            mRes = surContext.search(gtcStr)
+
+                            if mRes != None:
+                                if verbose:
+                                    print("Context Fail GTC", mRes, surContext)
+                                return False
+
+
+
+
 
         return True
 
@@ -675,6 +746,8 @@ class MirGeneRelCheck:
         for idx in range(0, len(sdpRes)-1):
 
             if sdpRes[idx][1] in ["VERB"] and sdpRes[idx+1][1] in ["NOUN"] and str(sdpRes[idx+1][0]) in ["pathway", "pathways"]:
+                if verbose:
+                    print("SDP VERB NOUN PATHWAY")
                 sdpPass = False
 
         if len(sdpRes) >= 2:
@@ -686,7 +759,9 @@ class MirGeneRelCheck:
             targetWord = sdpRes[0]
             nWord = sdpRes[1]
 
-            if targetWord[1] == "PROPN" and nWord[1] == "PROPN" and "nsubj" in nWord[2]:
+            if targetWord[1] == "PROPN" and not targetWord[2] in ["conj"] and nWord[1] == "PROPN" and "nsubj" in nWord[2]:
+                if verbose:
+                    print("SDP PROPN SUBJ rule")
                 sdpPass = False
 
 
@@ -736,9 +811,42 @@ class MirGeneRelCheck:
             if len(t.conjuncts) > 0:
                 telems = list(t.conjuncts) + [t]
 
+                idx2t = {e.i: e for e in doc}
+                for e in t.conjuncts:
+                    n = idx2t.get(e.i+1, None)
+
+                    if verbose:
+                        print("neighbour", e, n)
+
+                    if n.pos_ in ["PUNCT"]:
+                        n = idx2t.get(e.i+2, None)
+
+                    if verbose:
+                        print("neighbour", e, n)
+
+                    if n != None:
+                        if n.head == e.head and n.dep_ in ["dep"]:
+                            telems.append(n)
+
                 for child, childDep in [(c, c.dep_) for c in t.children]:
-                    if childDep in ["compound", "nmod", "appos"]:
-                        telems.append(child)
+
+                    def followChild( tk, deps):
+
+                        tks = set()
+                        tks.add(tk)
+                        for c in tk.children:
+                            if c.dep_ in deps:
+                                tks  = tks.union(followChild(c, deps))
+
+                        return tks
+
+                    childTokens = followChild(child, ["compound", "amod", "nmod", "dep", "appos", "acl", "dobj", "nummod"])
+                    
+                    for c in childTokens:
+                        telems.append(c)
+
+                    #if childDep in ["compound", "amod", "nmod", "appos"]:
+                    #    telems.append(child)
 
                 addElemsToCommon(telems)
                 continue
