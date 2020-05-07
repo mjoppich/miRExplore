@@ -147,12 +147,40 @@ class SentenceRelationChecker:
             e1 = e2
             e2 = tmpE
 
-
         ent1 = sentence[e1["entity_location"][0]:e1["entity_location"][1]]
         ent2 = sentence[e2["entity_location"][0]:e2["entity_location"][1]]
 
         e1['entity_text'] = ent1
         e2['entity_text'] = ent2
+
+        if e1["entity_type"] == "mirna":
+            if ent1.startswith("miR") and len(ent1) > 4 and ent1[3] == " ":
+                ent1 = list(ent1)
+                sentence = list(sentence)
+
+                ent1[3] = '-'
+                sentence[e1["entity_location"][0]+3] = '-'
+
+                ent1 = "".join(ent1)
+                sentence = "".join(sentence)
+
+                if verbose:
+                    print("fixed sentence", sentence)
+
+        elif e2["entity_type"] == "mirna":
+            if ent2.startswith("miR") and len(ent2) > 4 and ent2[3] == " ":
+                ent2 = list(ent2)
+                sentence = list(sentence)
+
+                ent2[3] = '-'
+                sentence[e2["entity_location"][0]+3] = '-'
+
+                ent2 = "".join(ent2)
+                sentence = "".join(sentence)
+
+                if verbose:
+                    print("fixed sentence", sentence)
+
 
         assert (e1["entity_type_token"] != e2["entity_type_token"])
         assert (e1["entity_location"][0] < e2["entity_location"][0])
@@ -181,7 +209,9 @@ class SentenceRelationChecker:
         splitSigns = [": ", "; "]
         accSemics = set()
 
-        if any([splitsign in sentence for splitsign in splitSigns]):
+        foundSplitSigns = [x for x in splitSigns if x in sentence]
+
+        if len(foundSplitSigns) > 0:
 
             semics = [x for x in re.finditer("({})[A-Za-z0-9]".format("|".join(splitSigns)), sentence)]
             for x in semics:
@@ -248,7 +278,7 @@ class SentenceRelationChecker:
             pDict["entity1"] = e1
             pDict["entity2"] = e2
 
-            if not ": " in sentence and len(sentFrags) > 1:
+            if not ": " in foundSplitSigns and len(sentFrags) > 2:
                 pDict['accept_relation'] = False
                 pDict["sentfrags_check"] = False
 
@@ -266,6 +296,7 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=3}' % "driven pathogenic signaling"), 30),
             (re.compile('(%s){e<=3}' % "receptor signaling"), 30),
             (re.compile('(%s){e<=2}' % "pathway"), 15),
+            (re.compile('(%s){e<=1}' % "generation"), 12),
             #(re.compile('(%s){e<=1}' % "-mediated"), 15),
             (re.compile('(%s){e<=1}' % "-sensitive"), 15),
             (re.compile('(%s){e<=1}' % "-driven"), 13),
@@ -277,8 +308,10 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=1}' % "treatment"), 10),
             (re.compile('(%s){e<=1}' % "strains"), 20), # was 15
             (re.compile('(%s){e<=1}' % "treated"), 15),
+            (re.compile('(%s){e<=1}' % "peptides"), 10),
             (re.compile('(%s){e<=1}' % "-positive"), 15),
             (re.compile('(%s){e<=1}' % "-negative"), 15),
+            (re.compile('(%s){e<=1}' % "-producing"), 12),
             (re.compile('(%s){e<=1}' % "stressed.{1-7}cells"), 30),
             (re.compile('(%s){e<=2}' % "expressing vector"), 25),
             (re.compile('(%s){e<=1}' % "\(-/-\)"), 10),
@@ -286,6 +319,9 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=1}' % "\(+/-\)"), 10),
             (re.compile('(%s){e<=1}' % "\(+/+\)"), 10),
             (re.compile('(%s){e<=1}' % "copy number"), 20),
+            (re.compile('(%s){e<=0}' % " ratio"), 6),
+            (re.compile('(%s){e<=0}' % "rs[0-9]+"), 10),
+            (re.compile('(%s){e<=0}' % "family member"), 16),
         ]
 
         self.surMiRContexts = [
@@ -294,22 +330,38 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=1}' % "seed site"), 15),
             (re.compile('(%s){e<=2}' % "luciferase reporter"), 30),
             (re.compile('(%s){e<=2}' % "transfected"), 30),
+            (re.compile('(%s){e<=3}' % "family microRNAs"), 20),
+            (re.compile('(%s){e<=0}' % "family"), 8),
+            (re.compile('(%s){e<=0}' % "miRNA family"), 14),
+            (re.compile('(%s){e<=0}' % "-targeted"), 9),
+
         ]
 
         self.surPreGeneContexts = [
             (re.compile('(%s){e<=2}' % "analysis of active"), 30),
+            (re.compile('(%s){e<=1}' % "downstream .* target"), 35),
+            (re.compile('(%s){e<=1}' % "downstream .* molecule"), 35),
             
         ]
 
         self.surPreMiRContexts = [
             (re.compile('(%s){e<=0}' % "near"), 10),
-            (re.compile('(%s){e<=2}' % "binding sites"), 17),
+            (re.compile('(%s){e<=0}' % "but not"), 8),
+            (re.compile('(%s){e<=1}' % "gene locus of"), 25),
+            #(re.compile('(%s){e<=2}' % "binding sites"), 17),
         ]
 
         pass
 
+    def __findByDep(self, token, dep):
+        tks = []
+        for x in token.children:
+            if x.dep_ in dep:
+                tks.append(token)
+        
+        return tks
 
-    def __deepCheck(self, doc, verbose):
+    def __deepCheck(self, doc, mirword, geneword, verbose):
 
         sentenceCompartments = []
         thisSubtree = [t for t in doc]
@@ -321,7 +373,9 @@ class MirGeneRelCheck:
 
             createCompartment = False
 
-            if token.pos_ in ["VERB", "AUX"] and token.dep_ in ["cconj", "xconj", "conj", "ccomp", "parataxis", "advcl", "xcomp"]: # remove "xcomp": appears to act as ... #"acl:relcl"
+            CONJDEP=["cconj", "xconj", "conj", "ccomp", "parataxis", "advcl", "xcomp"]
+
+            if token.pos_ in ["VERB", "AUX"] and token.dep_ in CONJDEP: # remove "xcomp": appears to act as ... #"acl:relcl"
 
                 #createCompartment = createCompartment or True
 
@@ -332,8 +386,9 @@ class MirGeneRelCheck:
 
                 subsentCheck = True#any(["subj" in x.dep_ for x in newSubtree])
 
+                
                 for i in range(0, min(len(newSubtree), 2)):
-                    
+
                     if newSubtree[i].pos_ in ["NOUN", "PROPN"]:
                         if verbose:
                             print("deepcheck connection rule noun found", token, newSubtree[i], newSubtree)
@@ -351,14 +406,36 @@ class MirGeneRelCheck:
                     #should only be applied to "and" conjunction
                     allToks = [(t.i, t) for t in doc]
 
+
+                    dobjs = self.__findByDep(token.head, ["dobj"])
+
+                    if len(dobjs) > 0:
+
+                        allelems = [x for x in dobjs]
+                        for x in dobjs:
+                            chds = self.__followChild(x, ["det", "amod"])
+
+                            for c in chds:
+                                if not c in allelems:
+                                    allelems.append(c)
+
+                        print("deep check deps", allelems)
+                        if mirword in allelems or geneword in allelems:
+                            subsentCheck = False # 
+
+                    else:
+                        #subsentCheck = False # do not split!
+                        pass
+                    
+
                     for tidx, t in allToks:
                         if tidx < token.i and token.i -3 < tidx:
                             if t.dep_ in ["cc"] and str(t) in ["and"]:
                                 
                                 leftTree = [x for x in token.lefts]
 
-                                if verbose:
-                                    print("deepcheck left rule", token, leftTree)
+                                #if verbose:
+                                #    print("deepcheck left rule", token, leftTree)
 
                                 nounFound = False
                                 for x in leftTree:
@@ -366,8 +443,8 @@ class MirGeneRelCheck:
                                         nounFound = True
                                         break
 
-                                if not nounFound:
-                                    subsentCheck = False
+                                #if not nounFound:
+                                #    subsentCheck = False
 
                                 break
 
@@ -443,7 +520,25 @@ class MirGeneRelCheck:
                     ancestorSubtree += ast
 
                 ancestorSubtree = [x for x in sorted(ancestorSubtree, key=lambda x: x.idx)]
-                sentenceCompartments.append(ancestorSubtree)
+
+                #print("atree", ancestorSubtree)
+                wasAdded = False
+                for x in ancestorSubtree:
+                    if str(x) in [";"]:
+                        lVerb = "VERB" in [y.pos_ for y in ancestorSubtree if y.i < x.i] or "AUX" in [y.pos_ for y in ancestorSubtree if y.i < x.i]
+                        rVerb = "VERB" in [y.pos_ for y in ancestorSubtree if y.i > x.i] or "AUX" in [y.pos_ for y in ancestorSubtree if y.i > x.i]
+
+                        if lVerb and rVerb:
+                            wasAdded = True
+
+                            sentenceCompartments.append([y for y in ancestorSubtree if y.i < x.i])
+                            sentenceCompartments.append([y for y in ancestorSubtree if y.i > x.i])
+
+                            if verbose:
+                                print("compartment split by verb")
+
+                if not wasAdded:
+                    sentenceCompartments.append(ancestorSubtree)
 
 
 
@@ -513,7 +608,7 @@ class MirGeneRelCheck:
 
     def checkCompartments(self, doc, mirword, geneword, verbose=False):
 
-        compartments, splitPositions = self.__deepCheck(doc, verbose)
+        compartments, splitPositions = self.__deepCheck(doc, mirword, geneword, verbose)
 
         compCheck = False
         for comp in compartments:
@@ -540,7 +635,10 @@ class MirGeneRelCheck:
 
                 mRes = surContext.search(contextStr)
 
+                #print(contextStr, surContext)
+
                 if mRes != None:
+                    
                     if verbose:
                         print("Context Fail", mRes, surContext)
                     return False
@@ -562,9 +660,10 @@ class MirGeneRelCheck:
 
             mRes = surContext.search(contextStr)
 
+
             if mRes != None:
                 if verbose:
-                    print("Context Fail", mRes, surContext)
+                    print("Context Fail pre", mRes, surContext)
                 return False
 
         for surContext, preview in self.surPreMiRContexts:
@@ -577,7 +676,7 @@ class MirGeneRelCheck:
 
             if mRes != None:
                 if verbose:
-                    print("Context Fail", mRes, surContext)
+                    print("Context Fail pre", mRes, surContext)
                 return False
 
         """
@@ -587,15 +686,23 @@ class MirGeneRelCheck:
 
         for cidx, cname in enumerate([x for x in commonEdges]):
 
-            edges = commonEdges[cname]
+            edges = sorted(commonEdges[cname], key=lambda x: x.i)
             edgeStr = [str(x).lower() for x in edges]
 
             if geneword in edges:
 
-                if any([y in edgeStr for y in ["cells", ]]):
-                    if verbose:
-                        print("Context Fail for cells")
-                    return False
+                for eidx, edge in enumerate(edges):
+                    if str(edge) in ["cells",]:
+
+                        if eidx > 0 and str(edges[eidx-1]) in ["tested", "arrested"]:
+                            if verbose:
+                                print("Context Fail for cells ignored",edges[eidx-1])
+                            continue
+                        else:
+                            if verbose:
+                                print("Context Fail for cells")
+
+                            return False
 
         """
         GENE-miR-126-GENE signaling circuit
@@ -776,6 +883,60 @@ class MirGeneRelCheck:
 
         return sdpPass, passive, negated
 
+    def __followChildSel(self, tk, deps, fwDeps, bwDeps, verbose=False):
+
+        tks = set()
+        tks.add(tk)
+        for c in tk.children:
+            if c.dep_ in deps:
+                if verbose:
+                    print("fc add children for", tk)
+                tks  = tks.union(self.__followChildSel(c, deps, fwDeps, bwDeps))
+
+            elif c.dep_ in fwDeps and c.idx > tk.idx:
+                if verbose:
+                    print("fc add children fw for", tk)
+                tks  = tks.union(self.__followChildSel(c, deps, fwDeps, bwDeps))
+            elif c.dep_ in bwDeps and c.idx < tk.idx:
+                if verbose:
+                    print("fc add children bw for", tk)
+                tks  = tks.union(self.__followChildSel(c, deps, fwDeps, bwDeps))
+
+        return tks
+
+    def __followHeadSel(self, tk, deps, fwDeps, bwDeps, verbose=False):
+
+        tks = set()
+        tks.add(tk)
+        for c in [tk.head]:
+            if tk.dep_ in deps:
+                if verbose:
+                    print("fc add children for", tk)
+                tks  = tks.union(self.__followHeadSel(c, deps, fwDeps, bwDeps))
+
+            elif tk.dep_ in fwDeps and c.idx > tk.idx:
+                if verbose:
+                    print("fc add children fw for", tk)
+                tks  = tks.union(self.__followHeadSel(c, deps, fwDeps, bwDeps))
+            elif tk.dep_ in bwDeps and c.idx < tk.idx:
+                if verbose:
+                    print("fc add children bw for", tk)
+                tks  = tks.union(self.__followHeadSel(c, deps, fwDeps, bwDeps))
+
+        return tks
+
+    def __followChild(self, tk, deps, verbose=False):
+
+        tks = set()
+        tks.add(tk)
+        for c in tk.children:
+            if c.dep_ in deps:
+                if verbose:
+                    print("fc add children for", tk)
+                tks  = tks.union(self.__followChild(c, deps))
+
+        return tks
+
     def __getConjuncts(self, doc, verbose):
         commonEdges = defaultdict(set)
 
@@ -811,6 +972,9 @@ class MirGeneRelCheck:
             if len(t.conjuncts) > 0:
                 telems = list(t.conjuncts) + [t]
 
+                if verbose:
+                    print("Conjuncts", telems)
+
                 idx2t = {e.i: e for e in doc}
                 for e in t.conjuncts:
                     n = idx2t.get(e.i+1, None)
@@ -828,22 +992,15 @@ class MirGeneRelCheck:
                         if n.head == e.head and n.dep_ in ["dep"]:
                             telems.append(n)
 
-                for child, childDep in [(c, c.dep_) for c in t.children]:
 
-                    def followChild( tk, deps):
+                if verbose:
+                    print("Conjunction before fc", t)
 
-                        tks = set()
-                        tks.add(tk)
-                        for c in tk.children:
-                            if c.dep_ in deps:
-                                tks  = tks.union(followChild(c, deps))
-
-                        return tks
-
-                    childTokens = followChild(child, ["compound", "amod", "nmod", "dep", "appos", "acl", "dobj", "nummod"])
-                    
-                    for c in childTokens:
-                        telems.append(c)
+                #childTokens = self.__followChild(t, ["case", "compound", "amod", "nmod", "dep", "appos", "acl", "dobj", "nummod"], verbose=verbose)
+                childTokens = self.__followChildSel(t, ["case", "amod", "nmod", "dep", "appos", "acl", "dobj", "nummod"], ["compound"], [], verbose=verbose)
+                
+                for c in childTokens:
+                    telems.append(c)
 
                     #if childDep in ["compound", "amod", "nmod", "appos"]:
                     #    telems.append(child)
@@ -857,7 +1014,7 @@ class MirGeneRelCheck:
 
         return commonEdges
 
-    def checkCommonConj(self, doc, ent1, ent2, verbose):
+    def checkCommonConj(self, doc, mirword, geneword, verbose):
 
         commonEdges = self.__getConjuncts(doc, verbose)
 
@@ -867,14 +1024,47 @@ class MirGeneRelCheck:
         if verbose:
             print("Conjunctions")
             for cname in commonEdges:
-                celes = commonEdges[cname]
+                celes = sorted(commonEdges[cname])
                 print(cname, celes)
 
         for cname in commonEdges:
 
-            celes = commonEdges[cname]
-            if ent1 in celes and ent2 in celes:
+            celes = sorted(commonEdges[cname], key=lambda x: x.i)
+            if mirword in celes and geneword in celes:
+                
+                rems = list(set(celes).difference(set([mirword, geneword])))
+                rems = sorted(rems, key=lambda x: x.idx)
+
+                if len(celes) > 2 and str(rems[0]) in ["between"]:
+                    if verbose:
+                        print("Conjunction case rule", rems)
+                    continue
+
+                mirPos = celes.index(mirword)
+                if mirPos != None:
+                    oElems = celes[max(mirPos-2, 0): mirPos]
+
+                    for oElem in oElems:
+                        if str(oElem) in ["target"]:
+                            if verbose:
+                                print("Conjunction target rule", celes)
+                            continue
+
+                aChildren = self.__followHeadSel(mirword, ["appos", "amod"], [], [])
+                print("achildren", aChildren)
+                if geneword in aChildren:
+                    continue
+
                 return False, celes
+
+            elif geneword in celes:
+
+                for t in celes[-2:]:
+                    if str(t).lower() in ["pathways", "pathway"]:
+                        return False, celes
+
+
+            
 
         return True, None
 
