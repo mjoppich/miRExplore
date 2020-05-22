@@ -2,6 +2,7 @@ NEG,loss:lost
 NEU,level
 NEU,synergiz
 NEU,contrib
+NEG,co-suppress
 NEG,abolish:abolished|abolishment|abolish|abolishes|abolition|abolishing
 NEG,abrogat:abrogate|abrogates|abrogation|abrogates
 NEU,acceler:accelerate|accelerates|accelerated|accelerating|acceleration
@@ -117,7 +118,7 @@ POS,initiat:initiate|initiates|initiated|initiating|initiation|initiations
 INT,interact:interacts|interactions|interactor|interact|interacted|interactors|interactively|interactive|interacting|interaction
 NEG,interfer:interfere|interference|interfered|interfering|interferes
 NEG,interrupt:interrupting|interrupted|interrupts|interruption|interrupt|interruptions
-NEG,knockdown:knock-down|knockdown
+NEG,knockdown:knock-down|knockdown|knocked-down
 COMBINE,ligand:ligand|ligands
 CHANGE,mediat:mediators|mediator|mediate|mediating|mediates|mediation|mediated
 INT,migrat:migrate|migrates|migrated|migration
