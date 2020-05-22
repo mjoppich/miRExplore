@@ -23,7 +23,7 @@ class SentenceRelationChecker:
         entDict["entity_location"] = (entDict["entity_location"][0] + value, entDict["entity_location"][1] + value)
         return entDict
 
-    def processLocation(self, sent, e1p, e2p, verbose=False):
+    def processLocation(self, sent, e1p, e2p, verbose=False, relClassifier=None):
 
         osent = sent
         sent = sent.lstrip()
@@ -90,9 +90,9 @@ class SentenceRelationChecker:
             print(e1Token, e1Token.i, e2Token, e2Token.i)
             print("(u\"{}\", {}, {})".format(doc.text_with_ws, e1Token.i, e2Token.i))
         
-        print("geneword", geneWord, "mirword", mirWord)
+            print("geneword", geneWord, "mirword", mirWord)
 
-        checkResults = self.relCheck.checkRelation(doc, mirWord, geneWord, verbose=verbose)
+        checkResults = self.relCheck.checkRelation(doc, mirWord, geneWord, verbose=verbose, relClassifier=relClassifier)
 
         if verbose:
             print(checkResults)
@@ -119,7 +119,7 @@ class SentenceRelationChecker:
         return retDict
 
 
-    def check_sentence(self, sentence, e1, e2, fix_special_chars=True, checkSigPahtway=True, verbose=False):
+    def check_sentence(self, sentence, e1, e2, fix_special_chars=True, checkSigPahtway=True, verbose=False, relClassifier=None):
         """
 
         :param sentence: a sentence to process
@@ -236,7 +236,8 @@ class SentenceRelationChecker:
                 sentFrags.append((sentence[lastSplit:], lastSplit, len(sentence)))
 
         else:
-            print("no acc semics")
+            if verbose:
+                print("no acc semics")
 
         commonFragFound = False
 
@@ -256,7 +257,7 @@ class SentenceRelationChecker:
                 e2p = self.__offset_positions(e2p, -x[1])
 
 
-                pDict = self.processLocation(x[0], e1p, e2p, verbose)
+                pDict = self.processLocation(x[0], e1p, e2p, verbose=verbose, relClassifier=relClassifier)
 
                 if pDict['tagged_sent'] != None and pDict['accept_relation'] != None:
                     commonFragFound = True
@@ -270,7 +271,7 @@ class SentenceRelationChecker:
 
         if not commonFragFound:
 
-            pDict = self.processLocation(sentence, e1, e2, verbose)
+            pDict = self.processLocation(sentence, e1, e2, verbose=verbose, relClassifier=relClassifier)
             acceptInteraction = pDict['accept_relation']
             fullsentence = pDict['tagged_sent']
             pDict['full_sentence'] = fullsentence
@@ -361,7 +362,7 @@ class MirGeneRelCheck:
         
         return tks
 
-    def __deepCheck(self, doc, mirword, geneword, verbose):
+    def _deepCheck(self, doc, mirword, geneword, verbose):
 
         sentenceCompartments = []
         thisSubtree = [t for t in doc]
@@ -419,7 +420,7 @@ class MirGeneRelCheck:
                                 if not c in allelems:
                                     allelems.append(c)
 
-                        print("deep check deps", allelems)
+                        #print("deep check deps", allelems)
                         if mirword in allelems or geneword in allelems:
                             subsentCheck = False # 
 
@@ -608,7 +609,7 @@ class MirGeneRelCheck:
 
     def checkCompartments(self, doc, mirword, geneword, verbose=False):
 
-        compartments, splitPositions = self.__deepCheck(doc, mirword, geneword, verbose)
+        compartments, splitPositions = self._deepCheck(doc, mirword, geneword, verbose)
 
         compCheck = False
         for comp in compartments:
@@ -616,6 +617,17 @@ class MirGeneRelCheck:
                 compCheck = True
 
         return compCheck
+
+    def getCompartment(self, doc, mirword, geneword, verbose=False):
+
+        compartments, splitPositions = self._deepCheck(doc, mirword, geneword, verbose)
+
+        compCheck = False
+        for comp in compartments:
+            if mirword in comp and geneword in comp:
+                return comp
+
+        return None
 
 
     def checkSurContext(self, doc, mirword, geneword, verbose=False):
@@ -744,7 +756,7 @@ class MirGeneRelCheck:
 
             allGeneTokens = sorted(allGeneTokens, key=lambda x: x.i)
 
-            print("all gene tokens", allGeneTokens)
+            #print("all gene tokens", allGeneTokens)
 
             for gt in allGeneTokens:
 
@@ -769,7 +781,7 @@ class MirGeneRelCheck:
         return True
 
 
-    def checkRelation(self, doc, mirword, geneword, verbose=False):
+    def checkRelation(self, doc, mirword, geneword, verbose=False, relClassifier=None):
 
         singleResults = {}
 
@@ -812,15 +824,43 @@ class MirGeneRelCheck:
         singleResults["passive"] = passive
         singleResults["negation"] = singleResults.get("negation", False) or negated
 
+        """
+        CLASSIFY RELATION
+        """
+        
+        if relClassifier != None:
+            singleResults["classification"] = relClassifier(doc, mirword, geneword, self, verbose=verbose)
+
+
         return overallResult, singleResults
 
+    def checkPassive(self, doc, mirword, geneword, verbose):
+
+        lowerI = mirword.i if mirword.i < geneword.i else geneword.i
+        upperI = mirword.i if mirword.i > geneword.i else geneword.i
+
+        compartments, splitPositions = self._deepCheck(doc, mirword, geneword, verbose)
+
+        passiveSeen = False
+
+        for comp in compartments:
+
+            for tkn in comp:
+                if "pass" in tkn.dep_:
+                    if verbose:
+                        print(tkn, tkn.dep_, tkn.pos_)
+                    passiveSeen = True
+
+        return passiveSeen and ("subj" in geneword.dep_ or "subj" in mirword.dep_)
+
+        
 
     def checkSDP(self, doc, ent1, ent2, verbose):
 
         if ent1.i < ent2.i:
-            sdpRes = self.__get_sdp_path(doc, ent1.i, ent2.i)
+            sdpRes = self._get_sdp_path(doc, ent1.i, ent2.i)
         else:
-            sdpRes = self.__get_sdp_path(doc, ent2.i, ent1.i)
+            sdpRes = self._get_sdp_path(doc, ent2.i, ent1.i)
 
         sdpPass = True
         passive = False
@@ -1051,7 +1091,9 @@ class MirGeneRelCheck:
                             continue
 
                 aChildren = self.__followHeadSel(mirword, ["appos", "amod"], [], [])
-                print("achildren", aChildren)
+                
+                if verbose:
+                    print("achildren", aChildren)
                 if geneword in aChildren:
                     continue
 
@@ -1068,7 +1110,7 @@ class MirGeneRelCheck:
 
         return True, None
 
-    def __get_sdp_path(self, doc, subj, obj):
+    def _get_sdp_path(self, doc, subj, obj):
         lca_matrix = doc.get_lca_matrix()
         lca = lca_matrix[subj, obj]
 

@@ -172,5 +172,4 @@ class AssocSynfile(Synfile):
 if __name__ == '__main__':
 
     synfile = Synfile("/mnt/c/dev/data/tm_soehnlein/synonyms/messenger.syn")
-
     synfile.export_flat_obo("/mnt/c/dev/data/tm_soehnlein/obos/messenger.obo", "MSG:")

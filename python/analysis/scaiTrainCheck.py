@@ -36,6 +36,8 @@ incorrectIdentified = 0
 totalChecks = 0
 incorrectClass = Counter()
 
+print("InteractionID", "REL_ENT", "REG_DIR", "INDIRECT", "PASSIVE", "NEGATED", "SENTENCE", sep="\t")
+
 with open(os.path.join(scaiBase, scaiFile), 'r') as fin:
     tree = etree.parse(fin)
     root = tree.getroot()
@@ -114,6 +116,22 @@ with open(os.path.join(scaiBase, scaiFile), 'r') as fin:
 
                         incorrectClass[(validInteraction, acceptInteraction)]+=1
                         incorrectIdentified += 1
+                    else:
+                        correctIdentified += 1
+
+
+                    relEnts = "MIR_GENE" if e1[2][0] < e2[2][0] else "GENE_MIR"
+                    relDir = "DOWN" if relEnts == "MIR_GENE" else "UP"
+
+                    if not validInteraction:
+                        relEnts = "NA"
+                        relDir = "NA"
+
+                    
+                    print(pair.attrib["id"], relEnts, relDir, "FALSE", "FALSE", "FALSE", fullsentence, sep="\t")
+
+
+                    if False:
                         print("Incorrect Sentence Start")
                         print("SCAI:", validInteraction, "MIREXPLORE:", acceptInteraction)
                         print(sentText)
@@ -138,8 +156,6 @@ with open(os.path.join(scaiBase, scaiFile), 'r') as fin:
                         print("Incorrect Sentence End")
                         print()
                         print()
-                    else:
-                        correctIdentified += 1
 
             """
             <entity id="miRNA-corp.d1.s0.e0" text="down-regulation" type="Relation_Trigger" charOffset="23-37"/>
