@@ -1,5 +1,6 @@
 from collections import defaultdict, Counter
 import regex as re
+import os
 
 #nlp = spacy.load("/mnt/d/spacy/models/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
 
@@ -60,7 +61,7 @@ class SentenceRelationClassifier:
 
     def loadStems(self):
     
-        print("Loading stems")
+        #print("Loading stems")
         allRels = []
         stem2class = {}
 
@@ -70,6 +71,9 @@ class SentenceRelationClassifier:
             "COMBINE": "NEU",
             "CHANGE": "NEU",
         }
+
+        if not os.path.exist("/mnt/d/dev/git/miRExplore/python/allrels.csv"):
+            exit(-1)
 
         with open("/mnt/d/dev/git/miRExplore/python/allrels.csv") as fin:
 
@@ -248,8 +252,8 @@ class SentenceRelationClassifier:
         assert( checkname in self.checks )
 
         if majorname != None:
-            if not majorname in self.major_checks:
-                print(majorname)
+            #if not majorname in self.major_checks:
+            #    print(majorname)
 
             assert( majorname in self.major_checks)
 
@@ -491,7 +495,8 @@ class SentenceRelationClassifier:
                                     regStem = stemTypes2Count.most_common(1)[0][0]
                                 #else:
                                 #    regStem = "NEU"
-                                print("counts between 2", stemTypes2Count, regStem)
+                                if verbose:
+                                    print("counts between 2", stemTypes2Count, regStem)
                                     
                             elif geneword.i < mirword.i and any([str(doc[mirword.i-j]) in ["by", "with"] for j in [1,2]]):
                                 regDir = "MIR_GENE"
@@ -502,7 +507,8 @@ class SentenceRelationClassifier:
                                     regStem = stemTypes2Count.most_common(1)[0][0]
                                 #else:
                                 #    regStem = "NEU"
-                                print("counts between 3", stemTypes2Count, regStem)
+                                if verbose:
+                                    print("counts between 3", stemTypes2Count, regStem)
                                     
                             elif isPassive and geneword.i < mirword.i:
                                 regDir = self.dir2opp[regDir]
@@ -525,8 +531,9 @@ class SentenceRelationClassifier:
                             elif regStem == "POS":
                                 regStem = "UP"
 
-                            print([str(x) for x in tokenBetween])
-                            print(stemTypes2Count)
+                            if verbose:
+                                print([str(x) for x in tokenBetween])
+                                print(stemTypes2Count)
                             return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "counts between", "reg_detect_major": "counts"}
         
             

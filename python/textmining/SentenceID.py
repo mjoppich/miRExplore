@@ -6,6 +6,9 @@ class SentenceID:
         self.parID = None
         self.senID = None
 
+    def __hash__(self):
+        return hash(self.docID) ^ hash(self.parID) ^ hash(self.senID)
+
     def __eq__(self, other):
 
         if not isinstance(other, SentenceID):
