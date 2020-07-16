@@ -46,7 +46,8 @@ for termID in ncitObo.dTerms:
 
 globalKeywordExcludes = loadExludeWords()
 
-vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=10, maxCommonCount=5)
-printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/ncit.syn")
+vPrintSyns = handleCommonExcludeWords(vAllSyns, None, mostCommonCount=100, maxCommonCount=5) #globalKeywordExcludes
+#printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/ncit.syn")
+printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/ncit.syn")
 
 

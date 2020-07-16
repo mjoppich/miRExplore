@@ -48,7 +48,7 @@ ltype2label = {
 
 aminoAcids = ['Phe', 'Leu', 'Ser', 'Tyr', 'Cys', 'Trp', 'Leu', 'Pro', 'His', 'Gln','Arg', 'Ile', 'Met', 'Thr', 'Asn', 'Lsy', 'Ser', 'Arg', 'Val', 'Ala', 'Asp', 'Glu', 'Gly']
 
-def loadExludeWords(common=True, generic=True, disease=True, taxnames=True, cell_co=True):
+def loadExludeWords(common=True, generic=True, syngrep=True, disease=True, taxnames=True, cell_co=True, manual=True):
 
     exclWords = defaultdict(set)
 
@@ -65,6 +65,15 @@ def loadExludeWords(common=True, generic=True, disease=True, taxnames=True, cell
                 exclWords['common'].add(line.upper())
 
 
+    if manual:
+        """
+        manually curated words to remove to given ontologies!
+        """
+        with open(dataDir + "/miRExplore/textmine/excludes/manual_curated.syn") as infile:
+            for line in infile:
+                line = line.strip()
+                exclWords['manual'].add(line)
+
     if generic:
         """
         loads words that have been removed manually/curated
@@ -75,6 +84,17 @@ def loadExludeWords(common=True, generic=True, disease=True, taxnames=True, cell
 
                 exclWords['generic'].add(line)
                 exclWords['generic'].add(line.upper())
+    
+    if generic and syngrep:
+        """
+        loads words that have been removed manually/curated
+        """
+        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.syngrep.syn") as infile:
+            for line in infile:
+                line = line.strip()
+
+                exclWords['syngrep'].add(line)
+                exclWords['syngrep'].add(line.upper())
 
 
     if disease:
@@ -98,7 +118,7 @@ def loadExludeWords(common=True, generic=True, disease=True, taxnames=True, cell
                 line = line.strip()
 
                 exclWords['taxnames'].add(line)
-                exclWords['taxnames'].add(line.upper())
+                #exclWords['taxnames'].add(line.upper())
 
 
     if cell_co:

@@ -67,7 +67,7 @@ class Synonym:
 
         return self.syns
 
-    def addTextSyns(self, synText,captureBrackets=True):
+    def addTextSyns(self, synText,captureBrackets=True, addBrackets=True):
 
         if synText == None or synText == 'None':
             return
@@ -77,7 +77,7 @@ class Synonym:
         if len(synText) == 0:
             return
 
-        vAllWords = self.getAllSplittedSyns(synText, ', ', captureBrackets=captureBrackets)
+        vAllWords = self.getAllSplittedSyns(synText, ', ', captureBrackets=captureBrackets, addBrackets=addBrackets)
 
         for x in vAllWords:
             self.addSyn(x)
@@ -146,7 +146,7 @@ class Synonym:
         return self.syns[self.currentIdx-1]
 
     def __str__(self):
-        return self.id.replace(':', '_') + ":" + "|".join(self.syns)
+        return self.id.replace(':', '_') + ":" + "|".join([x for x in self.syns if len(x) > 0])
 
     def __repr__(self):
         return self.__str__()
@@ -163,7 +163,9 @@ class Synonym:
             syns2remove = set()
             for syn in self.syns:
 
-                usyn = syn.upper()
+                usyn = syn
+                if not excludeName in ["taxnames", "manual"]:
+                    usyn = syn.upper()                   
 
                 if syn in listToExclude or usyn in listToExclude:
                     syns2remove.add(syn)
@@ -266,9 +268,6 @@ class Synonym:
             if x.startswith("HGNC") or x.startswith("MGI"):
                 continue
 
-            if x.startswith("PRKAA1") or self.id == "PRKAA1":
-                print(x)
-
             m = re.search(r'\d+$', x)
 
             if m:
@@ -326,6 +325,8 @@ class Synonym:
         else:
 
             isyn = int(syn)
+
+            #print("Removing syn", self.syns[isyn])
 
             if isyn >= 0 and isyn < len(self.syns):
                 del self.syns[isyn]
@@ -416,7 +417,7 @@ class Synonym:
 
 
 
-    def getAllSplittedSyns(self, search, delimiter=', ', quotechars=['\"', '\''], captureBrackets=True):
+    def getAllSplittedSyns(self, search, delimiter=', ', quotechars=['\"', '\''], captureBrackets=True, addBrackets=True):
 
         vAllWords = self.splitQuotedDelimited(search)
 
@@ -438,13 +439,15 @@ class Synonym:
                         if y[0]==y[len(y)-1] and len(y) > 0:
                             y = y[1:len(y)-1]
 
-                        setAllWords.add(y)
+                        if addBrackets:
+                            setAllWords.add(y)
 
             testWord = word
             for bracketWord in foundBrackets:
-                testWord = testWord.replace(bracketWord, '')
+                testWord = testWord.replace(bracketWord, '').strip()
 
-            setAllWords.add(testWord)
+            if len(testWord) > 0:
+                setAllWords.add(testWord)
 
         return list(setAllWords)
 
@@ -454,5 +457,8 @@ if __name__ == '__main__':
     syn.getAllSplittedSyns('"Flavin reductase", "biliverdin reductase B (flavin reductase (NADPH))"	SDR43U1	"short chain dehydrogenase/reductase family 43U, member 1", "(flavin reductase (NADPH))"')
     syn.getAllSplittedSyns('"cytochrome P450, subfamily XXIA (steroid 21-hydroxylase, congenital adrenal hyperplasia), polypeptide 2", "cytochrome P450, family 21, subfamily A, polypeptide 2"')
     syn.splitQuotedDelimited('"family with sequence similarity 44, member C", "biorientation of chromosomes in cell division 1 pseudogene"')
-    syn.splitQuotedDelimited('"non-protein coding RNA 181", "A1BG antisense RNA (non-protein coding)", "A1BG antisense RNA 1 (non-protein coding)"')
+    print(syn.splitQuotedDelimited('"non-protein coding RNA 181", "A1BG antisense RNA (non-protein coding)", "A1BG antisense RNA 1 (non-protein coding)"'))
+    print(syn.getAllSplittedSyns('"non-protein coding RNA 181", "A1BG antisense RNA (non-protein coding)", "A1BG antisense RNA 1 (non-protein coding)"'))
     syn.splitQuotedDelimited('"C3 and PZP-like, alpha-2-macroglobulin domain containing 9"')
+
+    print(syn.syns)

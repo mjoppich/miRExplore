@@ -290,12 +290,6 @@ class PubmedEntry:
 
         pmid = cls.get_value_from_node(node, 'MedlineCitation/PMID')
 
-
-        if pmid == "28295230":
-            print(pmid)
-        else:
-            return None
-
         date_created = cls.get_inner_text_from_path(node, 'MedlineCitation/DateCreated')
 
         articleNode = cls.get_node(node, 'MedlineCitation/Article')
@@ -393,15 +387,27 @@ class PubmedArticleIterator:
         raise StopIteration()
 
 
+"""
+
+python3 ~/python/miRExplore/python/textmining/downloadPubmedAbstracts.py
+python3 medlineXMLtoStructure.py
+python3 removeDuplicateSentences.py
+
+"""
+
+
+
 if __name__ == '__main__':
+
+    nltk.data.path.append("/mnt/d/dev/nltk_data/")
+
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-    storagePath = '/mnt/raidtmpbio/joppich/pmid/'
-    baseFileName = 'pubmed18n'
+    storagePath = './'# '/mnt/raidtmpbio2/joppich/pmid_jun2020/'
+    baseFileName = 'pubmed20n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
-
 
     startFrom = 0
     endOn = 2000
@@ -418,7 +424,7 @@ if __name__ == '__main__':
 
             allfiles.append(filename)
 
-    print(len(allfiles), allfiles)
+    print("Going through", len(allfiles), " files.")
 
     def senteniceFile(filenames, env):
 
@@ -444,9 +450,6 @@ if __name__ == '__main__':
                 for elem in PubmedArticleIterator(pubmedParser):
 
                     try:
-
-
-
                         entry = PubmedEntry.fromXMLNode(elem)
 
                         if entry == None:
@@ -533,7 +536,7 @@ if __name__ == '__main__':
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(6)
+    ll = MapReduce(1)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)
 
     print("Done")

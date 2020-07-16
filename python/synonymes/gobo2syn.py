@@ -48,4 +48,5 @@ for namespace in namespace2syn:
 
     vPrintSyns = handleCommonExcludeWords(synSet, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=5, minSynCount=0)
     #printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/go."+namespace.replace(' ', '_') + ".syn")
-    printToFile(vPrintSyns, dataDir + "/hpyloriDB/tm/go."+namespace.replace(' ', '_') + ".syn")
+    #printToFile(vPrintSyns, dataDir + "/hpyloriDB/tm/go."+namespace.replace(' ', '_') + ".syn")
+    printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/go.{}.syn".format(namespace.replace(' ', '_')))

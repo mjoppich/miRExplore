@@ -1,3 +1,8 @@
+import os, sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+sys.path.insert(0, "/mnt/d/dev/git/NERtoolkit/")
+
+
 from collections import defaultdict
 from nertoolkit.geneontology.GeneOntology import GeneOntology
 
@@ -31,5 +36,5 @@ for cellID in celloObo.dTerms:
 
 globalKeywordExcludes = loadExludeWords()
 
-vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=10, maxCommonCount=5)
-printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/disease.syn")
+vPrintSyns = handleCommonExcludeWords(vAllSyns, None, mostCommonCount=10, maxCommonCount=5)
+printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/disease.syn")

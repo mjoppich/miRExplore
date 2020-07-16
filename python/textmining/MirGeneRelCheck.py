@@ -1,8 +1,583 @@
-from collections import defaultdict
+from collections import defaultdict, Counter
 import regex as re
 
 #nlp = spacy.load("/mnt/d/spacy/models/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
 
+class SentenceRelationClassifier:
+
+    def __init__(self, active_checks = None):
+
+        allStems, allRels, stem2class = self.loadStems()
+        self.allStems = allStems
+        self.allRels = allRels
+        self.stem2class = stem2class
+
+        self.dir2opp = {"MIR_GENE": "GENE_MIR", "GENE_MIR": "MIR_GENE"}
+        self.idir2opp = {"POS": "NEG", "NEG": "POS"}
+        self.rdir2opp = {"DOWN": "UP", "UP": "DOWN"}
+
+        self.major_checks = ["compartment", "between", "counts","return"]
+
+        self.checks = [
+            'compartment gene mir pos corr',
+            'compartment gene mir neg corr',
+            'compartment gene mir',
+            'compartment mir gene pos corr',
+            'compartment mir gene neg corr',
+            'compartment mir gene',
+
+            'between gene mir pos corr',
+            'between gene mir neg corr',
+            'between gene mir reg corr',
+            'between gene mir sites',
+
+            "between gene mir",
+            "counts between gene mir",
+
+            'between mir gene pos corr',
+            'between mir gene neg corr',
+            'between mir gene reg corr',
+            'between mir gene',
+            'between mir gene nrb',
+
+            'counts opp',
+            'counts between equal',
+            'counts between alternating',
+            'counts between',
+
+            "return mediated",
+            "return m g by",
+            "return"
+            
+        ]
+
+        self.active_checks = None
+
+        if active_checks is None:
+            self.active_checks = [x for x in self.checks]+[x for x in self.major_checks]
+        else:
+            self.active_checks = [x for x in active_checks if x in self.checks or x in self.major_checks]
+
+    def loadStems(self):
+    
+        print("Loading stems")
+        allRels = []
+        stem2class = {}
+
+        renameClass = {
+            'INT': 'NEU',
+            "BOOST": "POS",
+            "COMBINE": "NEU",
+            "CHANGE": "NEU",
+        }
+
+        with open("/mnt/d/dev/git/miRExplore/python/allrels.csv") as fin:
+
+            for line in fin:
+                aline = line.strip().split(",", 1)
+                aregSyns = aline[1].split(":")
+                regSyns = []
+                if len(aregSyns) > 1:
+                    regSyns = aregSyns[1].split("|")
+                
+                aline[1] = aline[1].split(":")[0]           
+
+                regClass = aline[0]
+                regStem = aline[1]
+
+                if regClass in renameClass:
+                    regClass = renameClass[regClass]
+                    
+                stem2class[regStem] = regClass
+                    
+                for regSyn in regSyns:
+                    if not regSyn in stem2class:
+                        stem2class[regSyn] = regClass
+
+
+            allRels.append((regClass, regStem))
+
+        allStems = [x for x in stem2class]
+    
+        return allStems, allRels, stem2class
+
+
+    def getTokenDist(self, tk1, tk2):
+        return abs(tk1.i-tk2.i)
+
+    def countStems(self, tokens, geneword, mirword, keepNEU=False):
+        stemTypes2Count = Counter()
+        mirgene2stem = defaultdict(lambda: Counter())
+
+        for tidx,x in enumerate(tokens):
+            tknStem, matchStem, wasFound = self.getstem(x)
+
+            if wasFound and (tknStem != "NEU" or keepNEU):
+                
+                if tidx >= len(tokens)-2 and str(tokens[tidx-1]) == "to":
+                    continue
+                
+                geneDist = self.getTokenDist(x, geneword)
+                mirDist = self.getTokenDist(x, mirword)
+                            
+                if geneDist < mirDist and geneDist < 3:
+                    mirgene2stem["gene"][tknStem] += 1
+                elif mirDist < geneDist and mirDist < 3:
+                    mirgene2stem["mir"][tknStem] += 1
+
+            if wasFound and (tknStem != "NEU" or keepNEU):
+                stemTypes2Count[tknStem] += 1
+
+        if len(stemTypes2Count) == 0:
+            if "regulated" in str(geneword):
+                stemTypes2Count["NEU"] += 1
+
+        return stemTypes2Count,mirgene2stem
+
+    def getRelsForTokens(self, tokens, desc,verbose):
+        rels = []
+        verbSet = set(["VERB"])
+        for x in tokens:
+            
+            tokenStemClass, s, _ = self.getstem(x)
+            rels.append((s, None, tokenStemClass, x.pos_, x))
+            if verbose:
+                print(desc, x, s, tokenStemClass, x.pos_, x)
+                        
+        hasVerb = len(list(set([x[3] for x in rels]) & verbSet)) > 0
+        
+        if hasVerb:
+            rels = [x for x in rels if x[3] in verbSet]
+        
+        return rels
+
+    def evalCounts(self, dirReg, mirPos, mirNeg, genePos, geneNeg):
+
+        invcor = False
+        regdir = None
+
+        #if dirReg == 0:
+        if (mirPos > 0 and geneNeg > 0) or (genePos > 0 and mirNeg > 0):
+            return "DOWN", True
+
+        #else:
+        if ((mirPos > 0 and genePos > 0) and(mirNeg == 0 and geneNeg == 0)) or ((mirNeg > 0 and geneNeg >0) and(mirPos == 0 and genePos == 0)):
+            return "UP", False
+
+        return None, None
+
+    def scoreWord(self, tkn):
+        
+        jtkstem, s, _ = self.getstem(tkn)
+                            
+        if jtkstem == None:
+
+            if jtk.startswith(("loss", "decreas", "low")):
+                return 0,1
+
+            elif jtk.startswith(("increas", "high", "posit")):
+                return 1,0
+
+        else:
+            if jtkstem == "POS":
+                return 1,0
+            elif jtkstem == "NEG":
+                return 0,1
+            
+        return 0,0
+
+
+    def getTextBetween(self, tks, lword, rword):
+        tokenBetween = [x for x in tks if lword.i-3 < x.i < rword.i+3]
+        
+        lit = lword
+        while lit.pos_ in ["nmod", "conj"]:
+            if not lit in tokenBetween:
+                tokenBetween.append(lit)
+                
+            lit = lit.head
+            
+        rit = rword
+        while rit.pos_ in ["nmod", "conj"]:
+            if not rit in tokenBetween:
+                tokenBetween.append(rit)
+                
+            rit = rit.head
+
+
+        tokenBetween = list(sorted(tokenBetween, key=lambda x: x.i))
+        tokenBetweenStrict = list(sorted([x for x in tks if lword.i < x.i < rword.i], key=lambda x: x.i))
+        textBetween = ' '.join(" ".join([str(x) for x in tokenBetween]).split())
+        textAfter = ' '.join(" ".join([str(x) for x in [y for y in rword.doc if rword.i <= y.i < rword.i+5]]).split())
+        textBefore = ' '.join(" ".join([str(x) for x in [y for y in rword.doc if lword.i-5 <= y.i < lword.i]]).split())
+
+        return tokenBetween, tokenBetweenStrict, textBetween, textBefore, textAfter
+
+    def getstem(self, tkn):
+        tknstr = str(tkn).lower()
+        for sidx, s in enumerate(self.stem2class):
+            if tknstr.startswith(s):
+                
+                if tknstr in ["enhancer","inhibitor"]:
+                    continue
+
+                tokenStemClass = self.stem2class[s]
+                
+                if tokenStemClass == "NEU":
+                    for i in range(1,2):
+
+                        if tkn.i-i<0:
+                            continue
+
+                        #tknPre = str(tkn.doc[tkn.i-i])
+                        #if tknPre.startswith(("high", "elevat", "increas")):
+                        #    tokenStemClass = "POS"
+
+                        #if tknPre.startswith(("low", "decreas")):
+                        #    tokenStemClass = "NEG"
+                                                    
+                return tokenStemClass, s, True
+            
+            elif tknstr.endswith(("-stressed")):
+                return "POS", s, True
+            
+        return "NEU", str(tkn), False
+
+    def allowed_check(self, checkname, majorname):
+
+        assert( checkname in self.checks )
+
+        if majorname != None:
+            if not majorname in self.major_checks:
+                print(majorname)
+
+            assert( majorname in self.major_checks)
+
+            return majorname in self.active_checks
+
+        return checkname in self.active_checks
+
+
+    def classify(self, doc, mirword, geneword, relchecker, verbose):
+        isPassive = relchecker.checkPassive(doc, mirword, geneword, verbose=False)
+        compartment = relchecker.getCompartment(doc, mirword, geneword, verbose=False)
+        
+        if verbose:
+            print("passive?", isPassive)
+            
+            
+        sdpRes = relchecker._get_sdp_path(doc, mirword.i, geneword.i)
+            
+        stemTypes2Count = Counter()
+        
+        for x in sdpRes:
+            tknStem, matchStem, _ = self.getstem(x[0])
+            
+            if tknStem != "NEU":
+                stemTypes2Count[tknStem] += 1
+
+        if verbose:        
+            print(stemTypes2Count)
+            
+        if len(stemTypes2Count) > 0:
+            regStem = stemTypes2Count.most_common(1)[0][0]
+            
+            if regStem == "NEG":
+                regStem = "DOWN"
+            elif regStem == "POS":
+                regStem = "UP"
+                
+            if stemTypes2Count["POS"] == stemTypes2Count["NEG"]:
+                regStem = "DOWN"
+                
+            idir = "MIR_GENE"
+            if isPassive and mirword.i < geneword.i:
+                idir = "GENE_MIR"
+                
+            #return {"regulation_dir": regStem, "interaction_dir": idir, "passive": isPassive, "reg_detect": "sdp counts"}
+            
+        targetWords = ["targets of", "target of", "regulator of", "targeting", "direct regulator"]
+            
+        if compartment != None:
+            tokenBetween = compartment
+            textBetween = ' '.join(" ".join([str(x) for x in tokenBetween]).split())
+            
+            if geneword.i < mirword.i:
+                
+                if self.allowed_check("compartment gene mir pos corr", "compartment") and any([x in textBetween for x in ["positive correlation"]]):
+                    return {"regulation_dir": "UP", "interaction_dir": "GENE_MIR", "passive": isPassive, "reg_detect": "compartment gene mir pos corr", "reg_detect_major": "compartment"}
+                
+                if self.allowed_check("compartment gene mir neg corr", "compartment") and any([x in textBetween for x in ["inverse correlation", "inversely correlated", "inversely regulated"]]):
+                    return {"regulation_dir": "DOWN", "interaction_dir": "GENE_MIR", "passive": isPassive, "reg_detect": "compartment gene mir neg corr", "reg_detect_major": "compartment"}
+                
+                if self.allowed_check("compartment gene mir", "compartment") and any([x in textBetween for x in targetWords]):
+                    return {"regulation_dir": "NEU", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "compartment gene mir", "reg_detect_major": "compartment"}
+                
+            elif mirword.i < geneword.i:
+                
+                if self.allowed_check("compartment mir gene pos corr", "compartment") and any([x in textBetween for x in ["positive correlation"]]):
+                    return {"regulation_dir": "UP", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "compartment mir gene pos corr", "reg_detect_major": "compartment"}
+                
+                if self.allowed_check("compartment mir gene neg corr", "compartment") and any([x in textBetween for x in ["inverse correlation", "inversely correlated", "inversely regulated"]]):
+                    return {"regulation_dir": "DOWN", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "compartment mir gene neg corr", "reg_detect_major": "compartment"}
+                
+                if self.allowed_check("compartment mir gene", "compartment") and any([x in textBetween for x in targetWords]):
+                    return {"regulation_dir": "NEU", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "compartment mir gene", "reg_detect_major": "compartment"}
+            
+
+
+        if True:
+            
+            tokSrc = compartment if compartment != None else doc
+            
+            if geneword.i < mirword.i:
+
+                tokenBetween, tokenBetweenStrict, textBetween, textBefore, textAfter = self.getTextBetween(tokSrc, geneword, mirword)
+
+                if verbose:
+                    print(textBetween)
+                
+
+                if self.allowed_check("between gene mir pos corr", "between") and any([x in textBetween for x in ["positive correlation"]]):
+                    return {"regulation_dir": "UP", "interaction_dir": "GENE_MIR", "passive": isPassive, "reg_detect": "between gene mir pos corr", "reg_detect_major": "between"}
+                
+                if self.allowed_check("between gene mir neg corr", "between") and any([x in textBetween for x in ["inverse correlation", "inversely correlated", "inversely regulated"]]):
+                    return {"regulation_dir": "DOWN", "interaction_dir": "GENE_MIR", "passive": isPassive, "reg_detect": "between gene mir neg corr", "reg_detect_major": "between"}
+                
+                if self.allowed_check("between gene mir reg corr", "between") and any([x in textBetween for x in ["negative regulation of"]]):
+                    return {"regulation_dir": "UP", "interaction_dir": "GENE_MIR", "passive": isPassive, "reg_detect": "between gene mir reg corr", "reg_detect_major": "between"}
+        
+                if self.allowed_check("between gene mir sites", "between") and any([x in textBefore for x in ["binding site", "binding sites", "binding to", "binding directly to"]]):
+                    return {"regulation_dir": "NEU", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between gene mir sites", "reg_detect_major": "between"}
+                
+                
+        
+                if self.allowed_check("between gene mir", "between") and any([x in textBetween for x in targetWords]) or any([x in textBetween for x in ["target", "targeted by", "binding efficiency", "binding site for", "recognizing"]]):
+                    return {"regulation_dir": "NEU", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between gene mir", "reg_detect_major": "between"}
+                
+
+                #stemTypes2Count = Counter()
+                #for x in tokenBetween:
+                #    tknStem, matchStem = getstem(x)
+                #    if tknStem != "NEU":
+                #        stemTypes2Count[tknStem] += 1
+                        
+                if False and self.allowed_check("counts between gene mir", "counts") and len(stemTypes2Count) > 0:
+                    regStem = stemTypes2Count.most_common(1)[0][0]
+                    if regStem == "NEG":
+                        regStem = "DOWN"
+                    elif regStem == "POS":
+                        regStem = "UP"
+                        
+                    if stemTypes2Count["POS"] == stemTypes2Count["NEG"]:
+                        regStem = "DOWN"
+
+                    idir = "MIR_GENE"
+                    if isPassive and geneword.i < mirword.i:
+                        idir = "GENE_MIR"
+
+                    return {"regulation_dir": regStem, "interaction_dir": idir, "passive": isPassive, "reg_detect": "counts between gene mir", "reg_detect_major": "counts"}
+                
+            else:
+                #mirword.i < geneword.i
+                tokenBetween, tokenBetweenStrict, textBetween, textBefore, textAfter = self.getTextBetween(tokSrc, mirword, geneword)
+
+                if verbose:    
+                    print(textbetween)
+                
+                if self.allowed_check("between mir gene pos corr", "between") and any([x in textBetween for x in ["positive correlation"]]) and stemTypes2Count.get("NEG", 0) == 0:
+                    return {"regulation_dir": "UP", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between mir gene pos corr", "reg_detect_major": "between"}
+                
+                if self.allowed_check("between mir gene reg corr", "between") and  any([x in textBetween for x in ["negative regulation of"]]):
+                    return {"regulation_dir": "UP", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between mir gene reg corr", "reg_detect_major": "between"}
+                
+                if self.allowed_check("between mir gene neg corr", "between") and  any([x in textBetween for x in ["inverse correlation", "inversely correlated", "inversely regulated"]]):
+                    return {"regulation_dir": "DOWN", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between mir gene neg corr", "reg_detect_major": "between"}
+                
+                if self.allowed_check("between mir gene", "between") and  any([x in textBetween for x in ["directly inhibits", "directly represses", "translational inhibition" ]]):
+                    return {"regulation_dir": "DOWN", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between mir gene", "reg_detect_major": "between"}
+                
+                if self.allowed_check("between mir gene", "between") and  any([x in textBetween for x in targetWords + ["directly regulated", "its target gene", "binding site"]]):
+                    return {"regulation_dir": "NEU", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between mir gene", "reg_detect_major": "between"}
+                
+                if self.allowed_check("between mir gene nrb", "between") and  any([x in textBetween for x in ["negatively regulated by", "negative regulation of"]]):
+                    return {"regulation_dir": "DOWN", "interaction_dir": "GENE_MIR", "passive": isPassive, "reg_detect": "between mir gene nrb", "reg_detect_major": "between"}
+                
+                
+            if len(tokenBetween) > 0:
+                        
+                stemTypes2Count,mirgene2stem = self.countStems(tokenBetween, geneword, mirword)
+                        
+                if len(stemTypes2Count) > 0:
+                    regStem = stemTypes2Count.most_common(1)[0][0]
+                    
+                    if self.allowed_check("counts opp", "counts") and  len(stemTypes2Count) >= 2 and len(mirgene2stem["gene"]) >0 and len(mirgene2stem["mir"])>0 and mirgene2stem["gene"].most_common(1)[0][0] == self.idir2opp[mirgene2stem["mir"].most_common(1)[0][0]]:
+                        if verbose:
+                            print(mirgene2stem)
+                        if geneword.i < mirword.i:
+                            if mirgene2stem["gene"].most_common(1)[0][0] == "POS":
+                                regDir = "MIR_GENE"
+                                regStem = "DOWN"
+                            else:
+                                regDir = "MIR_GENE"
+                                regStem = "DOWN"
+                        else:
+                                                    
+                            if mirgene2stem["mir"].most_common(1)[0][0] == "NEG":
+                                regDir = "MIR_GENE"
+                                regStem = "DOWN"
+                                                            
+                            else:
+                                regDir = "MIR_GENE"
+                                regStem = "DOWN"
+                                
+                            if "after" in textBetween:
+                                regDir = self.dir2opp[regDir]
+                                
+                        if isPassive:
+                            regDir = self.dir2opp[regDir]
+                            regStem = self.rdir2opp[regStem]
+                            
+                        return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "counts opp", "reg_detect_major": "counts"}
+                        
+                        
+                    else:
+                        stemTypes2Count,mirgene2stem = self.countStems(tokenBetween, geneword, mirword, keepNEU=True)
+                        if verbose:
+                            print("counts between 1", stemTypes2Count)
+                        regStem = stemTypes2Count.most_common(1)[0][0]
+                        
+                        if self.allowed_check("counts between equal", "counts") and stemTypes2Count["POS"] == stemTypes2Count["NEG"] == 1 and stemTypes2Count["NEU"] <= 3:
+                            regDir = "MIR_GENE"
+                            regStem = "DOWN"
+                            
+                            if any(x in textBetween for x in ["after"]):
+                                regDir = self.dir2opp[regDir]
+                            
+                            return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "counts between equal", "reg_detect_major": "counts"}
+                        
+                        if self.allowed_check("counts between alternating", "counts") and  stemTypes2Count["POS"] == 2 and stemTypes2Count["NEG"] == 1 and stemTypes2Count["NEU"] <= 2:
+                            regDir = "MIR_GENE"
+                            regStem = "DOWN"
+                            
+                            return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "counts between alternating", "reg_detect_major": "counts"}
+                        
+                        if regStem == "NEU":
+                            if stemTypes2Count["POS"] > 0 and stemTypes2Count["POS"] > stemTypes2Count["NEG"]:
+                                regStem = "POS"
+                                
+                            elif stemTypes2Count["NEG"] > 0 and stemTypes2Count["NEG"] > stemTypes2Count["POS"]:
+                                regStem = "NEG"
+                            
+                        
+                        #regStem = "NEU"
+
+                        if self.allowed_check("counts between", "counts"):
+
+                            if mirword.i < geneword.i:
+                                regDir = "MIR_GENE"
+                            else:
+                                regDir = "GENE_MIR"
+                                
+                            if mirword.i < geneword.i and "-stressed" in textBetween:
+                                regDir = "GENE_MIR"
+                                
+                            if mirword.i < geneword.i and str(doc[geneword.i-1]) in ["by", "with"]:
+                                regDir = "GENE_MIR"
+
+                                stemTypes2Count,mirgene2stem = self.countStems(tokenBetweenStrict, geneword, mirword)
+
+                                if len(stemTypes2Count) > 0:
+                                    regStem = stemTypes2Count.most_common(1)[0][0]
+                                #else:
+                                #    regStem = "NEU"
+                                print("counts between 2", stemTypes2Count, regStem)
+                                    
+                            elif geneword.i < mirword.i and any([str(doc[mirword.i-j]) in ["by", "with"] for j in [1,2]]):
+                                regDir = "MIR_GENE"
+                                #print("counts between 3 (before)", stemTypes2Count, regStem)
+
+                                stemTypes2Count,mirgene2stem = self.countStems(tokenBetweenStrict, geneword, mirword)
+                                if len(stemTypes2Count) > 0:
+                                    regStem = stemTypes2Count.most_common(1)[0][0]
+                                #else:
+                                #    regStem = "NEU"
+                                print("counts between 3", stemTypes2Count, regStem)
+                                    
+                            elif isPassive and geneword.i < mirword.i:
+                                regDir = self.dir2opp[regDir]
+
+                            if stemTypes2Count["POS"] > 0 and stemTypes2Count["POS"] == stemTypes2Count["NEG"]:
+                                regStem = "NEU"                       
+                                
+                            if geneword.i < mirword.i:
+                                if str(geneword).endswith("-regulating"):
+                                    regStem = "NEU"
+             
+                                    
+                            if mirword.i < geneword.i and "after the addition" in textBetween:
+                                regStem = "DOWN"
+                                regDir = "GENE_MIR"
+                                    
+                                
+                            if regStem == "NEG":
+                                regStem = "DOWN"
+                            elif regStem == "POS":
+                                regStem = "UP"
+
+                            print([str(x) for x in tokenBetween])
+                            print(stemTypes2Count)
+                            return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "counts between", "reg_detect_major": "counts"}
+        
+            
+        regDir = "MIR_GENE"
+        regStem = "NEU"
+        
+        regeluateWords = ["mediated",]
+        
+        if mirword.i < geneword.i and "mediated" in str(mirword):
+            regStem = "DOWN"
+            
+        if self.allowed_check("return mediated", "return") and  geneword.i < mirword.i and ("mediated" in str(mirword) or any([str(doc[mirword.i-j]) in ["mediated",] for j in [1]])):
+            regStem = "NEU"
+            regDir = "MIR_GENE"
+            
+            return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "return mediated", "reg_detect_major": "return"}
+            
+        if self.allowed_check("return m g by", "return") and  mirword.i<geneword.i and any([str(doc[geneword.i-j]) in ["by", "with"] for j in [1,2,3]]):
+            regStem = "NEU"
+            regDir = "MIR_GENE"
+            
+            return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "return m g by", "reg_detect_major": "return"}
+            
+        if geneword.i < mirword.i:
+            regStem = "NEU"
+            regDir = "GENE_MIR"
+        
+        if geneword.i < mirword.i and any([str(doc[mirword.i-j]) in ["by", "with"] for j in [1,2,3]]):
+            regStem = "NEU"
+            regDir = "MIR_GENE"
+            
+        if mirword.i < geneword.i and str(doc[mirword.i+1]) == "target":
+            regStem = "NEU"
+            regDir = "MIR_GENE"
+        
+        #if mirword.i < geneword.i:
+        #    regDir = "MIR_GENE"
+        #else:
+        #    regDir = "GENE_MIR"
+        
+        #if isPassive:
+        #    if mirword.i < geneword.i:
+        #        regDir = "GENE_MIR"
+        #    else:
+        #        regDir = "MIR_GENE"
+            
+        if self.allowed_check("return", "return"):
+            return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "return", "reg_detect_major": "return"}
+
+        else:
+            return {"regulation_dir": "DOWN", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "static", "reg_detect_major": "static"}
 
 class SentenceRelationChecker:
 
@@ -754,6 +1329,7 @@ class MirGeneRelCheck:
                 if child.dep_ in ["nummod", "compound"] and not child in allGeneTokens:
                     allGeneTokens.append(child)
 
+            # bubble around actual gene token
             allGeneTokens = sorted(allGeneTokens, key=lambda x: x.i)
 
             #print("all gene tokens", allGeneTokens)
@@ -762,6 +1338,7 @@ class MirGeneRelCheck:
 
                 for gtc in gt.children:
 
+                    # if listing of genes
                     if gtc.dep_ in ["conj"]:
                         
                         gtcStr = str(gtc)
@@ -1038,6 +1615,8 @@ class MirGeneRelCheck:
 
                 #childTokens = self.__followChild(t, ["case", "compound", "amod", "nmod", "dep", "appos", "acl", "dobj", "nummod"], verbose=verbose)
                 childTokens = self.__followChildSel(t, ["case", "amod", "nmod", "dep", "appos", "acl", "dobj", "nummod"], ["compound"], [], verbose=verbose)
+                # there is really no reason why compound should only look forward?!
+                #childTokens = self.__followChildSel(t, ["case", "amod", "nmod", "dep", "appos", "acl", "dobj", "nummod","compound"], [], [], verbose=verbose)
                 
                 for c in childTokens:
                     telems.append(c)
@@ -1095,7 +1674,14 @@ class MirGeneRelCheck:
                 if verbose:
                     print("achildren", aChildren)
                 if geneword in aChildren:
+
+                    if verbose:
+                        print("achildren saved", aChildren)
+                        exit()
                     continue
+
+                if verbose:
+                    print("achildren False")
 
                 return False, celes
 
@@ -1103,6 +1689,10 @@ class MirGeneRelCheck:
 
                 for t in celes[-2:]:
                     if str(t).lower() in ["pathways", "pathway"]:
+
+                        if verbose:
+                            print("Pathway False")
+
                         return False, celes
 
 

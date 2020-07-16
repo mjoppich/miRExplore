@@ -9,8 +9,10 @@ sys.path.insert(0, "/mnt/d/dev/git/nameConvert/")
 from nameconvert.stores import GeneIdentity
 from nameconvert.stores import UniprotStore
 from nameconvert.utils.DataFrame import DataFrame
-from nameconvert.utils.Files import printToFile, fileExists
+from nameconvert.utils.Files import fileExists
+from utils.idutils import printToFile
 from synonymes.Synonym import Synonym
+from synonymes.SynonymUtils import handleCommonExcludeWords
 
 
 
@@ -158,20 +160,15 @@ if __name__ == '__main__':
 
         vAllSyns.append(synonyme)
 
-    synCounter = Counter()
-    for synonyme in vAllSyns:
 
-        for syn in synonyme:
-            synCounter[syn] += 1
+    #exWords = loadExludeWords(common=True, generic=True, disease=False, taxnames=False, cell_co=False)
 
-    setCommonWords = set()
+    exWords = loadExludeWords(cell_co=False, common=False, generic=True, syngrep=False)
+    vPrintSyns = handleCommonExcludeWords(vAllSyns, exWords, mostCommonCount=500, maxCommonCount=7, addAlphaBeta=True, addHyphenGene=True, removeSyn=lambda synonym: synonym.id.startswith('MIR') and not synonym.id.endswith('HG'))
 
-    for synWordCount in synCounter.most_common(10):
-        setCommonWords.add(synWordCount[0])
-        print(synWordCount[0] + " " + str(synWordCount[1]))
+    printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/mgi.syn", codec="utf8")
 
-    exWords = loadExludeWords(common=True, generic=True, disease=False, taxnames=False, cell_co=False)
-
+    """
     for cat in exWords:
         for w in exWords[cat]:
             setCommonWords.add(w)
@@ -195,3 +192,4 @@ if __name__ == '__main__':
         vPrintSyns.append(synonyme)
 
     printToFile( vPrintSyns, "/mnt/d/owncloud/data/miRExplore/textmine/synonyms/mgi.syn" )
+    """

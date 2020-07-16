@@ -5,9 +5,10 @@ from collections import defaultdict, Counter
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 from synonymes.mirnaID import miRNA, miRNAPART
-from textmining.MirGeneRelCheck import SentenceRelationChecker
+from textmining.MirGeneRelCheck import SentenceRelationChecker, SentenceRelationClassifier
 
 from utils.tmutils import normalize_gene_names
+from itertools import chain, combinations
 
 
 scaiBase = "/mnt/d/owncloud/data/miRExplore/scai_corpus/"
@@ -26,160 +27,255 @@ normGeneSymbols = normalize_gene_names(path=scaiBase + "/../obodir/" + "/hgnc_no
 from lxml import etree
 import spacy
 
-nlp = spacy.load('/mnt/d/spacy/models/en_core_sci_lg-0.2.4/en_core_sci_lg/en_core_sci_lg-0.2.4/')
+
+alltests = ["conj", "sdp", "compartment", "context"]
+
+def all_subsets(ss):
+    return chain(*map(lambda x: combinations(ss, x), range(0, len(ss)+1)))
+
+def printStats(outfile, totalChecks, correctIdentified, incorrectIdentified, incorrectClass, elemCaseCounter):
+    testres = {}
+
+    testres["total"] = totalChecks
+    testres["correct"] = correctIdentified
+    testres["incorrect"] = incorrectIdentified
+    testres["classes"] = incorrectClass
+
+    testres["T,T"] = elemCaseCounter[(True, True)]
+    testres["T,F"] = elemCaseCounter[(True, False)]
+    testres["F,T"] = elemCaseCounter[(False, True)]
+    testres["F,F"] = elemCaseCounter[(False, False)]
 
 
-relChecker = SentenceRelationChecker(nlp)
 
-correctIdentified = 0
-incorrectIdentified = 0
-totalChecks = 0
-incorrectClass = Counter()
+    print("Total:     ", totalChecks, file=outfile)
+    print("Correct:   ", correctIdentified, correctIdentified/totalChecks, file=outfile)
+    print("Incorrect: ", incorrectIdentified, incorrectIdentified/totalChecks, file=outfile)
+    print("classes", incorrectClass, file=outfile)
+    print(file=outfile)
+    print(file=outfile)
+    print(file=outfile)
+    print(file=outfile)
+    print("T,T", elemCaseCounter[(True, True)], file=outfile)
+    print("T,F", elemCaseCounter[(True, False)], file=outfile)
+    print("F,T", elemCaseCounter[(False, True)], file=outfile)
+    print("F,F", elemCaseCounter[(False, False)], file=outfile)
 
-print("InteractionID", "REL_ENT", "REG_DIR", "INDIRECT", "PASSIVE", "NEGATED", "SENTENCE", sep="\t")
+    precision = elemCaseCounter[(True, True)] / (elemCaseCounter[(True, True)]+elemCaseCounter[(True, False)])
+    recall = elemCaseCounter[(True, True)] / (elemCaseCounter[(True, True)]+elemCaseCounter[(False, True)])
 
-with open(os.path.join(scaiBase, scaiFile), 'r') as fin:
-    tree = etree.parse(fin)
-    root = tree.getroot()
-    scaiPairs = []
+    f1 = 2* precision * recall / (precision+recall)
 
-    for elem in root.findall(".//document"):
+    specificity = elemCaseCounter[(False, False)] / (elemCaseCounter[(True, False)] + elemCaseCounter[(False, False)])
 
-        pmid = elem.attrib['origId']
+    print("precision", precision, file=outfile)
+    print("recall", recall, file=outfile)
+    print("specificity", specificity, file=outfile)
+    print("f1", f1, file=outfile)
 
-        for sentElem in elem:
+    testres["precision"] = precision
+    testres["recall"] = recall
+    testres["specificity"] = specificity
+    testres["f1"] = f1
 
-            allEntities = sentElem.findall(".//entity")
-            allPairs = sentElem.findall(".//pair")
+    return testres
 
-            sentText = sentElem.attrib["text"]
+#nlp = spacy.load('/mnt/d/spacy/models/en_core_sci_lg-0.2.4/en_core_sci_lg/en_core_sci_lg-0.2.4/')
+#nlp = spacy.load('/mnt/d/spacy/models/en_core_web_lg-2.2.0/en_core_web_lg/en_core_web_lg-2.2.0/')
+nlp = spacy.load('/mnt/d/spacy/models/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4/')
 
-            entId2elem = {}
-
-            for entity in allEntities:
-                entId = entity.attrib['id']
-                entText = entity.attrib['text']
-                entType = entity.attrib['type']
-                entOffset = tuple([int(x) for x in entity.attrib['charOffset'].split("-")])
-
-                if entType in ["Specific_miRNAs", "Genes/Proteins"]:
-
-                    if "Genes" in entType:
-                        if entText in normGeneSymbols:
-                            entText = normGeneSymbols[entText]
-                        elif entText.upper() in normGeneSymbols:
-                            gene = normGeneSymbols[entText.upper()]
-                    else:
-                        try:
-                            entText = miRNA(entText).getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
-                        except:
-                            pass
-
-                    entTuple = (entText, entType, (entOffset[0], entOffset[1]+1))
-                    entId2elem[entId] = entTuple
+exp_name = "spacy_bionlp13cg"
 
 
-                    sentEntText = sentText[entTuple[2][0]:entTuple[2][1]]
+tests2results = {}
 
-            for pair in allPairs:
+for considered_tests in all_subsets(alltests):
+    print(considered_tests)
 
-                validInteraction = pair.attrib['interaction'].lower() == "true"
-                pairE1 = pair.attrib['e1']
-                pairE2 = pair.attrib['e2']
+    relChecker = SentenceRelationChecker(nlp)
+    relClassifier = SentenceRelationClassifier()
 
-                #if pairInt == 'true':
-                if pairE1 in entId2elem and pairE2 in entId2elem:
+    correctIdentified = 0
+    incorrectIdentified = 0
+    totalChecks = 0
+    incorrectClass = Counter()
+    elemCaseCounter = Counter()
 
-                    totalChecks += 1
+    #print("InteractionID", "REL_ENT", "REG_DIR", "INDIRECT", "PASSIVE", "NEGATED", "SENTENCE", sep="\t")
 
-                    e1 = entId2elem[pairE1]
-                    e2 = entId2elem[pairE2]
+    with open(os.path.join(scaiBase, scaiFile), 'r') as fin:
+        tree = etree.parse(fin)
+        root = tree.getroot()
+        scaiPairs = []
 
-                    if not e1[1] in ["Specific_miRNAs"]:
+        for elem in root.findall(".//document"):
 
-                        tmp=e1
-                        e1=e2
-                        e2=tmp
+            pmid = elem.attrib['origId']
+
+            for sentElem in elem:
+
+                allEntities = sentElem.findall(".//entity")
+                allPairs = sentElem.findall(".//pair")
+
+                sentText = sentElem.attrib["text"]
+
+                entId2elem = {}
+
+                for entity in allEntities:
+                    entId = entity.attrib['id']
+                    entText = entity.attrib['text']
+                    entType = entity.attrib['type']
+                    entOffset = tuple([int(x) for x in entity.attrib['charOffset'].split("-")])
+
+                    if entType in ["Specific_miRNAs", "Genes/Proteins"]:
+
+                        if "Genes" in entType:
+                            if entText in normGeneSymbols:
+                                entText = normGeneSymbols[entText]
+                            elif entText.upper() in normGeneSymbols:
+                                gene = normGeneSymbols[entText.upper()]
+                        else:
+                            try:
+                                entText = miRNA(entText).getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
+                            except:
+                                pass
+
+                        entTuple = (entText, entType, (entOffset[0], entOffset[1]+1))
+                        entId2elem[entId] = entTuple
 
 
-                    relRes = relChecker.check_sentence(sentText
-                                                        , {"entity_type": "mirna", "entity_type_token": "e1", "entity_location": e1[2]}
-                                                        , {"entity_type": "gene", "entity_type_token": "e2", "entity_location": e2[2]}
-                                                        , fix_special_chars=False
-                                                        )
+                        sentEntText = sentText[entTuple[2][0]:entTuple[2][1]]
+
+                for pair in allPairs:
+
+                    validInteraction = pair.attrib['interaction'].lower() == "true"
+                    pairE1 = pair.attrib['e1']
+                    pairE2 = pair.attrib['e2']
+
+                    #if pairInt == 'true':
+                    if pairE1 in entId2elem and pairE2 in entId2elem:
+
+                        totalChecks += 1
+
+                        e1 = entId2elem[pairE1]
+                        e2 = entId2elem[pairE2]
+
+                        if not e1[1] in ["Specific_miRNAs"]:
+
+                            tmp=e1
+                            e1=e2
+                            e2=tmp
 
 
-                    fullsentence = relRes['full_sentence']
-                    acceptInteraction = relRes['accept_relation']
-
-                    if not acceptInteraction == validInteraction:
-
-                        incorrectClass[(validInteraction, acceptInteraction)]+=1
-                        incorrectIdentified += 1
-                    else:
-                        correctIdentified += 1
+                        relRes = relChecker.check_sentence(sentText
+                                                            , {"entity_type": "mirna", "entity_type_token": "e1", "entity_location": e1[2]}
+                                                            , {"entity_type": "gene", "entity_type_token": "e2", "entity_location": e2[2]}
+                                                            , fix_special_chars=False
+                                                            , relClassifier=relClassifier.classify
+                                                            )
 
 
-                    relEnts = "MIR_GENE" if e1[2][0] < e2[2][0] else "GENE_MIR"
-                    relDir = "DOWN" if relEnts == "MIR_GENE" else "UP"
+                        fullsentence = relRes['full_sentence']
+                        acceptInteraction = relRes['accept_relation']
 
-                    if not validInteraction:
-                        relEnts = "NA"
-                        relDir = "NA"
+                        # conj
+                        # sdp
+                        # compartment
+                        # context
 
-                    
-                    print(pair.attrib["id"], relEnts, relDir, "FALSE", "FALSE", "FALSE", fullsentence, sep="\t")
+                        #acceptInteraction = relRes["check_results"]["conj"] and relRes["check_results"]["compartment"] and relRes["check_results"]["context"]
+
+                        acceptInteraction = True
+
+                        for test in considered_tests:
+                            acceptInteraction = acceptInteraction and relRes["check_results"][test]
+
+                        foundClasses = relRes["check_results"]["classification"]
+
+                        #print(pair.attrib["id"], fullsentence, validInteraction, acceptInteraction, foundClasses["interaction_dir"], foundClasses["regulation_dir"])
+
+                        if not acceptInteraction == validInteraction:
+
+                            incorrectClass[(validInteraction, acceptInteraction)]+=1
+                            incorrectIdentified += 1
+                        else:
+                            correctIdentified += 1
+
+                        # (T,T) = true predicted, true condition
+                        # (T, F) = true predicted, false condition
+                        # (F, T) = false predicted, true condition
+                        # (F, F) = false predicted, false condition
+
+                        elemCase = (acceptInteraction, validInteraction)
+
+                        elemCaseCounter[elemCase] += 1
 
 
-                    if False:
-                        print("Incorrect Sentence Start")
-                        print("SCAI:", validInteraction, "MIREXPLORE:", acceptInteraction)
-                        print(sentText)
-                        print(e1)
-                        print(e2)
-                        print(fullsentence)
+                        relEnts = "MIR_GENE" if e1[2][0] < e2[2][0] else "GENE_MIR"
+                        relDir = "DOWN" if relEnts == "MIR_GENE" else "UP"
 
-                    
-                        relRes2 = relChecker.check_sentence(sentText
-                                                           , {"entity_type": "mirna", "entity_type_token": "e1", "entity_location": e1[2]}
-                                                           , {"entity_type": "gene", "entity_type_token": "e2", "entity_location": e2[2]}
-                                                           , fix_special_chars=False
-                                                           , verbose=True)
+                        if not validInteraction:
+                            relEnts = "NA"
+                            relDir = "NA"
 
-                        relRes2["full_sentence"] = ""
-                        #relRes2["entity1"] = None
-                        #relRes2["entity2"] = None
-                        print(relRes2)
-                        if relRes["accept_relation"] != relRes2["accept_relation"]:
-                            print("DiffRes")
-                            print(relRes)
-                        print("Incorrect Sentence End")
-                        print()
-                        print()
+                        
+                        #print(pair.attrib["id"], relEnts, relDir, "FALSE", "FALSE", "FALSE", fullsentence, sep="\t")
 
-            """
-            <entity id="miRNA-corp.d1.s0.e0" text="down-regulation" type="Relation_Trigger" charOffset="23-37"/>
-            <entity id="miRNA-corp.d1.s0.e1" text="miRNA-128" type="Specific_miRNAs" charOffset="42-50"/>
-            <entity id="miRNA-corp.d1.s0.e2" text="glioma" type="Diseases" charOffset="70-75"/>
-            <entity id="miRNA-corp.d1.s0.e3" text="GBM" type="Diseases" charOffset="81-83"/>
-            <entity id="miRNA-corp.d1.s0.e4" text="up-regulating" type="Relation_Trigger" charOffset="111-123"/>
-            <entity id="miRNA-corp.d1.s0.e5" text="ARP5" type="Genes/Proteins" charOffset="125-128"/>
-            <entity id="miRNA-corp.d1.s0.e6" text="ANGPTL6" type="Genes/Proteins" charOffset="131-137"/>
-            <entity id="miRNA-corp.d1.s0.e7" text="Bmi-1" type="Genes/Proteins" charOffset="141-145"/>
-            <entity id="miRNA-corp.d1.s0.e8" text="GBM" type="Diseases" charOffset="210-212"/>
-            <pair id="miRNA-corp.d1.s0.p0" type="Specific_miRNAs-Diseases" interaction="True" e2="miRNA-corp.d1.s0.e2" e1="miRNA-corp.d1.s0.e1"/>
-            <pair id="miRNA-corp.d1.s0.p1" type="Specific_miRNAs-Diseases" interaction="True" e2="miRNA-corp.d1.s0.e3" e1="miRNA-corp.d1.s0.e1"/>
-            <pair id="miRNA-corp.d1.s0.p2" type="Specific_miRNAs-Genes/Proteins" interaction="True" e2="miRNA-corp.d1.s0.e5" e1="miRNA-corp.d1.s0.e1"/>
-            <pair id="miRNA-corp.d1.s0.p3" type="Specific_miRNAs-Genes/Proteins" interaction="True" e2="miRNA-corp.d1.s0.e6" e1="miRNA-corp.d1.s0.e1"/>
-            <pair id="miRNA-corp.d1.s0.p4" type="Specific_miRNAs-Genes/Proteins" interaction="True" e2="miRNA-corp.d1.s0.e7" e1="miRNA-corp.d1.s0.e1"/>
-            <pair id="miRNA-corp.d1.s0.p5" type="Specific_miRNAs-Diseases" interaction="False" e2="miRNA-corp.d1.s0.e8" e1="miRNA-corp.d1.s0.e1"/>
-            """
 
-    def printStats(outfile):
-        print("Total:     ", totalChecks, file=outfile)
-        print("Correct:   ", correctIdentified, correctIdentified/totalChecks, file=outfile)
-        print("Incorrect: ", incorrectIdentified, incorrectIdentified/totalChecks, file=outfile)
-        print("classes", incorrectClass, file=outfile)
+                        if False:
+                            print("Incorrect Sentence Start")
+                            print("SCAI:", validInteraction, "MIREXPLORE:", acceptInteraction)
+                            print(sentText)
+                            print(e1)
+                            print(e2)
+                            print(fullsentence)
 
-    printStats(sys.stdout)
-    printStats(sys.stderr)
+                        
+                            relRes2 = relChecker.check_sentence(sentText
+                                                            , {"entity_type": "mirna", "entity_type_token": "e1", "entity_location": e1[2]}
+                                                            , {"entity_type": "gene", "entity_type_token": "e2", "entity_location": e2[2]}
+                                                            , fix_special_chars=False
+                                                            , verbose=True)
+
+                            relRes2["full_sentence"] = ""
+                            #relRes2["entity1"] = None
+                            #relRes2["entity2"] = None
+                            print(relRes2)
+                            if relRes["accept_relation"] != relRes2["accept_relation"]:
+                                print("DiffRes")
+                                print(relRes)
+                            print("Incorrect Sentence End")
+                            print()
+                            print()
+
+                """
+                <entity id="miRNA-corp.d1.s0.e0" text="down-regulation" type="Relation_Trigger" charOffset="23-37"/>
+                <entity id="miRNA-corp.d1.s0.e1" text="miRNA-128" type="Specific_miRNAs" charOffset="42-50"/>
+                <entity id="miRNA-corp.d1.s0.e2" text="glioma" type="Diseases" charOffset="70-75"/>
+                <entity id="miRNA-corp.d1.s0.e3" text="GBM" type="Diseases" charOffset="81-83"/>
+                <entity id="miRNA-corp.d1.s0.e4" text="up-regulating" type="Relation_Trigger" charOffset="111-123"/>
+                <entity id="miRNA-corp.d1.s0.e5" text="ARP5" type="Genes/Proteins" charOffset="125-128"/>
+                <entity id="miRNA-corp.d1.s0.e6" text="ANGPTL6" type="Genes/Proteins" charOffset="131-137"/>
+                <entity id="miRNA-corp.d1.s0.e7" text="Bmi-1" type="Genes/Proteins" charOffset="141-145"/>
+                <entity id="miRNA-corp.d1.s0.e8" text="GBM" type="Diseases" charOffset="210-212"/>
+                <pair id="miRNA-corp.d1.s0.p0" type="Specific_miRNAs-Diseases" interaction="True" e2="miRNA-corp.d1.s0.e2" e1="miRNA-corp.d1.s0.e1"/>
+                <pair id="miRNA-corp.d1.s0.p1" type="Specific_miRNAs-Diseases" interaction="True" e2="miRNA-corp.d1.s0.e3" e1="miRNA-corp.d1.s0.e1"/>
+                <pair id="miRNA-corp.d1.s0.p2" type="Specific_miRNAs-Genes/Proteins" interaction="True" e2="miRNA-corp.d1.s0.e5" e1="miRNA-corp.d1.s0.e1"/>
+                <pair id="miRNA-corp.d1.s0.p3" type="Specific_miRNAs-Genes/Proteins" interaction="True" e2="miRNA-corp.d1.s0.e6" e1="miRNA-corp.d1.s0.e1"/>
+                <pair id="miRNA-corp.d1.s0.p4" type="Specific_miRNAs-Genes/Proteins" interaction="True" e2="miRNA-corp.d1.s0.e7" e1="miRNA-corp.d1.s0.e1"/>
+                <pair id="miRNA-corp.d1.s0.p5" type="Specific_miRNAs-Diseases" interaction="False" e2="miRNA-corp.d1.s0.e8" e1="miRNA-corp.d1.s0.e1"/>
+                """
+
+
+
+    tres = printStats(sys.stdout, totalChecks, correctIdentified, incorrectIdentified, incorrectClass, elemCaseCounter)
+    tests2results[considered_tests] = tres
+
+    #printStats(sys.stderr)
+
+
+
+import pickle
+
+with open("scai_{}_{}_results.pickle".format(sys.argv[1].lower(), exp_name), "wb") as fout:
+    pickle.dump(tests2results, fout)
