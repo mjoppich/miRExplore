@@ -1,6 +1,7 @@
 from collections import defaultdict, Counter
 import regex as re
-import os
+import os,sys
+import copy
 
 #nlp = spacy.load("/mnt/d/spacy/models/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
 
@@ -72,7 +73,7 @@ class SentenceRelationClassifier:
             "CHANGE": "NEU",
         }
 
-        if not os.path.exist("/mnt/d/dev/git/miRExplore/python/allrels.csv"):
+        if not os.path.exists("/mnt/d/dev/git/miRExplore/python/allrels.csv"):
             exit(-1)
 
         with open("/mnt/d/dev/git/miRExplore/python/allrels.csv") as fin:
@@ -593,7 +594,7 @@ class SentenceRelationChecker:
         self.nlp = nlp
 
     def fixPos(self, pos, sentence):
-        posElems = [(idx, i, ord(i)) for idx, i in enumerate(sentence) if ord(i) > 127 and idx < pos]
+        posElems = [(idx, chr(i), i) for idx, i in enumerate(sentence) if i > 127 and idx < pos]
 
         if len(posElems) > 0:
             pos -= len(posElems)
@@ -604,6 +605,81 @@ class SentenceRelationChecker:
     def __offset_positions(self, entDict, value):
         entDict["entity_location"] = (entDict["entity_location"][0] + value, entDict["entity_location"][1] + value)
         return entDict
+
+    def __decode_bytes(self, byteSent):
+        posMapping = {}
+        decStr = ""
+        xidx = 0
+        while xidx < len(byteSent):
+            x = byteSent[xidx]
+                
+            if x > 127:
+                
+                #print(xidx, "{0:b}".format(x))
+
+                utfLen = 1
+
+                # refer to https://en.wikipedia.org/wiki/UTF-8 for the byte shape to length
+                if (x & 0b11100000) == 0b11000000:
+                    # this and next pos
+                    utfLen = 2
+                elif (0b11110000 & x) == 0b11100000:
+                    # this and next pos
+                    utfLen = 3
+                elif (0b11111000 & x) == 0b11110000:
+                    # this and next pos
+                    utfLen = 4
+                elif (0b11111100 & x) == 0b11111000:
+                    # this and next pos
+                    utfLen = 5
+                elif (0b11111110 & x) == 0b11111100:
+                    # this and next pos
+                    utfLen = 6
+                    
+                for y in range(xidx, xidx+utfLen):
+                    posMapping[y] = len(decStr)
+
+                utfBytes = byteSent[xidx:xidx+utfLen]
+                #print(utfLen, utfBytes)
+                utfStr = utfBytes.decode()
+                decStr += utfStr
+                
+                xidx += utfLen
+
+            else:
+                posMapping[xidx] = len(decStr)
+                decStr += chr(x)
+                
+                xidx += 1
+
+        return decStr, posMapping
+
+
+    def decodeSentence(self, byteSent, e1p, e2p):
+
+        decStr, posM = self.__decode_bytes(byteSent)
+
+        newE1pEntL = (
+            posM.get(e1p["entity_location"][0], e1p["entity_location"][0]),
+            posM.get(e1p["entity_location"][1], e1p["entity_location"][1])
+        )
+
+        newE2pEntL = (
+            posM.get(e2p["entity_location"][0], e2p["entity_location"][0]),
+            posM.get(e2p["entity_location"][1], e2p["entity_location"][1])
+        )
+
+        e1pC = copy.deepcopy(e1p)
+        e2pC = copy.deepcopy(e2p)
+
+        e1pC["entity_location"] = newE1pEntL
+        e2pC["entity_location"] = newE2pEntL
+
+        e1pC["entity_text"] = decStr[newE1pEntL[0]:newE1pEntL[1]]
+        e2pC["entity_text"] = decStr[newE2pEntL[0]:newE2pEntL[1]]
+
+        return decStr, e1pC, e2pC
+
 
     def processLocation(self, sent, e1p, e2p, verbose=False, relClassifier=None):
 
@@ -658,6 +734,9 @@ class SentenceRelationChecker:
                     e2Token = t
 
         if e1Token == None or e2Token == None:
+            print(sent, file=sys.stderr)
+            print(e1p, file=sys.stderr)
+            print(e2p, file=sys.stderr)
             return None, None
 
         if e1p["entity_type"] == "gene":
@@ -709,22 +788,31 @@ class SentenceRelationChecker:
         :param e2: entity 1 dict: ('entType': [mirna|gene], 'entLocation': (startpos, endpos), 'entTypeToken: "e1|e2")
         :return:
         """
+        assert(fix_special_chars == False)
 
         assert (all([x in e1 for x in ["entity_type", "entity_location", "entity_type_token"]]))
         assert (all([x in e2 for x in ["entity_type", "entity_location", "entity_type_token"]]))
 
-        if fix_special_chars:
-            e1Pos = (self.fixPos(e1["entity_location"][0], sentence), self.fixPos(e1["entity_location"][1], sentence))
-            e2Pos = (self.fixPos(e2["entity_location"][0], sentence), self.fixPos(e2["entity_location"][1], sentence))
-
+        if type(sentence) == bytes:
+            origSent = sentence
+            origE1 = e1
+            origE2 = e2
+            
+            sentence, e1, e2 = self.decodeSentence(origSent, e1, e2)
+        
         else:
-            e1Pos = e1["entity_location"]
-            e2Pos = e2["entity_location"]
+            if fix_special_chars:
+                e1Pos = (self.fixPos(e1["entity_location"][0], sentence), self.fixPos(e1["entity_location"][1], sentence))
+                e2Pos = (self.fixPos(e2["entity_location"][0], sentence), self.fixPos(e2["entity_location"][1], sentence))
 
-        e1["entity_location"] = tuple(e1Pos)
-        e2["entity_location"] = tuple(e2Pos)
+            else:
+                e1Pos = e1["entity_location"]
+                e2Pos = e2["entity_location"]
 
-        if not e1Pos[0] < e2Pos[0]:
+            e1["entity_location"] = tuple(e1Pos)
+            e2["entity_location"] = tuple(e2Pos)
+
+        if not e1["entity_location"][0] < e2["entity_location"][0]:
             tmpE = e1
             e1 = e2
             e2 = tmpE
@@ -767,6 +855,14 @@ class SentenceRelationChecker:
         assert (e1["entity_type_token"] != e2["entity_type_token"])
         assert (e1["entity_location"][0] < e2["entity_location"][0])
 
+        if e1["entity_type"] == "mirna" and not e1["entity_text"].upper().startswith(("MIR", "MICRO", "HSA", "MMU", "LET")):
+            print(e1, file=sys.stderr)
+            print(e2, file=sys.stderr)
+
+        if e2["entity_type"] == "mirna" and not e2["entity_text"].upper().startswith(("MIR", "MICRO", "HSA", "MMU", "LET")):
+            print(e1, file=sys.stderr)
+            print(e2, file=sys.stderr)
+
         """
         if e1[4] == "e1":
             ent1 = "REGULATOR"
@@ -783,7 +879,6 @@ class SentenceRelationChecker:
             if verbose:
                 print("add special case", entity)
             self.nlp.tokenizer.add_special_case(entity, [{'ORTH': entity, 'TAG': 'NNP'}])
-
 
         """
         Here we split the sentence - maybe also useful for and, concatenated sentences!
@@ -1606,8 +1701,9 @@ class MirGeneRelCheck:
                     if verbose:
                         print("neighbour", e, n)
 
-                    if n.pos_ in ["PUNCT"]:
-                        n = idx2t.get(e.i+2, None)
+                    if n != None:
+                        if n.pos_ in ["PUNCT"]:
+                            n = idx2t.get(e.i+2, None)
 
                     if verbose:
                         print("neighbour", e, n)

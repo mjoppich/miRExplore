@@ -1,15 +1,15 @@
 from collections import Counter
-import sys
+import sys, os
+
+sys.path.append(os.path.dirname(__file__) + "/../")
 
 from utils.idutils import loadExludeWords
 
 sys.path.insert(0, "/mnt/d/dev/git/nameConvert/")
 
 
-from nameconvert.stores import GeneIdentity
-from nameconvert.stores import UniprotStore
-from nameconvert.utils.DataFrame import DataFrame
-from nameconvert.utils.Files import fileExists
+from utils.DataFrame import DataFrame
+
 from utils.idutils import printToFile
 from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
@@ -26,17 +26,26 @@ if __name__ == '__main__':
     #mgiSyn = MGIdata.getColumnIndex("Marker Synonyms (pipe-separated)")
     mgiUniprot = MGIdata.getColumnIndex("UniProt IDs")
 
+    mgiGeneType = 20
+
     MGIinfo = {}
     foundUniprotIDs = set()
     uniprotID2MGI = {}
 
     locID2sym = {}
 
-    for elem in MGIdata.vElements:
+    mirIDs = set()
+
+    for elem in MGIdata.data:
 
         locID = str(elem[mgiID])
         locSym = str(elem[mgiSym])
         locUniprot = elem[mgiUniprot]
+
+        if len(elem) >= 21:
+            if elem[20] in ["miRNA gene"]:
+                print("miRNA gene", locID, locSym, locUniprot, file=sys.stderr)
+                mirIDs.add(locID)
 
         locID2sym[locID.replace(':', '_', 1)] = locSym.upper()
 
@@ -64,24 +73,8 @@ if __name__ == '__main__':
 
     uniprotConvFile = "/mnt/d/owncloud/data/miRExplore/uniprotConv_mgi.tsv"
 
-    if fileExists(uniprotConvFile):
+    if os.path.exists(uniprotConvFile):
         convData = DataFrame.parseFromFile(uniprotConvFile )
-
-        allHeaders = convData.dHeader
-        newHeaders = {}
-
-        for x in allHeaders:
-
-            enumKey = x
-
-            if x.startswith('GeneIdentity.'):
-                enumKey = x[len('GeneIdentity.'):]
-
-            fieldName = GeneIdentity[enumKey]
-
-            newHeaders[fieldName] = allHeaders[x]
-
-            convData.dHeader = newHeaders
 
     else:
 
@@ -91,11 +84,11 @@ if __name__ == '__main__':
 
         printToFile([str(convData)], uniprotConvFile)
 
-    uniprotIdx = convData.getColumnIndex( GeneIdentity.UNIPROT )
-    geneNamesIdx = convData.getColumnIndex( GeneIdentity.ALIAS )
-    protNamesIdx = convData.getColumnIndex( GeneIdentity.PROTEIN_NAMES )
+    uniprotIdx = convData.getColumnIndex( "GeneIdentity.UNIPROT" )
+    geneNamesIdx = convData.getColumnIndex( "GeneIdentity.ALIAS" )
+    protNamesIdx = convData.getColumnIndex( "GeneIdentity.PROTEIN_NAMES" )
 
-    for result in convData.vElements:
+    for result in convData.data:
 
         uniprotID = result[uniprotIdx]
 
@@ -103,6 +96,8 @@ if __name__ == '__main__':
 
         if mgiIDs == None or len(mgiIDs) == 0:
             continue
+
+
 
         for mgiID in mgiIDs:
 
@@ -137,6 +132,10 @@ if __name__ == '__main__':
 
     vAllSyns = []
     for mgiID in MGIinfo:
+
+        if mgiID in mirIDs:
+            print("Skipping mir ID", mgiID)
+            continue
 
         if None in MGIinfo[mgiID]['sym']:
             MGIinfo[mgiID]['sym'].remove(None)

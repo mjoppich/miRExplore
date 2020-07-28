@@ -39,7 +39,7 @@ NEG,block:blockable|blocked|blocks|blockades|blockers|blockade|blockaded|block|b
 COMBINE,bound:boundary|boundaries|bounds|bounded|bound
 CHANGE,carboxyl:carboxylating|carboxylation|carboxylmethylation|carboxylates|carboxylated|carboxylases|carboxylate
 POS,cataly:catalyses|catalysing|catalytically|catalyzed|catalytic|catalyzing|catalyst|catalysis|catalyze|catalysts|catalysed|catalyse|catalytical|catalyzes
-CHANGE ,cleav:cleavages|cleavable|cleaved|cleavage|cleaves|cleaving|cleave|clove
+CHANGE,cleav:cleavages|cleavable|cleaved|cleavage|cleaves|cleaving|cleave|clove
 COMBINE,cluster:cluster
 NEU,co-operat:co-operative|co-operates|co-operate|co-operated|co-operation|co-operating
 COMBINE,co-precipit:co-precipitation|co-precipitate|co-precipitated|co-precipitates|co-precipitating

@@ -34,7 +34,7 @@ nlp = spacy.load('/mnt/d/spacy/en_core_sci_lg-0.2.5/en_core_sci_lg/en_core_sci_l
 
 def augmentMiRNAs(sentence, y, entSyns):
     # get sentence from position to next blank
-    nextWord = sentence.text.find(" ", y.position[1])
+    nextWord = sentence.text.find(b" ", y.position[1])
 
     allY = [y]
 
@@ -42,7 +42,7 @@ def augmentMiRNAs(sentence, y, entSyns):
 
         newMirna = []
 
-        textForSent = sentence.text.encode("utf-8")
+        textForSent = sentence.text#.encode("utf-8")
 
         foundText = textForSent[y.position[0]:nextWord].decode(errors="replace")
         addText = textForSent[y.position[1]:nextWord].decode(errors="replace")
@@ -266,7 +266,7 @@ class EntEntRelation:
             self.assocDir,
             self.regulation_direction,
             "", # reg stem
-            self.sentence_id,
+            str(self.sentence_id),
             False, # ??
             self.ent1.position,
             self.ent2.position,
@@ -278,7 +278,9 @@ class EntEntRelation:
             0, #??
             self.check_sdp,
             self.passive,
-            self.negated
+            self.negated,
+            self.interaction_direction,
+            self.regulation_direction
         )   
 
         
@@ -405,9 +407,6 @@ def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
             sentence = sentDB.get_sentence(entHit.documentID)
             allY = augmentMiRNAs(sentence, entHit, ent2Syns)
 
-            if len(allY) > 2:
-                print("bla")
-
             allAugmentEnts += allY
 
         
@@ -518,6 +517,9 @@ def analyseFile(splitFileIDs, env):
         sys.stderr.write("Found something in: " + str(splitFileID) + "\n")
 
         for docID in ent1Hits:
+
+            #if not docID in ["27150436"]:
+            #    continue
 
             if accept_pmids != None:
                 if not docID in accept_pmids:
@@ -634,8 +636,8 @@ if __name__ == '__main__':
     allfileIDs = sorted(allfileIDs, reverse=True)
 
 
-    # allfileIDs = [894]
-    threads = 4
+    #allfileIDs = ["pubmed20n1231"]
+    threads = 1
 
     if __debug__:
         threads = 1

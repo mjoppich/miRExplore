@@ -35,7 +35,6 @@ class SyngrepHit:
 
         retObj = SyngrepHit()
         retObj.documentID = SentenceID.fromStr(aline[0])
-
         retObj.synonymID = SynonymID.fromStr(aline[1])
 
         if synfileMap != None:

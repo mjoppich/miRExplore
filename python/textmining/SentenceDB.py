@@ -1,4 +1,4 @@
-import codecs
+import io
 from collections import defaultdict
 
 import os
@@ -24,6 +24,8 @@ class Sentence:
     def __init__(self, sentid, text):
 
         self.id = sentid
+
+        #attention: this is byte object for miRNA-gene interactions!
         self.text = text
 
     def __str__(self):
@@ -72,7 +74,7 @@ class SentenceDB:
 
         retObj = defaultdict(list)
 
-        with codecs.open(filename, 'r') as infile:
+        with io.open(filename, 'rb') as infile:
 
             for line in infile:
                 #line = line.decode('latin1')
@@ -81,12 +83,12 @@ class SentenceDB:
                 if len(line) == 0:
                     continue
 
-                aline = line.split("\t")
+                aline = line.split(b"\t")
 
                 if len(aline) != 2:
                     continue
 
-                sentID = SentenceID.fromStr(aline[0])
+                sentID = SentenceID.fromStr(aline[0].decode())
                 sentText = aline[1]
 
                 retObj[sentID.docID].append(Sentence(sentID, sentText))
