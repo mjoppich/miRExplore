@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     for fileExt in ['.sent', '.author', '.citation', '.title']:
 
-        storagePath = '/mnt/raidtmpbio/joppich/pmid/'
+        storagePath = '/mnt/raidtmpbio2/joppich/pmid_jun2020/'
 
         allfiles = glob.glob(storagePath+'/*'+fileExt)
         allfiles = sorted(allfiles, key=lambda x: os.path.basename(x), reverse=True)
@@ -42,6 +42,7 @@ if __name__ == '__main__':
             allFilePMIDs = set([x for x in foundDocs])
             pmidIntersect = allFilePMIDs.intersection(seenPMIDs)
             seenPMIDs = seenPMIDs.union(allFilePMIDs)
+            print("File PMIDs: {}".format(len(allFilePMIDs)))
 
             if len(pmidIntersect) > 0:
 

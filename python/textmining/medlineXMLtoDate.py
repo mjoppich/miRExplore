@@ -122,6 +122,16 @@ class PubmedEntry:
             return default
 
     @classmethod
+    def get_node_dict(cls, node):
+
+        ret = {}
+
+        for x in node:
+            ret[x.tag] = cls.get_inner_text_from_node(x)
+
+        return ret
+
+    @classmethod
     def get_value_from_node(cls, node, path, default=None):
         try:
             if path != None:
@@ -287,16 +297,45 @@ class PubmedEntry:
         return text
 
     @classmethod
+    def month2int(cls, month):
+
+        mydict = {
+            "JANUARY": 1,
+            "FEBRUARY": 2,
+            "MARCH": 3,
+            "APRIL": 4,
+            "MAY": 5,
+            "JUNE": 6,
+            "JULY": 7,
+            "AUGUST": 8,
+            "SEPTEMBER": 9,
+            "OCTOBER": 10,
+            "NOVEMBER": 11,
+            "DECEMBER": 12,
+            "JAN": 1,
+            "FEB": 2,
+            "MAR": 3,
+            "APR": 4,
+
+            "JUN": 6,
+            "JUL": 7,
+            "AUG": 8,
+            "SEP": 9,
+            "OCT": 10,
+            "NOV": 11,
+            "DEC": 12,
+            "0": 0
+        }
+
+        return mydict.get(str(month).upper(), month)
+
+
+
+    @classmethod
     def fromXMLNode(cls, node):
 
 
         pmid = cls.get_value_from_node(node, 'MedlineCitation/PMID')
-
-
-        if pmid == "28295230":
-            print(pmid)
-        else:
-            return None
 
         date_created = cls.get_inner_text_from_path(node, 'MedlineCitation/DateCreated')
 
@@ -343,23 +382,46 @@ class PubmedEntry:
         artDateNode = cls.get_node(articleNode, 'ArticleDate')
 
         articleDate = None
-        if artDateNode != None:
-            articleDate = (artDateNode[0]["Year"],artDateNode[0]["Month"],artDateNode[0]["Day"])
+        if artDateNode != None and len(artDateNode) == 3:
+            articleDate = (artDateNode[0].text,cls.month2int(artDateNode[1].text),artDateNode[2].text)
+
+        if articleDate == None:
+
+            journalNode = cls.get_node(articleNode, "Journal")
+            journalIssue = cls.get_node(journalNode, "JournalIssue")
+
+            if journalNode != None and journalIssue != None:
+
+                journalPubDate = cls.get_node(journalIssue, "PubDate")
+
+                if journalPubDate != None:
+                    pubDateDict = cls.get_node_dict(journalPubDate)
+
+                    articleDate = (
+                        pubDateDict.get("Year", 0),
+                        cls.month2int(pubDateDict.get("Month", 0)),
+                        pubDateDict.get("Day", 0)
+                    )
 
 
-        if articleDate == None and 'Journal' in articleNode:
-
-            articleJournalInfo = articleNode["Journal"]
-            if "JournalIssue" in articleJournalInfo:
-                if 'PubDate' in articleJournalInfo['JournalIssue']:
-                    if 'Year' in articleJournalInfo['JournalIssue']['PubDate']:
-                        articleDate = (articleJournalInfo['JournalIssue']['PubDate']['Year'], articleJournalInfo['JournalIssue']['PubDate']['Month'], articleJournalInfo['JournalIssue']['PubDate']['Day'])
+        if articleDate == None:
+            articleDate = (0,0,0)
 
 
 
-        pubmed.pub_date = (0,0,0)
+        pubmed.pub_date = tuple([cls.tryToNumber(x) for x in articleDate])
 
         return pubmed
+
+    @classmethod
+    def tryToNumber(cls, elem):
+
+        try:
+            return int(elem)
+
+        except:
+            return elem
+
 
 class PubmedXMLParser:
 
@@ -412,6 +474,8 @@ class PubmedArticleIterator:
 
     def __next__(self):
         raise StopIteration()
+
+import traceback
 
 
 if __name__ == '__main__':
@@ -466,13 +530,15 @@ if __name__ == '__main__':
                         if entry == None:
                             continue
 
-                        pmid2date[entry.pmid] = entry.pubdate
+                        pmid2date[entry.pmid] = entry.pub_date
 
                         for dtype in entry.pub_types:
                             pmid2types[entry.pmid].add(dtype)
 
 
                     except:
+
+                        traceback.print_exc()
 
                         eprint("Exception", datefile)
                         try:
@@ -486,14 +552,14 @@ if __name__ == '__main__':
                         continue
 
                 for x in pmid2date:
-                    print(x, pmid2date[x], sep="\t", file=outdate)
+                    print(x, "\t".join([str(x) for x in pmid2date[x]]), sep="\t", file=outdate)
 
                 for x in pmid2types:
                     for doctype in pmid2types[x]:
                         print(x, doctype, sep="\t", file=outtype)
 
 
-    ll = MapReduce(1)
+    ll = MapReduce(6)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)
 
     print("Done")

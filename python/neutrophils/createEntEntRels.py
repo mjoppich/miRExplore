@@ -13,7 +13,6 @@ sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 from neutrophils.RelexParser import RelexParser
 
 from collections import Counter, defaultdict
-from porestat.utils.DataFrame import DataFrame
 import re
 
 from synonymes.SynfileMap import SynfileMap
@@ -166,6 +165,7 @@ def analyseConjunction(stackL, stackR):
 
 def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
     global relexParser
+    global args
 
     sentHits = relHits[str(ent1Hit.documentID)]
 
@@ -263,20 +263,40 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentDB, relHits):
 
 
 
-        stackRes = analyseStacks(stacks[0], stacks[1])
-        #analyseConjugation(doc[22], doc[27])
-        verbRes = analyseVerbs(doc, doc[lWord], doc[rWord])
-        conjRes = analyseConjunction(stacks[0], stacks[1])
+        stackResFwd = analyseStacks(stacks[0], stacks[1])
+        verbResFwd = analyseVerbs(doc, doc[lWord], doc[rWord])
+        conjResFwd = analyseConjunction(stacks[0], stacks[1])
 
-        if (len(stackRes) > 0 or len(verbRes) > 0) and False:
+        stackRes = stackResFwd
+        verbRes = verbResFwd
+        conjRes = conjResFwd
+
+        if args.non_directional:
+            stackResRev = analyseStacks(stacks[1], stacks[0])
+            verbResRev = analyseVerbs(doc, doc[rWord], doc[lWord])
+            conjResRev = analyseConjunction(stacks[1], stacks[0])
+
+            stackRes += stackResRev
+            verbRes += verbResRev
+            conjRes += conjResRev
+
+        if False and (len(stackRes) > 0 or len(verbRes) > 0):
             print(sentence.text, file=sys.stderr)
             print(lWord, doc[lWord], file=sys.stderr)
             print(rWord, doc[rWord], file=sys.stderr)
 
-            print("analyseStacks", stackRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (l, r, t) in stackRes], file=sys.stderr)
-            print("analyseVerbs", verbRes, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in verbRes], file=sys.stderr)
-            print("analyseConjunction", conjRes,
-                  [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (t, s, r) in conjRes], file=sys.stderr)
+            print("analyseStacks fwd", stackResFwd, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (l, r, t) in stackResFwd], file=sys.stderr)
+            print("analyseVerbs fwd", verbResFwd, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in verbResFwd], file=sys.stderr)
+            print("analyseConjunction fwd", conjResFwd, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (t, s, r) in conjResFwd], file=sys.stderr)
+
+            if args.non_directional:
+                print(file=sys.stderr)
+                print("analyseStacks rev", stackResRev, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (l, r, t) in stackResRev],
+                      file=sys.stderr)
+                print("analyseVerbs rev", verbResRev, [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in verbResRev],
+                      file=sys.stderr)
+                print("analyseConjunction rev", conjResRev,
+                      [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for (t, s, r) in conjResRev], file=sys.stderr)
 
             print( file=sys.stderr)
 
@@ -567,6 +587,9 @@ def analyseFile(splitFileIDs, env):
 
         for docID in ent1Hits:
 
+            #if not docID == "26183718":
+            #    continue
+
             if accept_pmids != None:
                 if not docID in accept_pmids:
                     continue
@@ -617,6 +640,7 @@ def analyseFile(splitFileIDs, env):
 
 
 relexParser = None
+args = None
 
 if __name__ == '__main__':
 
@@ -635,6 +659,7 @@ if __name__ == '__main__':
     parser.add_argument('--accept_pmids', type=argparse.FileType('r'), required=False, default=None)
 
     parser.add_argument('--relex', type=argparse.FileType('r'), required=False, default=None)
+    parser.add_argument('--non-directional', dest='non_directional', action="store_true", required=False, default=False)
 
     args = parser.parse_args()
 
@@ -643,13 +668,13 @@ if __name__ == '__main__':
     dataDir = args.datadir
 
     ent1Syns = SynfileMap(resultBase + "/"+args.folder1+"/synfile.map")
-    ent1Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent1Syns.loadSynFiles(('/mnt/c/ownCloud/data/miRExplore/', dataDir))
 
     ent2Syns = SynfileMap(resultBase + "/"+args.folder2+"/synfile.map")
-    ent2Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent2Syns.loadSynFiles(('/mnt/c/ownCloud/data/miRExplore/', dataDir))
 
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
-    relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    relSyns.loadSynFiles(('/mnt/c/ownCloud/data/miRExplore/', dataDir))
 
     relationSyns = AssocSynfile(args.datadir + '/obodir/allrels.csv')
 
@@ -679,8 +704,8 @@ if __name__ == '__main__':
     allfileIDs = sorted(allfileIDs, reverse=True)
 
 
-    # allfileIDs = [894]
-    threads = 4
+    #allfileIDs = ["pubmed18n0836"]
+    threads = 6
 
     if __debug__:
         threads = 1

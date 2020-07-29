@@ -1,4 +1,6 @@
-import os
+import os, sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
 from ftplib import FTP
 from urllib import request
 
@@ -8,7 +10,7 @@ if __name__ == '__main__':
 
     ftpBase = 'ftp.ncbi.nlm.nih.gov'
     pdfBase = 'pub/pmc/oa_pdf'
-    saveDirectory = "/home/extproj/tmp/joppich/pmc"
+    saveDirectory = "/mnt/raidtmpbio2/joppich/pmc_apr2020/"
 
     ftp = FTP(ftpBase)
     ftp.login()
@@ -31,7 +33,7 @@ if __name__ == '__main__':
             print(cmd)
             os.system(cmd)
 
-    ll = MapReduce(procs=8)
+    ll = MapReduce(procs=16)
     result = ll.exec(allFolders, downloadFiles, None, 1, None)
 
 

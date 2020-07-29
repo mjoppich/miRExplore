@@ -290,12 +290,6 @@ class PubmedEntry:
 
         pmid = cls.get_value_from_node(node, 'MedlineCitation/PMID')
 
-
-        if pmid == "28295230":
-            print(pmid)
-        else:
-            return None
-
         date_created = cls.get_inner_text_from_path(node, 'MedlineCitation/DateCreated')
 
         articleNode = cls.get_node(node, 'MedlineCitation/Article')
@@ -397,8 +391,8 @@ if __name__ == '__main__':
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-    storagePath = '/mnt/raidtmpbio/joppich/pmid/'
-    baseFileName = 'pubmed18n'
+    storagePath = '/mnt/raidtmpbio2/joppich/pmid_jun2020/'
+    baseFileName = 'pubmed20n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
 

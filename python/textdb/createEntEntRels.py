@@ -12,9 +12,7 @@ sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 from collections import Counter, defaultdict
 
-import nltk
 
-from porestat.utils.DataFrame import DataFrame
 import re
 
 from database.ORGMIRs import ORGMIRDB
@@ -488,7 +486,7 @@ if __name__ == '__main__':
 
 
     # allfileIDs = [894]
-    threads = 4
+    threads = 6
 
     if __debug__:
         threads = 1
