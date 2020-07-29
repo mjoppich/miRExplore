@@ -387,15 +387,31 @@ class PubmedArticleIterator:
         raise StopIteration()
 
 
+"""
+
+python3 ~/python/miRExplore/python/textmining/downloadPubmedAbstracts.py
+python3 medlineXMLtoStructure.py
+python3 removeDuplicateSentences.py
+
+"""
+
+
+
 if __name__ == '__main__':
+
+    nltk.data.path.append("/mnt/d/dev/nltk_data/")
+
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
+<<<<<<< HEAD
     storagePath = '/mnt/raidtmpbio2/joppich/pmid_jun2020/'
+=======
+    storagePath = './'# '/mnt/raidtmpbio2/joppich/pmid_jun2020/'
+>>>>>>> 1e1f3e076e188969f0e930a0905f0f510591e3e8
     baseFileName = 'pubmed20n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
-
 
     startFrom = 0
     endOn = 2000
@@ -412,7 +428,7 @@ if __name__ == '__main__':
 
             allfiles.append(filename)
 
-    print(len(allfiles), allfiles)
+    print("Going through", len(allfiles), " files.")
 
     def senteniceFile(filenames, env):
 
@@ -438,9 +454,6 @@ if __name__ == '__main__':
                 for elem in PubmedArticleIterator(pubmedParser):
 
                     try:
-
-
-
                         entry = PubmedEntry.fromXMLNode(elem)
 
                         if entry == None:
@@ -527,7 +540,7 @@ if __name__ == '__main__':
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(6)
+    ll = MapReduce(1)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)
 
     print("Done")

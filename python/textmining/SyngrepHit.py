@@ -14,11 +14,14 @@ class SyngrepHit:
         self.hitSyn = None
 
         self.perfectHit = False
+        self.synType = None
 
         self.position = (None, None)
 
         self.originalLine = None
 
+    def __hash__(self):
+        return hash(self.position) ^ hash(self.foundSyn) ^ hash(self.hitSyn) ^ hash(self.documentID)
 
 
     @classmethod
@@ -32,7 +35,6 @@ class SyngrepHit:
 
         retObj = SyngrepHit()
         retObj.documentID = SentenceID.fromStr(aline[0])
-
         retObj.synonymID = SynonymID.fromStr(aline[1])
 
         if synfileMap != None:

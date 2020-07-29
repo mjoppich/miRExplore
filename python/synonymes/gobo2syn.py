@@ -1,7 +1,6 @@
 from collections import defaultdict
-from nertoolkit.geneontology.GeneOntology import GeneOntology
-from owlready2 import namespace
 
+from synonymes.GeneOntology import GeneOntology
 from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID
@@ -49,4 +48,5 @@ for namespace in namespace2syn:
 
     vPrintSyns = handleCommonExcludeWords(synSet, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=5, minSynCount=0)
     #printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/go."+namespace.replace(' ', '_') + ".syn")
-    printToFile(vPrintSyns, dataDir + "/hpyloriDB/tm/go."+namespace.replace(' ', '_') + ".syn")
+    #printToFile(vPrintSyns, dataDir + "/hpyloriDB/tm/go."+namespace.replace(' ', '_') + ".syn")
+    printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/go.{}.syn".format(namespace.replace(' ', '_')))

@@ -11,7 +11,8 @@ from utils.cytoscape_grapher import CytoscapeGrapher
 class DataBasePlotter:
 
     @classmethod
-    def fetchGenes(cls, requestDict, gene2name=None, minPMIDEvCount=0, minTgtCount=0, acceptEv = None):
+    def fetchSimple(cls, requestDict):
+
         serverAddress = "https://turingwww.bio.ifi.lmu.de"
         serverPort = None
         serverPath = "yancDB"
@@ -35,14 +36,20 @@ class DataBasePlotter:
         r = requests.post(makeServerAddress(serverAddress, serverPort, serverPath) + "/find_interactions",
                           data=json.dumps(requestDict))
 
-        print(r)
 
         jsonRes = r.json()
 
+        return jsonRes
+
+    @classmethod
+    def fetchGenes(cls, requestDict, gene2name=None, minPMIDEvCount=0, minTgtCount=0, MIRNASTRPARTS=[miRNAPART.MATURE, miRNAPART.ID], acceptEv = None, verbose=False):
+
+        jsonRes = cls.fetchSimple(requestDict)
+
         graph = networkx.Graph()
 
-
-        print(len(jsonRes['rels']))
+        if verbose:
+            print(len(jsonRes['rels']))
         nodeCounter = Counter()
 
 
@@ -56,7 +63,8 @@ class DataBasePlotter:
 
         targets2sources = defaultdict(set)
         edge2datasourceCount = defaultdict(lambda: Counter())
-
+        edge2celltypes = defaultdict(set)
+        edge2celltypePMID = defaultdict(lambda: defaultdict(set))
 
         for rel in jsonRes['rels']:
 
@@ -72,7 +80,7 @@ class DataBasePlotter:
 
             try:
                 target = miRNA(target)
-                target = target.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID] , normalized=True)
+                target = target.getStringFromParts(MIRNASTRPARTS , normalized=True)
 
             except:
                 pass
@@ -82,7 +90,6 @@ class DataBasePlotter:
             for ev in rel['evidences']:
                 ds = ev['data_source']
 
-
                 if acceptEv != None:
                     evRes = acceptEv(ev)
                 else:
@@ -90,6 +97,28 @@ class DataBasePlotter:
 
                 if evRes:
                     edge2datasourceCount[edge][ds] += 1
+
+                    if ds in ["pmid"]:
+
+                        docid = ev["docid"]
+                        allCellEvs = jsonRes['pmidinfo'].get("cells", {}).get(docid, None)
+
+                        if allCellEvs != None:
+
+                            for cellEv in allCellEvs:
+                                cellInfo = (cellEv['termid'], cellEv['termname'])
+
+                                if cellInfo[1].lower() in ['cell', 'protein', 'has', 'signaling', 'function', 'role', 'sfswt-1', 'has-15']:
+                                    continue
+
+                                if not cellInfo[0].startswith("CL"):# and not cellInfo[0].startswith("CVCL"):
+                                    continue
+
+                                if not docid in jsonRes['pmidinfo']['disease']:
+                                    continue
+
+                                edge2celltypes[edge].add(cellInfo)
+                                edge2celltypePMID[edge][cellInfo].add(docid)
 
 
             targets2sources[target].add(source)
@@ -108,12 +137,21 @@ class DataBasePlotter:
                 if target.upper() in allGenes2Name:
                     target = allGenes2Name[target.upper()]
 
-            try:
-                target = miRNA(target)
-                target = target.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID] , normalized=True)
 
-            except:
-                pass
+            if target.upper().startswith("MIR") or target.upper().startswith("LET"):
+                try:
+                    target = miRNA(target)
+                    target = target.getStringFromParts(MIRNASTRPARTS , normalized=True)
+
+                except:
+                    pass
+            elif source.upper().startswith("MIR") or source.upper().startswith("LET"):
+                try:
+                    source = miRNA(source)
+                    source = source.getStringFromParts(MIRNASTRPARTS, normalized=True)
+
+                except:
+                    pass
 
 
             edge = (source, target)
@@ -124,7 +162,8 @@ class DataBasePlotter:
             otherEvCount = sum([1 for x in edgeCounts if x != "pmid"])
 
             if allEvCount == 0:
-                print("Removing edge", edge, "for 0 count")
+                if verbose:
+                    print("Removing edge", edge, "for 0 count")
                 continue
 
             if otherEvCount == 0 and edge2datasourceCount[edge]["pmid"] < minPMIDEvCount:
@@ -133,10 +172,10 @@ class DataBasePlotter:
             if len(targets2sources[target]) < minTgtCount:
                 continue
 
-            graph.add_node(source, {'color': 'red'})
-            graph.add_node(target, {'color': 'blue'})
+            graph.add_node(source, color='red')
+            graph.add_node(target, color='blue')
 
-            graph.add_edge(source, target)
+            graph.add_edge(source, target, celldata=edge2celltypes[edge], cellEvidence=edge2celltypePMID[edge])
 
             nodeCounter[source] += 1
             nodeCounter[target] += 1

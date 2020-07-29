@@ -13,20 +13,30 @@ sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 from collections import Counter, defaultdict
 
 
+<<<<<<< HEAD
+=======
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../../../poreSTAT/")
+
+
+from porestat.utils.DataFrame import DataFrame
+>>>>>>> 1e1f3e076e188969f0e930a0905f0f510591e3e8
 import re
 
 from database.ORGMIRs import ORGMIRDB
 from synonymes.SynfileMap import SynfileMap
+from textmining.SyngrepHitFile import SyngrepHitFile
 from synonymes.SynonymFile import Synfile, AssocSynfile
 from synonymes.mirnaID import miRNA, miRNAPART
 from textmining.SentenceDB import SentenceDB, RegPos
-from textmining.SyngrepHitFile import SyngrepHitFile
+
 
 
 from utils.parallel import MapReduce
 from enum import Enum
 
-nlp = spacy.load('en')  # create blank Language class
+nlp = spacy.load('/mnt/d/spacy/models/en_core_web_lg-2.2.0/en_core_web_lg/en_core_web_lg-2.2.0/')
+
+#nlp = spacy.load('en')  # create blank Language class #en_core_web_lg
 
 
 class Cooccurrence:
@@ -466,13 +476,13 @@ if __name__ == '__main__':
     dataDir = args.datadir
 
     ent1Syns = SynfileMap(resultBase + "/"+args.folder1+"/synfile.map")
-    ent1Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent1Syns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
     ent2Syns = SynfileMap(resultBase + "/"+args.folder2+"/synfile.map")
-    ent2Syns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    ent2Syns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
-    relSyns.loadSynFiles(('/home/users/joppich/ownCloud/data/', dataDir))
+    relSyns.loadSynFiles(('/mnt/c/ownCloud/data', dataDir))
 
     relationSyns = AssocSynfile(args.datadir + '/miRExplore/relations/allrels.csv')
 

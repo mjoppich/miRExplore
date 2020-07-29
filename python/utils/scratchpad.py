@@ -1,12 +1,53 @@
-import spacy
-from spacy import displacy
+import re
 
-nlp = spacy.load('en')
-doc = nlp("".join([u'Microvesicles released by apoptotic human neutrophils suppress proliferation and IL-2/IL-2 receptor expression of resting T helper cells.', u'Macrophages are influenced by chemokines from neutrophils']))
+from textdb.MiGenRelDB import MiGenRelDB
+from utils.tmutils import normalize_gene_names
 
-alldeps = [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]
+mainPath = "/mnt/d/owncloud/data/miRExplore/"
 
-for t in doc:
-    print(t.idx, t.text, t.dep_, t.pos_, t.head.text, [x for x in t.conjuncts], [x for x in t.children])
+normGeneSymbols = normalize_gene_names(path=mainPath + "/obodir/" + "/hgnc_no_withdrawn.syn")
 
-displacy.serve(doc, style='dep', port=5005)
+mirelPMIDhsa = MiGenRelDB.loadFromFile(mainPath + "/textmine/aggregated_pmid/"+ "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene",
+                                       normGeneSymbols=normGeneSymbols, switchLR=True)
+
+
+print(mirelPMIDhsa.get_rels("mirna", "miR-758"))
+
+exit(0)
+
+
+
+def makeListingGroups(baseHits, conjunts):
+
+    resElems = {}
+
+    for baseHit in baseHits:
+        spos = baseHit.start()
+        epos =baseHit.end()
+
+        curGroup = []
+
+        for conjElem in conjunts:
+            if conjElem.start() == epos:
+                curGroup.append(conjElem)
+                epos = conjElem.end()
+
+
+        if len(curGroup) > 0:
+            resElems[baseHit] = curGroup
+
+    return resElems
+
+
+text = "we could show that miR-148/126/340 is important. On the other hand, miR-148/-122/-190 do not seem to play a role"
+
+baseHits = [x for x in re.finditer("miR-[0-9]*", text)]
+fconj = [x for x in re.finditer("\/[\-]*([0-9]+)", text)]
+
+print(baseHits)
+print(fconj)
+
+resElems = makeListingGroups(baseHits, fconj)
+
+for x in resElems:
+    print(x, resElems[x])

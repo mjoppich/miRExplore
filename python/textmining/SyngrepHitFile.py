@@ -1,5 +1,5 @@
 from collections import defaultdict
-import codecs
+import io
 from textmining.SyngrepHit import SyngrepHit
 
 
@@ -9,11 +9,11 @@ class SyngrepHitFile:
 
         self.docid2hits = defaultdict(list)
 
-        with codecs.open(filename, 'rb') as infile:
+        with io.open(filename, 'r', encoding="UTF-8") as infile:
 
             for line in infile:
 
-                line = line.decode('latin1')
+                #line = line.decode('latin1')
 
                 hit = SyngrepHit.fromLine(line, synfileMap)
 

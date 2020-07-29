@@ -1,6 +1,9 @@
 from collections import defaultdict
-from nertoolkit.geneontology.GeneOntology import GeneOntology
+import sys
 
+print(sys.path)
+
+from synonymes.GeneOntology import GeneOntology
 from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID
@@ -101,6 +104,6 @@ for taxid in tax2cells:
     taxSyns = tax2cells[taxid]
 
     vPrintSyns = handleCommonExcludeWords(taxSyns, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=15)
-    printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/celllines."+taxid+".syn")
+    printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/celllines.{}.syn".format(taxid)) #dataDir + "/miRExplore/textmine/synonyms/celllines."+taxid+".syn")
 
     print("Wrote", dataDir + "/miRExplore/textmine/synonyms/celllines."+taxid+".syn")

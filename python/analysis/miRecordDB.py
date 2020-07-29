@@ -79,7 +79,7 @@ class miRecordDB(DataBaseDescriptor):
 
 
     @classmethod
-    def loadFromFile(cls, filelocation=None, ltype='gene', rtype='mirna', normGeneSymbols=None):
+    def loadFromFile(cls, filelocation=None, ltype='gene', rtype='mirna', normGeneSymbols=None, getDocs=False):
 
         ret = miRecordDB(ltype, rtype)
         print(filelocation)
@@ -89,7 +89,7 @@ class miRecordDB(DataBaseDescriptor):
 
         geneSymbolsNormalized = 0
 
-
+        docs=set()
         for row in ws:
             if row[0].row < 2:
                 continue
@@ -129,6 +129,9 @@ class miRecordDB(DataBaseDescriptor):
                 'TARGET_SITE_POSITION': targetSitePosition
             }
 
+            if pubmed != None and len(pubmed) > 0:
+                docs.add(pubmed)
+
             relation = MiRecordRel((gene, ltype), (mirna, rtype), pubmed, 'MIRECORDS_'+str(row[0].row))
             if org != None:
                 relation.orgs = tuple(set([org]))
@@ -141,6 +144,8 @@ class miRecordDB(DataBaseDescriptor):
 
         print("Gene Symbols Normalized", geneSymbolsNormalized)
 
+        if getDocs:
+            return ret, docs
 
         return ret
 

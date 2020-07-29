@@ -50,13 +50,13 @@ for result in hgncData:
 
     #syn = Synonyme(hgncID)
     syn = Synonym( mirexploreGeneID )
-    syn.addTextSyns(result[hgncIDIdx])
-    syn.addTextSyns('"'+result[hgncSymIdx]+'"')
-    syn.addTextSyns('"'+result[hgncNameIdx]+'"')
-    syn.addTextSyns(result[hgncPrevSymIdx])
+    syn.addTextSyns(result[hgncIDIdx], addBrackets=False)
+    syn.addTextSyns('"'+result[hgncSymIdx]+'"', addBrackets=False)
+    syn.addTextSyns('"'+result[hgncNameIdx]+'"', addBrackets=False)
+    syn.addTextSyns(result[hgncPrevSymIdx], addBrackets=False)
     syn.addTextSyns(result[hgncPrevNameIdx], captureBrackets=False)
-    syn.addTextSyns(result[hgncSynsIdx])
-    syn.addTextSyns(result[hgncNameSynIdx])
+    syn.addTextSyns(result[hgncSynsIdx], addBrackets=False)
+    syn.addTextSyns(result[hgncNameSynIdx], addBrackets=False)
 
     vAllSyns.append(syn)
 
@@ -66,7 +66,7 @@ for result in hgncData:
         existingSyn = dAllSyns[mirexploreGeneID]
 
         for x in existingSyn.syns:
-            syn.addTextSyns(x)
+            syn.addTextSyns(x, addBrackets=False)
 
         dAllSyns[mirexploreGeneID] = syn
 
@@ -87,6 +87,8 @@ for syn in vAllSyns:
             removeSyns.append(synword)
 
 
-globalKeywordExcludes = loadExludeWords()
-vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=0, addAlphaBeta=True, removeSyn=lambda synonym: synonym.id.startswith('MIR') and not synonym.id.endswith('HG'))
-printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/hgnc.syn", codec='utf8')
+globalKeywordExcludes = loadExludeWords(cell_co=False, common=False, generic=True, syngrep=False)
+vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=500, maxCommonCount=10, addAlphaBeta=True, addHyphenGene=True, removeSyn=lambda synonym: synonym.id.startswith('MIR') and not synonym.id.endswith('HG'))
+#printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/hgnc.syn", codec='utf8')
+printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/hgnc.syn", codec="utf8")
+

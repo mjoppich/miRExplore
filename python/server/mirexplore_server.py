@@ -6,6 +6,9 @@ import sys
 import os
 import shlex
 
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
+
 from database.getNetworkFeatures import ExpressionNetwork
 from synonymes.SynonymFile import Synfile
 from synonymes.mirnaID import miRNA, miRNAPART
@@ -18,7 +21,6 @@ from textdb.mi2mirna import MI2Mirna
 from textdb.rfamDB import RFamDB
 from utils.tmutils import normalize_gene_names
 
-sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 
 import time
@@ -474,6 +476,76 @@ def getGeneMirnaFeatures(geneID, mirnaID):
     return app.make_response((jsonify(resObj), 200, None))
 
 
+@app.route("/check_context", methods=['POST'])
+def check_context():
+    global diseaseObo
+    global goObo
+    global cellObo
+    global ncitObo
+
+
+    interactReq = request.get_json(force=True, silent=True)
+
+    if interactReq == None:
+        return app.make_response((jsonify( {'error': 'invalid json'} ), 400, None))
+
+    organisms = interactReq.get('organisms', None)
+    diseases = interactReq.get('disease', None)
+    goes = interactReq.get('go', None)
+    cells = interactReq.get('cells', None)
+    ncits = interactReq.get('ncits', None)
+
+    def getAllowedTermIDs(termIDs, obo):
+
+        allowedTermIDs = []
+        for termID in termIDs:
+            elemTerm = obo.getID(termID)
+
+            if elemTerm == None:
+                continue
+
+            allowedTermIDs += [termID]
+
+        return tuple(set(allowedTermIDs))
+
+
+
+    allowedIDs = {}
+
+    if diseases != None:
+        allowedIDs['disease'] = getAllowedTermIDs(diseases, diseaseObo)
+
+    if goes != None:
+        allowedIDs['go'] = getAllowedTermIDs(goes, goObo)
+
+    if cells != None:
+        allowedIDs['cells'] = getAllowedTermIDs(cells, cellObo)
+
+    if ncits != None:
+        allowedIDs['ncits'] = getAllowedTermIDs(ncits, ncitObo)
+
+
+    if organisms != None:
+
+        neworgs = set()
+
+
+        for org in organisms:
+
+            if org.upper() in ["HOMO SAPIENS", "HSA", "HUMAN"]:
+                neworgs.add("hsa")
+            elif org.upper() in ["MUS MUSCULUS", "MMU", "MOUSE"]:
+                neworgs.add("mmu")
+
+        if len(neworgs) > 0:
+            allowedIDs["organism"] = tuple(neworgs)
+
+
+    return app.make_response((jsonify( allowedIDs ), 200, None))
+
+
+
+
 
 
 @app.route('/find_interactions', methods=['GET', 'POST'])
@@ -578,17 +650,32 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
             if len(genes) == 0:
 
-                if relDB.ltype == "gene":
+                if len(mirnas) == 0:
+                    # ADD ALL AVAILABLE GENES/RELATIONS
+                    if relDB.ltype == "gene":
 
-                    for gene in relDB.all_ltypes:
-                        dbrels = relDB.get_rels('gene', gene)
-                        allRelsByType['gene'] += dbrels
+                        for gene in relDB.all_ltypes:
+                            dbrels = relDB.get_rels('gene', gene)
 
-                elif relDB.rtype == "gene":
+                            if dbrels == None:
+                                continue
 
-                    for gene in relDB.all_rtypes:
-                        dbrels = relDB.get_rels('gene', gene)
-                        allRelsByType['gene'] += dbrels
+                            allRelsByType['gene'] += dbrels
+
+                    elif relDB.rtype == "gene":
+
+                        for gene in relDB.all_rtypes:
+                            dbrels = relDB.get_rels('gene', gene)
+
+                            if dbrels == None:
+                                print("None dbrels (rtype) for gene", gene)
+                                continue
+
+
+                            allRelsByType['gene'] += dbrels
+                else:
+                    # genes == 0 and mirnas != 0 => get all relations for mirna
+                    pass
 
             else:
 
@@ -796,9 +883,25 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
                             'evidences': okEvs
                             })
 
+    accDocids = set()
+    for rel in allrels:
+        for ev in rel['evidences']:
+            if 'docid' in ev:
+                accDocids.add(ev['docid'])
+
+    print("Acc DoccIds", len(accDocids))
+
+    addInfoF = defaultdict(lambda: dict())
+
+    for grp in addInfo:
+        for doc in addInfo[grp]:
+
+            if doc in accDocids:
+                addInfoF[grp][doc] = addInfo[grp][doc]
+
     returnObj = {
         'rels': allrels,
-        'pmidinfo': addInfo
+        'pmidinfo': addInfoF
     }
 
     return returnObj
@@ -1214,6 +1317,7 @@ def start_app_from_args(args):
 
     mirelPMIDhsa = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
     mirelPMIDmmu = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
+
     lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.pmid", ltype="lncrna", rtype="mirna")
     geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.pmid", ltype="gene", rtype="lncrna")
 
@@ -1304,8 +1408,8 @@ def start_app_from_args(args):
 
     print(datetime.datetime.now(), "Loading Features")
     rfDB = RFamDB.loadFromFile(pmidBase + '/rfam.regions.mirexplore')
-    featureViewerMMU = FeatureViewer('mmu', args.obodir, rfamDB=rfDB)
-    featureViewerHSA = FeatureViewer('hsa', args.obodir, rfamDB=rfDB)
+    #featureViewerMMU = FeatureViewer('mmu', args.obodir, rfamDB=rfDB)
+    #featureViewerHSA = FeatureViewer('hsa', args.obodir, rfamDB=rfDB)
 
     print(datetime.datetime.now(), "Loading finished")
 
@@ -1316,7 +1420,7 @@ def getCLParser():
     parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
     parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
     parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
-    parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=5000)
+    parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=65500)
 
     return parser
 

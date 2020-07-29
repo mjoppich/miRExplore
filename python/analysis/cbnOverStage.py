@@ -1,10 +1,63 @@
+import sys, os
 from collections import Counter, OrderedDict, defaultdict
 
 import networkx
+from natsort import natsorted
+
+from synonymes.GeneOntology import GeneOntology
+from synonymes.mirnaID import miRNAPART, miRNA
+
+sys.path.insert(0, str(os.path.dirname("/mnt/d/dev/git/poreSTAT/")))
+
+
+from porestat.utils.DataFrame import DataFrame, DataRow, ExportTYPE
 
 from textdb.makeNetworkView import DataBasePlotter
 from utils.cytoscape_grapher import CytoscapeGrapher
 from utils.tmutils import normalize_gene_names
+
+import pandas as pd
+from pandas.plotting import parallel_coordinates
+import matplotlib.pyplot as plt
+
+figidx = 0
+
+cellObo = GeneOntology("/mnt/d/owncloud/data/miRExplore/obodir/meta_cells.obo")
+
+cellTypeName2Terms = {
+    "EC": ["META:52"],
+    "MC": ["META:148", "META:99"],
+    "FC": ["CL:0000891"],
+    "SMC": ["META:83"],
+}
+
+cellType2AccTerms = {}
+for cellT in cellTypeName2Terms:
+
+    cellType2AccTerms[cellT] = set()
+
+    for et in cellTypeName2Terms[cellT]:
+
+        oboT = cellObo.getID(et)
+
+        if oboT != None:
+            cellType2AccTerms[cellT].add(et)
+            for x in oboT.getAllChildren():
+                cellType2AccTerms[cellT].add(x.termid)
+
+        else:
+            print("No such obo term:", et)
+
+for ct in cellType2AccTerms:
+    print(ct, len(cellType2AccTerms[ct]))
+
+allTypes = [x for x in cellType2AccTerms]
+
+for i in range(0, len(allTypes)):
+    for j in range(i+1, len(allTypes)):
+        print(allTypes[i], allTypes[j], len(cellType2AccTerms[allTypes[i]].intersection(cellType2AccTerms[allTypes[j]])))
+
+
 
 cbn2edges = {
 "CV-IPN-Endothelial_cell-monocyte_interaction_1": {('CXCL16', 'CXCL16'), ('ITGAX', 'ITGAX'), ('CX3CR1', 'CX3CR1'), ('CCL2', 'PIK3CA'), ('ITGAX', 'ITGB2'), ('CXCR6', 'CXCR6'), ('SIRPA', 'ITGB2'), ('ITGB2', 'ITGB2'), ('ITGA4', 'VCAM1'), ('CCL2', 'CCL2'), ('SELE', 'SELE'), ('IL1A', 'CCR2'), ('CCL2', 'RHOA'), ('CX3CL1', 'STAT5A'), ('LTB4R', 'ITGAM'), ('IL8', 'ITGAM'), ('ITGA4', 'ITGA4'), ('CX3CR1', 'ICAM1'), ('ICAM1', 'ETS1'), ('SELP', 'SELPLG'), ('ITGA4', 'ITGB1'), ('ITGAM', 'ITGAM'), ('THY1', 'THY1'), ('CX3CL1', 'CX3CL1'), ('ITGAL', 'ITGB2'), ('ITGAM', 'ICAM1'), ('CX3CL1', 'CX3CR1'), ('ICAM1', 'ITGB2'), ('IFNG', 'CXCL16'), ('ETS1', 'CCL2'), ('ICAM1', 'ICAM1'), ('IL8', 'ITGB2'), ('CXCR6', 'CXCL16'), ('ITGB2', 'ITGAL'), ('STAT5A', 'ICAM1'), ('SELP', 'SELP'), ('ETS1', 'ETS1'), ('SELPLG', 'SELPLG'), ('ITGAL', 'ITGAL'), ('IL8', 'IL8'), ('STAT5A', 'STAT5A'), ('CCR2', 'CCR2'), ('ITGB2', 'ITGAM'), ('VCAM1', 'VCAM1'), ('CCL2', 'CCR2'), ('STAB1', 'STAB1')},
@@ -28,7 +81,7 @@ genes2name = {'CXCL12': {'CXCL12'}, 'CXCL13': {'CXCL13'}, 'CXCL14': {'CXCL14'}, 
               'CCL26': {'CCL26'}, 'CCL27': {'CCL27A', 'CCL27', 'CCL27B', 'GM13306'}, 'CCL6': {'CCL6'}, 'CCL9': {'CCL9'},
               }
 
-normGeneSymbols = normalize_gene_names(path="/mnt/c/ownCloud/data/miRExplore/obodir/" + "/hgnc_no_withdrawn.syn")
+normGeneSymbols = normalize_gene_names(path="/mnt/d/owncloud/data/miRExplore/obodir/" + "/hgnc_no_withdrawn.syn")
 
 
 cbn2restrict = OrderedDict([(
@@ -73,6 +126,7 @@ cbn2restrict = OrderedDict([(
             {"group": "cells", "name": "endothelial cell", "termid": "META:52"},
             {"group": "cells", "name": "smooth muscle cell", "termid": "META:83"},
         ]
+        ,"go": [{"group": "go", "name": "smooth muscle cell proliferation", "termid": "GO:0048659"},{"group": "go", "name": "smooth muscle cell migration", "termid": "GO:0014909"}]
     }),
     ("CV-IPN-Platelet_activation_1", {
             'sentences': "false",
@@ -83,7 +137,7 @@ cbn2restrict = OrderedDict([(
                 { "group": "cells", "name": "thromboblast", "termid": "CL:0000828" }
             ],
             "ncits": [
-                { "group": "ncits", "name": "Low-Density Lipoprotein Recepter", "termid": "NCIT:C17074" },
+                { "group": "ncits", "name": "Low-Density Lipoprotein Receptor", "termid": "NCIT:C17074" },
             ]
         }),
     ("CV-IPN-Plaque_destabilization_1", {
@@ -105,11 +159,58 @@ cbn2restrict = OrderedDict([(
     })
     ])
 
+network2nicename = {
+"CV-IPN-Plaque_destabilization_1": "(VI) Plaque destabilization",
+"CV-IPN-Platelet_activation_1": "(V) Platelet activation",
+"CV-IPN-Smooth_muscle_cell_activation_1": "(IV) SMC activation",
+"CV-IPN-Foam_cell_formation_1": "(III) Foam cell formation",
+"CV-IPN-Endothelial_cell-monocyte_interaction_1": "(II) EC/MC interaction",
+"CV-IPN-Endothelial_cell_activation_1": "(I) EC activation",
+}
 
+restrictDF = DataFrame()
+restrictDF.addColumns(["Network", "Cells", "Disease", "Other"], "")
+
+for x in cbn2restrict:
+
+    restricts = cbn2restrict[x]
+
+    networkDRdict = defaultdict(str)
+    networkDRdict["Network"] = network2nicename[x]
+
+    diseaseElems = []
+    cellElems = []
+    otherElems = []
+
+    for restrictType in restricts:
+
+        if restrictType == "sentences":
+            continue
+
+        if restrictType in ["disease"]:
+            for elem in restricts[restrictType]:
+                diseaseElems.append(elem['name'] + " (" + elem['termid'] + ")")
+
+        elif restrictType in ["cells"]:
+            for elem in restricts[restrictType]:
+                cellElems.append(elem['name'] + " (" + elem['termid'] + ")")
+
+        else:
+            for elem in restricts[restrictType]:
+                otherElems.append(elem['name'] + " (" + elem['termid'] + ")")
+
+    networkDRdict['Cells'] = "\makecell[l]{" + "\\\\".join(sorted(cellElems)) + "}"
+    networkDRdict['Disease'] = "\makecell[l]{" + "\\\\".join(sorted(diseaseElems)) + "}"
+    networkDRdict['Other'] = "\makecell[l]{" + "\\\\".join(sorted(otherElems)) + "}"
+
+    dr = DataRow.fromDict(networkDRdict)
+    restrictDF.addRow(dr)
+
+print(restrictDF._makeLatex())
 
 def acceptEvidence(ev):
 
-    return True
+    #return True
 
     if ev['data_source'] == 'miRTarBase':
 
@@ -153,6 +254,33 @@ for cbnNW in cbn2edges:
 
 mirnaNodes = set()
 
+stageMir2Cells = defaultdict(lambda: defaultdict(set))
+stageMir2CellEvidence = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+
+stage2mir = defaultdict(set)
+stage2gene = defaultdict(set)
+
+for nw in cbn2edges:
+    for edge in cbn2edges[nw]:
+
+        allnames = genes2name.get(edge[0], [edge[0]])
+
+        for x in allnames:
+            stage2gene[nw].add(x)
+
+        allnames = genes2name.get(edge[1], [edge[1]])
+
+        for x in allnames:
+            stage2gene[nw].add(x)
+
+outprefix = "disease_pw_"
+outprefix = "disease_"
+#outprefix = ""
+
+mirna2cellOut = open("/mnt/d/yanc_network/"+outprefix+"important_cbn.txt", 'w')
+
+cbn2mirna2evs = defaultdict(lambda: defaultdict(set))
+
 for cbnNW in cbn2edges:
 
     allNWGenes = set()
@@ -176,14 +304,223 @@ for cbnNW in cbn2edges:
     requestData = cbn2restrict[cbnNW]
     requestData['gene'] = list(totalNWGenes)
 
-    requestData['disease'] = [
-        {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
-        {'group': 'disease', 'termid': 'DOID:2349', 'name': 'arteriosclerosis'}
-    ]
+    if 'disease' in outprefix:
+        print("Adding disease context")
+        requestData['disease'] = [
+            {'group': 'disease', 'termid': 'DOID:1287', 'name': 'cardiovascular system disease'},
+            {'group': 'disease', 'termid': 'DOID:1936', 'name': 'atherosclerosis'}
+        ]
 
     print(cbnNW)
 
-    graph, nodeCounts, evcount, json = DataBasePlotter.fetchGenes(requestData, gene2name=genes2name, minPMIDEvCount=0, minTgtCount=0, acceptEv=acceptEvidence)
+    graph, nodeCounts, evcount, json = DataBasePlotter.fetchGenes(requestData, gene2name=genes2name, minPMIDEvCount=0, minTgtCount=0, acceptEv=acceptEvidence, MIRNASTRPARTS=[miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
+
+
+
+    htmlDF = DataFrame()
+    htmlDF.addColumns(
+        ['gene rel', 'gene', 'miRNA Group', 'miRNA', 'Original Network', 'PubMed', 'MIRECORD', 'MIRTARBASE', 'DIANA', 'Disease', 'Cells', 'GO'])
+    for rel in json['rels']:
+
+        orderedEdge = [None, None]
+
+        if rel['ltype'] == "gene":
+            orderedEdge[0] = rel['lid']
+        elif rel['ltype'] == "mirna":
+            orderedEdge[1] = rel['lid']
+
+        if rel['rtype'] == "gene":
+            orderedEdge[0] = rel['rid']
+        elif rel['rtype'] == "mirna":
+            orderedEdge[1] = rel['rid']
+
+        if orderedEdge[0] == "TNPO2":
+            orderedEdge[0] = "KPNA4"
+
+        orderedEdges = set()
+
+        if orderedEdge[1].startswith("microRNAS"):
+            continue
+
+        orderedEdges.add(tuple(orderedEdge))
+
+        for oEdge in orderedEdges:
+
+            origEdge = tuple(oEdge)
+
+            try:
+                miObj = miRNA(oEdge[1])
+                miStr = miObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
+
+                selfObj = miRNA(miStr)
+
+                oEdge = list(oEdge)
+                oEdge[1] = miStr
+                oEdge = tuple(oEdge)
+            except:
+                print("Ignoring edge for mirna", origEdge, oEdge)
+                continue
+                # pass
+
+            stage2mir[cbnNW].add(oEdge[1])
+
+            objMirna = miRNA(oEdge[1])
+            simpleMirna = objMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR])
+            simpleEdge = tuple([oEdge[0], simpleMirna])
+
+            pmidEvs = set()
+            mirtarbaseEvs = set()
+            mirecordsEvs = set()
+            dianaEvs = set()
+
+            interactionEvidences = set()
+
+            docDiseases = []
+            docCells = []
+            docGOs = []
+
+            for ev in rel['evidences']:
+
+                docid = ev['docid']
+
+                cbn2mirna2evs[cbnNW][oEdge[1]].add(docid)
+
+
+                disEvs = json['pmidinfo'].get('disease', {}).get(docid, {})
+
+                for disEv in disEvs:
+
+                    did = disEv['termid']
+                    dname = disEv['termname']
+
+                    docDiseases.append((dname, did, docid))
+
+
+                cellEvs = json['pmidinfo'].get('cells', {}).get(docid, {})
+
+                for cellEv in cellEvs:
+
+                    did = cellEv['termid']
+                    dname = cellEv['termname']
+
+                    docCells.append((dname, did, docid))
+
+                    for ct in cellType2AccTerms:
+
+                        ctTerms = cellType2AccTerms[ct]
+
+                        if did in ctTerms:
+                            print(cbnNW, oEdge[0], oEdge[1], ct, docid, sep="\t", file=mirna2cellOut)
+
+
+                goEvs = json['pmidinfo'].get('go', {}).get(docid, {})
+
+                for goEv in goEvs:
+
+                    did = goEv['termid']
+                    dname = goEv['termname']
+
+                    docGOs.append((dname, did, docid))
+
+                if ev['data_source'] == "DIANA":
+                    dianaEvs.add((ev['method'], (ev['direction'])))
+
+                elif ev['data_source'] == "miRTarBase":
+                    mirtarbaseEvs.add(
+                        (ev['data_id'], ",".join(ev['exp_support']), ev['functional_type'], ev['docid'])
+                    )
+
+
+                elif ev['data_source'] == "pmid":
+                    pmidEvs.add((ev['docid'],))
+
+                elif ev['data_source'] == "mirecords":
+                    mirecordsEvs.add((ev['docid']))
+
+                else:
+                    print("Unhandled data source", ev['data_source'])
+
+            interactionEvidences = tuple(sorted(interactionEvidences))
+
+            dianaLink = "http://carolina.imis.athena-innovation.gr/diana_tools/web/index.php?r=tarbasev8%2Findex&miRNAs%5B%5D=&genes%5B%5D={geneCap}&genes%5B%5D={geneLow}&sources%5B%5D=1&sources%5B%5D=7&sources%5B%5D=9&publication_year=&prediction_score=&sort_field=&sort_type=&query=1".format(
+                geneCap=oEdge[0].upper(), geneLow=oEdge[1].upper())
+
+            pmidStr = "<br/>".join(
+                [
+                    "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/{pmid}\" target=\"_blank\">{pmid}</a>".format(
+                        pmid=elem[0]) for elem in pmidEvs
+                ]
+            )
+
+            mirtarbaseStr = "<br/>".join(
+                [
+                    "<a href=\"http://mirtarbase.mbc.nctu.edu.tw/php/detail.php?mirtid={mtbid}\">{mtbid}</a>".format(
+                        mtbid=elem[0]) for elem in mirtarbaseEvs
+                ]
+            )
+
+            mirecordStr = "<br/>".join(
+                [
+                    "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/{pmid}\" target=\"_blank\">{pmid}</a>".format(
+                        pmid=elem[0]) for elem in mirecordsEvs
+                ]
+            )
+
+            dianaStr = "<br/>".join(
+                [
+                    "{method} {direction}".format(method=elem[0], direction=elem[1]) for elem in dianaEvs
+                ]
+            )
+
+            goStr = "<br/>".join(
+                [
+                    "{method} ({direction}, {docid})".format(method=elem[0], direction=elem[1], docid=elem[2]) for elem
+                    in docGOs
+                ]
+            )
+
+            cellStr = "<br/>".join(
+                [
+                    "{method} ({direction}, {docid})".format(method=elem[0], direction=elem[1], docid=elem[2]) for elem
+                    in docCells
+                ]
+            )
+
+            diseaseStr = "<br/>".join(
+                [
+                    "{method} ({direction}, {docid})".format(method=elem[0], direction=elem[1], docid=elem[2]) for elem
+                    in docDiseases
+                ]
+            )
+
+            addRow = {
+                'gene rel': oEdge[0] + "<br/>" + oEdge[1],
+                'gene': oEdge[0],
+                'miRNA Group': objMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID]),
+                'miRNA': objMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]),
+                'Original Network': "{edgestate}</br>".format(edgestate="predicted") +
+                                    "<a href=\"https://www.ncbi.nlm.nih.gov/pubmed/?term={miRes}+{miShort}\">Search PUBMED</a>".format(
+                                        miRes=oEdge[1],
+                                        miShort=objMirna.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID])) +
+                                    "</br><a href=\"{dianaLink}\">Search DIANA</a>".format(dianaLink=dianaLink)
+                ,
+                'PubMed': pmidStr,
+                'MIRECORD': mirecordStr,
+                'MIRTARBASE': mirtarbaseStr,
+                'DIANA': dianaStr,
+                'Disease': diseaseStr,
+                'Cells': cellStr,
+                'GO': goStr
+            }
+
+            row = DataRow.fromDict(addRow)
+            htmlDF.addRow(row)
+
+    htmlDF.export("/mnt/d/yanc_network/" + outprefix + "overview_" + cbnNW.replace(" ", "_") + ".html", ExportTYPE.HTML)
+    htmlDF.export("/mnt/d/yanc_network/" + outprefix + "overview_" + cbnNW.replace(" ", "_") + ".tsv", ExportTYPE.TSV)
+
+
+
 
     newNodes = []
 
@@ -197,7 +534,7 @@ for cbnNW in cbn2edges:
 
         newNodes.append((node, nodeAttr))
 
-    removeNodes = [node for node, degree in graph.degree().items() if degree >= 2 and node in mirnaNodes]
+    removeNodes = [node for node, degree in graph.degree() if degree >= 2 and node in mirnaNodes]
     #graph.remove_nodes_from(removeNodes)
 
 
@@ -235,6 +572,26 @@ for cbnNW in cbn2edges:
 
             edgeEvidenceCounter[elabel] += 1
 
+            miRName = None
+
+            if edge[0].startswith("miR") or edge[0].startswith("let-"):
+                miRName = edge[0]
+            elif edge[1].startswith("miR") or edge[1].startswith("let-"):
+                miRName = edge[1]
+
+
+            if "celldata" in edgeAttr and miRName != None :
+
+                for x in edgeAttr["celldata"]:
+                    stageMir2Cells[cbnNW][miRName].add(x)
+
+                for x in edgeAttr['cellEvidence']:
+                    for pmid in edgeAttr['cellEvidence'][x]:
+                        stageMir2CellEvidence[cbnNW][miRName][x].add(pmid)
+
+            elif miRName == None:
+                print("INVALID MIRNA:", edge, file=sys.stderr)
+
         else:
             print(edge, "not in evcount")
 
@@ -253,6 +610,292 @@ for cbnNW in cbn2edges:
         graph.add_edge(edge[0], edge[1], {'color': '#aa0000'})
 
     cbn2graph[cbnNW] = graph
+
+
+allStages = [x for x in stage2mir]
+allmirs = [stage2mir[x] for x in allStages]
+
+
+
+from venn import generate_petal_labels, draw_venn, generate_colors
+
+
+
+
+nstage2mir = OrderedDict()
+for x in sorted(stage2mir, key=lambda x: network2nicename[x]):
+    nstage2mir[network2nicename[x]] = stage2mir[x]
+
+plt.figure()
+
+
+petal_labels = generate_petal_labels(nstage2mir.values(), fmt="{size}")
+
+vennLabels = dict()
+
+for x in petal_labels:
+    if int(petal_labels[x]) == 0:
+        vennLabels[x] = ""
+    else:
+        vennLabels[x] = petal_labels[x]
+
+print(nstage2mir.keys())
+print(vennLabels)
+print(nstage2mir)
+
+draw_venn(
+    petal_labels=vennLabels, dataset_labels=nstage2mir.keys(),
+    hint_hidden=False, colors=generate_colors(n_colors=len(nstage2mir)),
+    figsize=(8, 8), fontsize=14, legend_loc="best", ax=None
+)
+
+
+
+plt.savefig("/mnt/d/yanc_network/"+outprefix+"stages_mir_overlap.png")
+plt.savefig("/mnt/d/yanc_network/"+outprefix+"stages_mir_overlap.pdf")
+plt.show()
+
+plt.figure()
+
+
+nstage2gene = OrderedDict()
+for x in sorted(stage2gene, key=lambda x: network2nicename[x]):
+    nstage2gene[network2nicename[x]] = stage2gene[x]
+
+
+petal_labels = generate_petal_labels(nstage2gene.values(), fmt="{size}")
+
+vennLabels = dict()
+
+for x in petal_labels:
+    if int(petal_labels[x]) == 0:
+        vennLabels[x] = ""
+    else:
+        vennLabels[x] = petal_labels[x]
+
+print(nstage2gene.keys())
+print(vennLabels)
+print(nstage2gene)
+
+draw_venn(
+    petal_labels=vennLabels, dataset_labels=nstage2gene.keys(),
+    hint_hidden=False, colors=generate_colors(n_colors=len(nstage2gene)),
+    figsize=(8, 8), fontsize=14, legend_loc="best", ax=None
+)
+
+plt.savefig("/mnt/d/yanc_network/"+outprefix+"stages_gene_overlap.png")
+plt.savefig("/mnt/d/yanc_network/"+outprefix+"stages_gene_overlap.pdf")
+plt.show()
+
+
+def generate_logics(n_sets):
+    """Generate intersection identifiers in binary (0010 etc)"""
+    for i in range(1, 2**n_sets):
+        yield bin(i)[2:].zfill(n_sets)
+
+def generate_petal_labels(datasets, fmt="{size}"):
+    """Generate petal descriptions for venn diagram based on set sizes"""
+    datasets = list(datasets)
+    n_sets = len(datasets)
+    dataset_union = set.union(*datasets)
+    universe_size = len(dataset_union)
+    petal_labels = {}
+    for logic in generate_logics(n_sets):
+        included_sets = [
+            datasets[i] for i in range(n_sets) if logic[i] == "1"
+        ]
+        excluded_sets = [
+            datasets[i] for i in range(n_sets) if logic[i] == "0"
+        ]
+        petal_set = (
+            (dataset_union & set.intersection(*included_sets)) -
+            set.union(set(), *excluded_sets)
+        )
+        petal_labels[logic] = (fmt.format(
+            logic=logic, size=len(petal_set),
+            percentage=(100*len(petal_set)/universe_size)
+        ), petal_set)
+    return petal_labels
+
+
+print([x for x in stage2mir])
+alllabels = generate_petal_labels(stage2mir.values())
+
+for x in alllabels:
+    print(x, alllabels[x])
+
+#exit()
+
+### which cell types are most common per stage?
+print()
+print("cells per stage")
+print()
+print()
+print()
+
+importantCellTypesPerMirna = defaultdict(lambda: Counter())
+
+for stage in stageMir2Cells:
+
+    cellCounter = Counter()
+
+    stageMirnaCellPairs = Counter()
+    mirnaCellPairs = defaultdict(lambda: Counter())
+    stageCellCount = Counter()
+
+    for mirna in stageMir2Cells[stage]:
+
+
+        for cell in stageMir2Cells[stage][mirna]:
+            cellCounter[cell] += 1
+
+        mirnaStageCells = [x for x in stageMir2Cells[stage][mirna]]
+
+        for i in range(0, len(mirnaStageCells)):
+            for j in range(i+1, len(mirnaStageCells)):
+
+                if mirnaStageCells[i][0].startswith("CVCL") or mirnaStageCells[j][0].startswith("CVCL"):
+                    continue
+
+                cellpair = tuple(sorted((mirnaStageCells[i],mirnaStageCells[j])))
+
+                mirnaCellPairs[mirna][cellpair] += 1
+                stageMirnaCellPairs[cellpair] += 1
+
+                stageCellCount[cellpair[0]] += 1
+                stageCellCount[cellpair[1]] += 1
+
+                importantCellTypesPerMirna[mirna][cellpair] += 1
+
+
+    mostCommonCellPairs = []
+    for (mpair, count) in stageMirnaCellPairs.most_common(): #20
+        mostCommonCellPairs.append(mpair)
+
+
+    edge2support = defaultdict(set)
+
+    for mirna in mirnaCellPairs:
+        for cellpair in mirnaCellPairs[mirna]:
+            if cellpair in mostCommonCellPairs:
+
+                edge2support[cellpair].add(mirna)
+
+                print(stage, mirna, cellpair[0], cellpair[1], mirnaCellPairs[mirna][cellpair], stageMirnaCellPairs[cellpair], stageMir2CellEvidence[stage][mirna].get(cellpair[0]),stageMir2CellEvidence[stage][mirna].get(cellpair[1]) )
+
+    cellgraph = networkx.Graph()
+
+    allnodes = set()
+    for edge in edge2support:
+        allnodes.add(edge[0])
+        allnodes.add(edge[1])
+
+    def formatNode(node):
+        if "'" in node[1]:
+            node = (node[0], node[1].replace("'", "\\'"))
+
+        return node[1] + " ("+node[0]+")"
+
+    for node in allnodes:
+
+        nodeStr = formatNode(node)
+
+        cellgraph.add_node(nodeStr, size=20 + stageCellCount[node])
+
+
+    cellCommunicatorDF = DataFrame()
+    cellCommunicatorDF.addColumns(["miRNA", "cells"])
+
+    mirna2cells = defaultdict(set)
+
+    for edge in edge2support:
+
+        srcN = formatNode(edge[0])
+        tgtN = formatNode(edge[1])
+
+
+        cellgraph.add_edge(
+            srcN,
+            tgtN,
+            label=", ".join(edge2support.get(edge, [])))
+
+        mirnas = edge2support.get(edge, [])
+
+        for mirna in mirnas:
+            mirna2cells[mirna].add(edge[0][1] + " (" + edge[0][0] + ")")
+            mirna2cells[mirna].add(edge[1][1] + " (" + edge[1][0] + ")")
+
+
+    cells2mirnas = defaultdict(set)
+    for mirna in mirna2cells:
+        cells = tuple(sorted(mirna2cells[mirna]))
+
+        cells2mirnas[cells].add(mirna)
+
+
+    for cells in cells2mirnas:
+
+        ncells = []
+        for cell in cells:
+            ncells.append( ""+cell+"}" )
+
+        rowdict = {
+            'miRNA': "\\makecell[l]{" + "\\\\".join(sorted(cells2mirnas[cells])) + "}",
+            'cells': "\\makecell[l]{" + "\\\\".join(cells) + "}"
+        }
+        cellCommunicatorDF.addRow(DataRow.fromDict(rowdict))
+
+
+    cellCommunicatorDF.export("/mnt/d/yanc_network/"+outprefix+"stage_cells_cliques"+stage+".latex", ExportTYPE.LATEX)
+    cellCommunicatorDF.export("/mnt/d/yanc_network/"+outprefix+"stage_cells_cliques"+stage+".tsv", ExportTYPE.TSV)
+
+
+    CytoscapeGrapher.showGraph(cellgraph, '/mnt/d/yanc_network/', name=outprefix+"stage_cells_" + stage)
+    figidx = CytoscapeGrapher.plotNXGraph(cellgraph, stage, ["/mnt/d/yanc_network/"+outprefix+"stage_cells_" + stage.replace(" ", "_") + ".png", "/mnt/d/yanc_network/stage_cells_" + stage.replace(" ", "_") + ".pdf"], figidx)
+
+    CytoscapeGrapher.exportGraphML(cellgraph, location="/mnt/d/yanc_network/",
+                                   name=outprefix+"stage_cells_" + stage.replace(" ", "_"))
+
+    print()
+    print()
+    print()
+    print()
+    print()
+
+    plotKeys = []
+    plotValues = []
+    for (cell, count) in cellCounter.most_common(20):
+        print(stage, cell[0], cell[1], count)
+        plotKeys.append(cell[1] + " ("+cell[0]+")")
+        plotValues.append(count)
+
+
+    plt.figure(figidx)
+    figidx+= 1
+    plt.bar(plotKeys, plotValues)
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+
+    plt.savefig("/mnt/d/yanc_network/"+outprefix+"cells_per_stage_" + stage + ".png",bbox_inches='tight')
+    plt.savefig("/mnt/d/yanc_network/"+outprefix+"cells_per_stage_" + stage + ".pdf",bbox_inches='tight')
+
+    plt.show()
+    print()
+    print()
+    print()
+    print()
+    print()
+
+for mirna in importantCellTypesPerMirna:
+
+    for (cp, count) in importantCellTypesPerMirna[mirna].most_common(10):
+        pass#print(mirna, cp[0], cp[1], count)
+
+print()
+print()
+print()
+print()
+print()
 
 ### which miRNAs play a role in all networks?
 
@@ -290,7 +933,7 @@ def getMirsForGene(gene, graph):
 
     return targetMirs
 
-outfile = open("/mnt/c/Users/mjopp/Desktop/yanc_network/" + "mirs_per_stage.tsv", 'w')
+outfile = open("/mnt/d/yanc_network/" + outprefix + "mirs_per_stage.tsv", 'w')
 
 print("Condition1", "Condition2", "Gene", "miRNAs Only Before", "miRNAs Only After", "Common Mirs", sep="\t")
 print("Condition1", "Condition2", "Gene", "miRNAs Only Before", "miRNAs Only After", "Common Mirs", sep="\t", file=outfile)
@@ -344,9 +987,14 @@ for storyTransition in storyTransitions:
 outfile.close()
 
 
-
+latexStageMirsFile = open("/mnt/d/yanc_network/"+outprefix+"cbn_stages_most_reg.txt", 'w')
 
 mirSByCBN = defaultdict(set)
+
+mir2networks = defaultdict(set)
+interactionsPerNetworkAndMirna = defaultdict(lambda: dict())
+
+overallMostRegulatingMIRs = Counter()
 
 for cbnNW in cbn2restrict:
 
@@ -372,24 +1020,124 @@ for cbnNW in cbn2restrict:
                 nodeAttr['color'] = '#d942f4'
 
 
-    intNodes = [(node,degree) for node, degree in graph.degree().items() if node in mirnaNodes]
+    intNodes = [(node,degree) for node, degree in graph.degree() if node in mirnaNodes]
     intNodes = sorted(intNodes, key=lambda x: x[1], reverse=True)
 
 
     for node in intNodes:
         if node[0].startswith("miR"):
             mirSByCBN[cbnNW].add(node[0])
+            mir2networks[node[0]].add(cbnNW)
 
+            overallMostRegulatingMIRs[node[0]] += node[1]
+
+            interactionsPerNetworkAndMirna[cbnNW][node[0]] = node[1]
 
 
     print(cbnNW)
+    cbnNWMirs = []
     for i in range(0, min(10, len(intNodes))):
         print(i, intNodes[i])
+        cbnNWMirs.append(  intNodes[i][0] + " ("+str(intNodes[i][1])+")"  )
+
+    latexStageMirsFile.write(network2nicename[cbnNW] + "&" + ", ".join(cbnNWMirs) + "\\\\\n")
 
     print()
+
+
+
     print()
 
-    mygraph = CytoscapeGrapher.showGraph(graph, location='/mnt/c/Users/mjopp/Desktop/yanc_network/', name=cbnNW)
+    mygraph = CytoscapeGrapher.showGraph(graph, location='/mnt/d/yanc_network/', name=outprefix+cbnNW)
+
+latexStageMirsFile.close()
+
+mostCommonMirNames = [x[0] for x in overallMostRegulatingMIRs.most_common(10)]
+
+mostCommonEvs = Counter()
+for x in mostCommonMirNames:
+    for nw in cbn2mirna2evs:
+        if x in cbn2mirna2evs[nw]:
+            mostCommonEvs[x] += len(cbn2mirna2evs[nw][x])
+
+print("Overall most regulating")
+print(overallMostRegulatingMIRs.most_common(10))
+print(", ".join([x[0] + " (" + str(x[1]) + ", "+ str(mostCommonEvs[x[0]]) +")" for x in overallMostRegulatingMIRs.most_common(10)]))
+print([x[0] for x in overallMostRegulatingMIRs.most_common(10)])
+print()
+print()
+
+
+mirna2nwcount = Counter()
+for mirna in mir2networks:
+    mirna2nwcount[mirna] = len(mir2networks[mirna])
+
+print("most common mirnas")
+mcMirnas = set()
+for x in mirna2nwcount.most_common(10):
+    print(x)
+    mcMirnas.add(x[0])
+
+
+
+print("Setting fixed mc mirnas")
+mcMirnas = {"miR-21", "miR-34a", "miR-93", "miR-98", "miR-125a", "miR-125b", "miR-126", "miR-146a", "miR-155", "miR-370"}
+
+outstr = ""
+for x in mirna2nwcount:
+    outstr += x[0] + " ("+str(x[1])+"),"
+
+print(mcMirnas)
+print(outstr)
+
+print()
+print()
+
+for x in ["miR-21", "miR-34a", "miR-93", "miR-98", "miR-125a", "miR-125b", "miR-126", "miR-146a", "miR-155", "miR-370"]:
+    if x in mirna2nwcount:
+        print(x, " ", "(", mirna2nwcount[x], ")", mir2networks[x], sep="")
+    else:
+        print(x, " ", "(", 0, ")", sep="")
+
+print()
+print()
+
+mirna2stagecount = defaultdict(list)
+stages = [x for x in cbn2restrict]
+for mirna in natsorted(mcMirnas):
+
+    mirnarow = [mirna]
+    for stage in stages:
+        icount = interactionsPerNetworkAndMirna[stage].get(mirna, 0)
+        mirnarow.append(icount)
+
+        print(stage, mirna, icount, sep="\t")
+
+
+    mirna2stagecount[mirna] = mirnarow
+
+
+
+
+stageDF = pd.DataFrame.from_dict(mirna2stagecount, orient='index', columns=["miRNA"] + [network2nicename[x] for x in stages])
+
+
+ax = parallel_coordinates(stageDF, 'miRNA', colormap=plt.get_cmap("Set2"))
+plt.xticks(rotation=90)
+
+lgd = plt.legend(bbox_to_anchor=(0,1.02,1,0.2), loc="lower left",
+                mode="expand", borderaxespad=0, ncol=5)
+
+plt.tight_layout()
+
+plt.savefig("/mnt/d/yanc_network/"+outprefix+"mirna_stage_parallel.png",bbox_extra_artists=(lgd,), bbox_inches='tight')
+plt.savefig("/mnt/d/yanc_network/"+outprefix+"mirna_stage_parallel.pdf",bbox_extra_artists=(lgd,), bbox_inches='tight')
+
+plt.show()
+
+
+print()
+print()
 
 
 allSet = None
@@ -407,7 +1155,6 @@ print(allSet)
 
 import matplotlib.pyplot as plt
 
-figidx = 0
 for stages in makeStory:
 
     mergedGraph = cbn2graph[stages[0]]
@@ -471,5 +1218,11 @@ for stages in makeStory:
 
         plt.suptitle("{title}: {mirc} miRs, {genec} genes, {intc} interactions".format(title=stage, mirc=mirNodes, genec=geneNodes, intc=len(colors)))
 
-        plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".png")
-        plt.savefig("/mnt/c/Users/mjopp/Desktop/yanc_network/" + stage.replace(" ", "_") + ".pdf")
+        plt.savefig("/mnt/d/yanc_network/" + outprefix + stage.replace(" ", "_") + ".png")
+        plt.savefig("/mnt/d/yanc_network/" + outprefix + stage.replace(" ", "_") + ".pdf")
+
+        CytoscapeGrapher.exportGraphML(networkGraph, location="/mnt/d/yanc_network/",
+                                       name=outprefix + stage.replace(" ", "_"))
+
+
+

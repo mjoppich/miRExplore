@@ -45,19 +45,29 @@ class Synonym:
 
         return None
 
+    def match(self, other):
+
+        if other in self.syns:
+            return True
+
+        return False
 
 
     def removeCommonSynonymes(self, commonSyns):
 
-        for x in commonSyns:
-            if x in self:
-                self.removeSyn(x)
+        syn2rem = set()
+        for x in self:
+            if x in commonSyns:
+                syn2rem.add(x)
+
+        for x in syn2rem:
+            self.removeSyn(x)
 
     def getSynonymes(self):
 
         return self.syns
 
-    def addTextSyns(self, synText,captureBrackets=True):
+    def addTextSyns(self, synText,captureBrackets=True, addBrackets=True):
 
         if synText == None or synText == 'None':
             return
@@ -67,7 +77,7 @@ class Synonym:
         if len(synText) == 0:
             return
 
-        vAllWords = self.getAllSplittedSyns(synText, ', ', captureBrackets=captureBrackets)
+        vAllWords = self.getAllSplittedSyns(synText, ', ', captureBrackets=captureBrackets, addBrackets=addBrackets)
 
         for x in vAllWords:
             self.addSyn(x)
@@ -136,7 +146,7 @@ class Synonym:
         return self.syns[self.currentIdx-1]
 
     def __str__(self):
-        return self.id.replace(':', '_') + ":" + "|".join(self.syns)
+        return self.id.replace(':', '_') + ":" + "|".join([x for x in self.syns if len(x) > 0])
 
     def __repr__(self):
         return self.__str__()
@@ -153,7 +163,9 @@ class Synonym:
             syns2remove = set()
             for syn in self.syns:
 
-                usyn = syn.upper()
+                usyn = syn
+                if not excludeName in ["taxnames", "manual"]:
+                    usyn = syn.upper()                   
 
                 if syn in listToExclude or usyn in listToExclude:
                     syns2remove.add(syn)
@@ -165,10 +177,63 @@ class Synonym:
         self.__searchReplaceVariant('A', 'alpha', [u"\u03B1", '-'+u"\u03B1"])
         self.__searchReplaceVariant('B', 'beta', [u"\u03B2", '-' + u"\u03B2"])
 
+        self.__searchReplaceVariantInner('alpha', 'a', [u"\u03B1"])
+        self.__searchReplaceVariantInner('beta','b', [u"\u03B2"])
+        self.__searchReplaceVariantInner('gamma','c', [u"\u03B3"])
+
+    def __searchReplaceVariantInner(self, sword, shortw, replaceWith):
+
+        newsyns = set()
+        isword = " " + sword + " "
+
+        longHasSWORD = False
+
+        for x in self.syns:
+            if isword in x or x.endswith(sword):
+                longHasSWORD = True
+                break
+
+        if not longHasSWORD:
+            return
+
+        for x in self.syns:
+
+            m = re.search(r'{shortw}\d+$'.format(shortw=shortw), x)
+
+            for repWith in replaceWith:
+
+                if isword in x:
+                    nsyn = x.replace(sword, repWith)
+                    newsyns.add(nsyn)
+
+                    nsyn = x.replace(isword, repWith)
+                    newsyns.add(nsyn)
+
+                elif x.endswith(sword):
+
+                    nsyn = x[:-len(sword)] + repWith
+                    newsyns.add(nsyn)
+
+                elif m:
+                    fnumber = m.group()
+
+                    xo = x[:-len(fnumber)]
+
+                    if len(xo) > 1 and (xo[-1].isdigit() or xo[-1].isalpha()) and xo[-1] not in ["I"]:
+                        nnumber = fnumber.replace(shortw, repWith)
+                        nsyn = xo + nnumber
+                        newsyns.add(nsyn)
+
+
+        if len(newsyns) > 0:
+            print(self.id, newsyns)
+            for x in newsyns:
+                self.syns.append(x)
+
+
+
 
     def __searchReplaceVariant(self, endChar, endWord, replaceWith):
-
-        endsWithChar = self.id.endswith(endChar)
         endsWithWord = False
 
         for x in self.syns:
@@ -176,16 +241,66 @@ class Synonym:
                 endsWithWord = True
                 break
 
-        if endsWithChar and endsWithWord:
+        newsyns = set()
+        for syn in self.syns:
 
-            for x in replaceWith:
-                aid = self.id.rsplit(endChar, 1)
-                aid.append(x)
+            endsWithChar = syn.endswith(endChar)#self.id.endswith(endChar)
 
-                newsyn = "".join(aid)
+            if endsWithChar and endsWithWord:
 
-                print(self.id + " ADD SYN " + newsyn)
-                self.syns.append(newsyn)
+                for x in replaceWith:
+                    aid = syn.rsplit(endChar, 1)
+                    aid.append(x)
+
+                    newsyn = "".join(aid)
+
+                    print(self.id + ": " + syn + " ADD SYN " + newsyn)
+                    newsyns.add(newsyn)
+
+        for x in newsyns:
+            self.syns.append(x)
+
+    def addHyphenVariants(self):
+
+        newSyns = set()
+        for x in self.syns:
+
+            if x.startswith("HGNC") or x.startswith("MGI"):
+                continue
+
+            m = re.search(r'\d+$', x)
+
+            if m:
+                fnumber = m.group()
+
+                xo = x[:-len(fnumber)]
+                if not xo[-1].isalpha():
+                    continue
+
+                addSyn = xo + "-" + fnumber
+
+                newSyns.add( addSyn )
+
+            m = re.search(r'\d+[AB]$', x)
+
+            if m:
+                fnumber = m.group()
+
+                xo = x[:-len(fnumber)]
+
+                if len(xo) == 0:
+                    continue
+
+                if not xo[-1].isalpha():
+                    continue
+
+                addSyn = xo + "-" + fnumber
+
+                newSyns.add( addSyn )
+
+        for x in newSyns:
+            self.syns.append(x)
+
 
 
     def removeNumbers(self):
@@ -210,6 +325,8 @@ class Synonym:
         else:
 
             isyn = int(syn)
+
+            #print("Removing syn", self.syns[isyn])
 
             if isyn >= 0 and isyn < len(self.syns):
                 del self.syns[isyn]
@@ -300,7 +417,7 @@ class Synonym:
 
 
 
-    def getAllSplittedSyns(self, search, delimiter=', ', quotechars=['\"', '\''], captureBrackets=True):
+    def getAllSplittedSyns(self, search, delimiter=', ', quotechars=['\"', '\''], captureBrackets=True, addBrackets=True):
 
         vAllWords = self.splitQuotedDelimited(search)
 
@@ -322,13 +439,15 @@ class Synonym:
                         if y[0]==y[len(y)-1] and len(y) > 0:
                             y = y[1:len(y)-1]
 
-                        setAllWords.add(y)
+                        if addBrackets:
+                            setAllWords.add(y)
 
             testWord = word
             for bracketWord in foundBrackets:
-                testWord = testWord.replace(bracketWord, '')
+                testWord = testWord.replace(bracketWord, '').strip()
 
-            setAllWords.add(testWord)
+            if len(testWord) > 0:
+                setAllWords.add(testWord)
 
         return list(setAllWords)
 
@@ -338,5 +457,8 @@ if __name__ == '__main__':
     syn.getAllSplittedSyns('"Flavin reductase", "biliverdin reductase B (flavin reductase (NADPH))"	SDR43U1	"short chain dehydrogenase/reductase family 43U, member 1", "(flavin reductase (NADPH))"')
     syn.getAllSplittedSyns('"cytochrome P450, subfamily XXIA (steroid 21-hydroxylase, congenital adrenal hyperplasia), polypeptide 2", "cytochrome P450, family 21, subfamily A, polypeptide 2"')
     syn.splitQuotedDelimited('"family with sequence similarity 44, member C", "biorientation of chromosomes in cell division 1 pseudogene"')
-    syn.splitQuotedDelimited('"non-protein coding RNA 181", "A1BG antisense RNA (non-protein coding)", "A1BG antisense RNA 1 (non-protein coding)"')
+    print(syn.splitQuotedDelimited('"non-protein coding RNA 181", "A1BG antisense RNA (non-protein coding)", "A1BG antisense RNA 1 (non-protein coding)"'))
+    print(syn.getAllSplittedSyns('"non-protein coding RNA 181", "A1BG antisense RNA (non-protein coding)", "A1BG antisense RNA 1 (non-protein coding)"'))
     syn.splitQuotedDelimited('"C3 and PZP-like, alpha-2-macroglobulin domain containing 9"')
+
+    print(syn.syns)

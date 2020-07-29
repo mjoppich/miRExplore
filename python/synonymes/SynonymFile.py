@@ -33,9 +33,12 @@ class Synfile:
 
         self.mSyns = {}
         self.line2syn = {}
+        self.synid2line = {}
 
         self.synIDs = None
         self.synIDidx = None
+
+        self.location = None
 
         if sFileLocation != None:
             self._load_file(sFileLocation)
@@ -48,12 +51,15 @@ class Synfile:
 
             self.mSyns[ oSyn.id ] = oSyn
             self.line2syn[iLine] = oSyn.id
+            self.synid2line[oSyn.id] = iLine
 
         with codecs.open(sFileLocation, 'r', 'latin1') as infile:
             idx = 0
             for line in infile:
                 addSyn(line, idx)
                 idx += 1
+
+            self.location = sFileLocation
 
     def export_flat_obo(self, filepath, termPrefix):
 
@@ -166,5 +172,4 @@ class AssocSynfile(Synfile):
 if __name__ == '__main__':
 
     synfile = Synfile("/mnt/c/dev/data/tm_soehnlein/synonyms/messenger.syn")
-
     synfile.export_flat_obo("/mnt/c/dev/data/tm_soehnlein/obos/messenger.obo", "MSG:")

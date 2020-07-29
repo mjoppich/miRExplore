@@ -1,7 +1,7 @@
 from collections import Counter
 
 
-def handleCommonExcludeWords(synList, excludeWords, mostCommonCount=66, maxCommonCount=10, addAlphaBeta=False, removeSyn=None, minSynCount=0):
+def handleCommonExcludeWords(synList, excludeWords, mostCommonCount=66, maxCommonCount=10, addAlphaBeta=False, addHyphenGene=False, removeSyn=None, minSynCount=0):
 
     synCounter = Counter()
     for synonym in synList:
@@ -21,15 +21,21 @@ def handleCommonExcludeWords(synList, excludeWords, mostCommonCount=66, maxCommo
 
     vPrintSyns = []
 
-
     for synonym in synList:
 
         synonym.removeCommonSynonymes(setCommonWords)
         synonym.removeNumbers()
-        synonym.removeSynUpper(excludeWords)
+
+        if excludeWords != None:
+            synonym.removeSynUpper(excludeWords)
+
+
+        if addHyphenGene:
+            synonym.addHyphenVariants()
 
         if addAlphaBeta:
             synonym.addAlphaBetaVariants()
+
 
         if removeSyn:
             if removeSyn(synonym):
