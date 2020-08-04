@@ -1,0 +1,635 @@
+>24.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	24.0.0_Genes/Proteins	63	3	Shh
+2	protein	24.0.0_Specific_miRNAs	221	9	miR-17/92
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	treatment,result,increas	3|3|3|3|3|3
+>377.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	377.0.0_Specific_miRNAs	121	7	miR-34a
+2	protein	377.0.0_Genes/Proteins	236	4	bcl2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	affect,express	3|3|3|3|3|3
+>271.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	271.0.0_Specific_miRNAs	34	6	miR-21
+2	protein	271.0.0_Genes/Proteins	102	5	MEF2C
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target,mrna,enhanc	3|3|3|3|3|3
+>83.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	83.0.0_Specific_miRNAs	121	7	miR-328
+2	protein	83.0.0_Genes/Proteins	222	5	BACE1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	bind,mrna,exert,regulatori,effect	3|3|3|3|3|3
+>174.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	174.0.0_Specific_miRNAs	33	11	miR-29a/b-1
+2	protein	174.0.0_Genes/Proteins	109	14	beta-secretase
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	increas	5|5|5|1|3|3
+2	1	ofbyBetw	loss	5|5|1|3|3|3
+>85.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	85.0.0_Specific_miRNAs	109	7	miR-298
+2	protein	85.0.0_Genes/Proteins	222	5	BACE1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	bind,mrna,exert,regulatori,effect	3|3|3|3|3|3
+>42.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	42.0.0_Specific_miRNAs	33	5	miR-9
+2	protein	42.0.0_Genes/Proteins	65	6	CoREST
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	regul	5|5|3|1|3|1
+>219.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	219.0.0_Specific_miRNAs	141	8	miR-128a
+2	protein	219.0.0_Genes/Proteins	220	4	Wee1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target	5|5|3|5|3|3
+>261.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	261.0.0_Specific_miRNAs	25	10	miRNA-146a
+2	protein	261.0.0_Genes/Proteins	102	17	interleukin-1beta
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	down-regul	5|5|1|1|3|3
+>8.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	8.0.0_Specific_miRNAs	22	8	miR-200a
+2	protein	8.0.0_Genes/Proteins	81	4	ZEB1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	decreas,express,transcript	3|3|3|3|3|3
+>296.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	296.0.0_Specific_miRNAs	34	8	miR-133b
+2	protein	296.0.0_Genes/Proteins	139	4	RhoA
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	import	5|5|3|3|3|1
+>164.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	164.0.0_Genes/Proteins	82	53	beta-site amyloid precursor protein-cleaving enzyme 1
+2	protein	164.0.0_Specific_miRNAs	173	7	miR-107
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	mrna,target	3|3|3|3|3|3
+>34.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	34.0.0_Specific_miRNAs	96	19	miR-26a, -34a, -145
+2	protein	34.0.0_Genes/Proteins	151	8	IFN-beta
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul	5|5|3|1|3|1
+>227.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	227.0.0_Specific_miRNAs	102	5	let-7
+2	protein	227.0.0_Genes/Proteins	127	22	high-mobility group A2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	express,induc	3|3|3|3|3|3
+>286.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	286.0.0_Specific_miRNAs	111	6	miR-20
+2	protein	286.0.0_Genes/Proteins	188	14	Sonic Hedgehog
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	overexpress,activ	3|3|3|3|3|3
+>370.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	370.0.0_Specific_miRNAs	157	7	miR-34a
+2	protein	370.0.0_Genes/Proteins	194	4	bcl2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	express,inhibit	3|3|3|3|3|3
+>306.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	306.0.0_Specific_miRNAs	65	6	miR-21
+2	protein	306.0.0_Genes/Proteins	131	8	IFN-beta
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	decreas,addit	3|3|3|3|3|3
+>379.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	379.0.0_Genes/Proteins	19	4	e2f1
+2	protein	379.0.0_Specific_miRNAs	79	5	let-7
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	repress	5|5|1|1|5|3
+>39.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	39.0.0_Specific_miRNAs	62	12	hsa-mir-106a
+2	protein	39.0.0_Genes/Proteins	140	3	APP
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	bind,target	3|3|3|3|3|3
+>268.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	268.0.0_Specific_miRNAs	60	6	miR-15
+2	protein	268.0.0_Genes/Proteins	161	6	ERK1/2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul,express	3|3|3|3|3|3
+>322.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	322.0.0_Specific_miRNAs	71	6	miR-21
+2	protein	322.0.0_Genes/Proteins	118	8	IFN-beta
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	effect	5|5|3|1|3|3
+2	1	ofbyBetw	downregul	5|5|1|1|3|3
+>365.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	365.0.0_Specific_miRNAs	8	7	miR-34a
+2	protein	365.0.0_Genes/Proteins	109	4	bcl2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	inhibit	5|5|1|1|3|1
+>298.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	298.0.0_Specific_miRNAs	79	9	miR-17-5p
+2	protein	298.0.0_Genes/Proteins	118	3	APP
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul	5|5|3|1|3|1
+>6.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	6.0.0_Specific_miRNAs	24	8	miR-200a
+2	protein	6.0.0_Genes/Proteins	106	12	beta-catenin
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	result,increas,express	3|3|3|3|3|3
+2	1	ofbyBetw	downregul	5|5|1|1|3|3
+>93.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	93.0.0_Specific_miRNAs	220	7	miR-29a
+2	protein	93.0.0_Genes/Proteins	286	4	NAV3
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	affect,process,enhanc	3|3|3|3|3|3
+>28.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	28.0.0_Specific_miRNAs	33	9	miR-17/92
+2	protein	28.0.0_Genes/Proteins	92	4	MYCN
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	up-regul	5|5|5|1|3|3
+>62.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	62.0.0_Genes/Proteins	21	3	TBP
+2	protein	62.0.0_Specific_miRNAs	28	8	miR-146a
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	ofbyBetw	regul	5|5|3|1|3|1
+>32.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	32.0.0_Specific_miRNAs	11	9	miR-17/92
+2	protein	32.0.0_Genes/Proteins	106	5	N-myc
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	up-regul,induc	3|3|3|3|3|3
+>11.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	11.0.0_Genes/Proteins	45	4	PKM2
+2	protein	11.0.0_Specific_miRNAs	132	7	miR-326
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	express,lower,regul	3|3|3|3|3|3
+>304.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	304.0.0_Specific_miRNAs	84	6	miR-21
+2	protein	304.0.0_Genes/Proteins	131	8	IFN-beta
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	decreas,addit	3|3|3|3|3|3
+>381.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	381.0.0_Specific_miRNAs	28	5	let-7
+2	protein	381.0.0_Genes/Proteins	269	5	LRRK2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	express,target,effect	3|3|3|3|3|3
+>313.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	313.0.0_Genes/Proteins	159	5	STAT3
+2	protein	313.0.0_Specific_miRNAs	230	6	miR-21
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	induc,suppress	3|3|3|3|3|3
+>187.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	187.0.0_Genes/Proteins	31	5	CCNE1
+2	protein	187.0.0_Specific_miRNAs	94	7	miR-15b
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target	5|5|3|5|3|3
+>63.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	63.0.0_Specific_miRNAs	15	10	miR-485-5p
+2	protein	63.0.0_Genes/Proteins	122	5	BACE1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	bind	5|1|3|5|1|1
+>330.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	330.0.0_Genes/Proteins	91	6	IRAK-2
+2	protein	330.0.0_Specific_miRNAs	101	13	microRNA-146a
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	ofbyBetw	regul	5|5|3|1|3|1
+>215.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	215.0.0_Specific_miRNAs	151	7	miR-155
+2	protein	215.0.0_Genes/Proteins	220	4	Wee1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target	5|5|3|5|3|3
+>142.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	142.0.0_Specific_miRNAs	295	8	miR-133b
+2	protein	142.0.0_Genes/Proteins	396	20	tyrosine hydroxylase
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	express,regul,product	3|3|3|3|3|3
+>371.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	371.0.0_Specific_miRNAs	22	7	miR-34a
+2	protein	371.0.0_Genes/Proteins	102	4	bcl2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	increas	5|5|5|1|3|3
+>3.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	3.0.0_Specific_miRNAs	6	8	miR-200a
+2	protein	3.0.0_Genes/Proteins	44	12	beta-catenin
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	target	5|5|3|5|3|3
+>185.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	185.0.0_Specific_miRNAs	36	7	miR-659
+2	protein	185.0.0_Genes/Proteins	57	3	GRN
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul	5|5|3|1|3|1
+>168.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	168.0.0_Specific_miRNAs	8	12	MicroRNA-205
+2	protein	168.0.0_Genes/Proteins	97	30	LDL receptor-related protein 1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	inhibit,migrat,down-regul,express	3|3|3|3|3|3
+>283.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	283.0.0_Specific_miRNAs	90	6	miR-92
+2	protein	283.0.0_Genes/Proteins	204	3	SHH
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	overexpress,activ	3|3|3|3|3|3
+>151.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	151.0.0_Specific_miRNAs	65	10	miRNA-125b
+2	protein	151.0.0_Genes/Proteins	111	4	IL-6
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	up-regul	5|5|5|1|3|3
+>292.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	292.0.0_Specific_miRNAs	8	9	MiRNA-493
+2	protein	292.0.0_Genes/Proteins	66	4	ACTH
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	up-regul	5|5|5|1|3|3
+>281.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	281.0.0_Specific_miRNAs	50	6	miR-17
+2	protein	281.0.0_Genes/Proteins	204	3	SHH
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	cluster,overexpress,activ	3|3|3|3|3|3
+>388.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	388.0.0_Specific_miRNAs	24	12	microRNA-338
+2	protein	388.0.0_Genes/Proteins	73	6	eiF4E3
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	ofbyBetw	interact	5|1|3|5|1|1
+>35.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	35.0.0_Specific_miRNAs	121	6	let-7b
+2	protein	35.0.0_Genes/Proteins	151	8	IFN-beta
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul	5|5|3|1|3|1
+>60.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	60.0.0_Specific_miRNAs	34	8	miR-146a
+2	protein	60.0.0_Genes/Proteins	54	20	Tata Binding Protein
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target	5|5|3|5|3|3
+>328.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	328.0.0_Genes/Proteins	35	42	interleukin-1 receptor-associated kinase-1
+2	protein	328.0.0_Specific_miRNAs	101	13	microRNA-146a
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	ofbyBetw	regul	5|5|3|1|3|1
+>217.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	217.0.0_Specific_miRNAs	164	11	miR-516a-3p
+2	protein	217.0.0_Genes/Proteins	220	4	Wee1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target	5|5|3|5|3|3
+>166.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	166.0.0_Specific_miRNAs	35	7	miR-107
+2	protein	166.0.0_Genes/Proteins	143	53	beta-site amyloid precursor protein-cleaving enzyme 1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	decreas,acceler,regul	3|3|3|3|3|3
+>300.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	300.0.0_Specific_miRNAs	45	7	miR-20a
+2	protein	300.0.0_Genes/Proteins	118	3	APP
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul	5|5|3|1|3|1
+>277.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	277.0.0_Specific_miRNAs	83	11	miR-199b-5p
+2	protein	277.0.0_Genes/Proteins	218	4	HES1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	regul,pathwai,target,transcript	3|3|3|3|3|3
+>1.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	1.0.0_Specific_miRNAs	12	8	miR-200a
+2	protein	1.0.0_Genes/Proteins	118	10	E-cadherin
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	suppressor,effect	3|3|3|3|3|3
+>294.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	294.0.0_Specific_miRNAs	31	9	miRNA-493
+2	protein	294.0.0_Genes/Proteins	76	5	RUNX2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	interact	5|1|3|5|1|1
+>84.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	84.0.0_Specific_miRNAs	121	7	miR-328
+2	protein	84.0.0_Genes/Proteins	179	5	BACE1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	bind	5|1|3|5|1|1
+>173.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	173.0.0_Specific_miRNAs	33	11	miR-29a/b-1
+2	protein	173.0.0_Genes/Proteins	103	5	BACE1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	increas	5|5|5|1|3|3
+2	1	ofbyBetw	loss	5|5|1|3|3|3
+>262.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	262.0.0_Specific_miRNAs	25	10	miRNA-146a
+2	protein	262.0.0_Genes/Proteins	121	7	Abeta42
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	down-regul	5|5|1|1|3|3
+>165.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	165.0.0_Specific_miRNAs	186	7	miR-107
+2	protein	165.0.0_Genes/Proteins	267	5	BACE1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	involv,acceler,regul	3|3|3|3|3|3
+>270.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	270.0.0_Specific_miRNAs	34	6	miR-21
+2	protein	270.0.0_Genes/Proteins	74	26	myocyte enhancer factor 2C
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target,mrna	3|3|3|3|3|3
+>41.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	41.0.0_Specific_miRNAs	33	5	miR-9
+2	protein	41.0.0_Genes/Proteins	56	4	REST
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	regul	5|5|3|1|3|1
+>394.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	394.0.0_Specific_miRNAs	26	7	miR-26a
+2	protein	394.0.0_Genes/Proteins	135	4	PTEN
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	amplifi,associ	3|3|3|3|3|3
+>139.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	139.0.0_Genes/Proteins	203	5	mdl-1
+2	protein	139.0.0_Specific_miRNAs	251	6	miR-64
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	gene,target	3|3|3|3|3|3
+>325.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	325.0.0_Specific_miRNAs	136	6	miR-21
+2	protein	325.0.0_Genes/Proteins	181	5	STAT3
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	express,neg,regul	3|3|3|3|3|3
+>122.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	122.0.0_Genes/Proteins	213	5	ptc-1
+2	protein	122.0.0_Specific_miRNAs	332	9	miR-64/65
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	gene,target,overexpress	3|3|3|3|3|3
+>297.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	297.0.0_Specific_miRNAs	70	7	miR-20a
+2	protein	297.0.0_Genes/Proteins	118	3	APP
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul	5|5|3|1|3|1
+>386.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	386.0.0_Specific_miRNAs	44	5	let-7
+2	protein	386.0.0_Genes/Proteins	84	5	LRRK2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	attenu	5|5|1|1|5|1
+>287.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	287.0.0_Specific_miRNAs	111	6	miR-20
+2	protein	287.0.0_Genes/Proteins	204	3	SHH
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	overexpress,activ	3|3|3|3|3|3
+>86.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	86.0.0_Specific_miRNAs	109	7	miR-298
+2	protein	86.0.0_Genes/Proteins	179	5	BACE1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	bind	5|1|3|5|1|1
+>299.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	299.0.0_Specific_miRNAs	93	8	miR-106b
+2	protein	299.0.0_Genes/Proteins	118	3	APP
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul	5|5|3|1|3|1
+>7.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	7.0.0_Specific_miRNAs	22	8	miR-200a
+2	protein	7.0.0_Genes/Proteins	136	10	E-cadherin
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	decreas,express,transcript,increas,express	3|3|3|3|3|3
+>27.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	27.0.0_Specific_miRNAs	33	9	miR-17/92
+2	protein	27.0.0_Genes/Proteins	88	3	MYC
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	up-regul	5|5|5|1|3|3
+>163.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	163.0.0_Genes/Proteins	137	5	BACE1
+2	protein	163.0.0_Specific_miRNAs	173	7	miR-107
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	mrna,target	3|3|3|3|3|3
+>319.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	319.0.0_Genes/Proteins	34	8	IFN-beta
+2	protein	319.0.0_Specific_miRNAs	56	6	miR-21
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	ofbyBetw	effect	5|5|3|1|3|3
+>150.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	150.0.0_Specific_miRNAs	65	10	miRNA-125b
+2	protein	150.0.0_Genes/Proteins	96	13	interleukin-6
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	up-regul	5|5|5|1|3|3
+>384.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	384.0.0_Specific_miRNAs	209	5	let-7
+2	protein	384.0.0_Genes/Proteins	269	5	LRRK2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	effect	5|5|3|1|3|3
+>269.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	269.0.0_Specific_miRNAs	60	6	miR-15
+2	protein	269.0.0_Genes/Proteins	99	4	ERK1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul	5|5|3|1|3|1
+>382.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	382.0.0_Specific_miRNAs	66	5	let-7
+2	protein	382.0.0_Genes/Proteins	269	5	LRRK2
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	express,target,effect	3|3|3|3|3|3
+>285.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	285.0.0_Specific_miRNAs	98	7	miR-19a
+2	protein	285.0.0_Genes/Proteins	204	3	SHH
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	overexpress,activ	3|3|3|3|3|3
+>15.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	15.0.0_Genes/Proteins	7	18	Pyruvate kinase M2
+2	protein	15.0.0_Specific_miRNAs	63	12	microRNA-326
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target	5|5|3|5|3|3
+>5.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	5.0.0_Specific_miRNAs	24	8	miR-200a
+2	protein	5.0.0_Genes/Proteins	123	9	cyclin D1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	result,increas,express	3|3|3|3|3|3
+2	1	ofbyBetw	downregul	5|5|1|1|3|3
+>305.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	305.0.0_Specific_miRNAs	30	6	miR-21
+2	protein	305.0.0_Genes/Proteins	131	8	IFN-beta
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	gene,transcript,decreas,addit	3|3|3|3|3|3
+>145.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	145.0.0_Specific_miRNAs	447	7	miR-212
+2	protein	145.0.0_Genes/Proteins	486	33	brain-derived neurotrophic factor
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	affect,product	3|3|3|3|3|3
+>175.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	175.0.0_Specific_miRNAs	26	23	miR-29a, -29b-1, and -9
+2	protein	175.0.0_Genes/Proteins	63	5	BACE1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	regul	5|5|3|1|3|1
+>284.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	284.0.0_Specific_miRNAs	98	7	miR-19a
+2	protein	284.0.0_Genes/Proteins	188	14	Sonic Hedgehog
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	overexpress,activ	3|3|3|3|3|3
+>109.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	109.0.0_Genes/Proteins	203	5	mdl-1
+2	protein	109.0.0_Specific_miRNAs	262	6	miR-65
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	gene,target	3|3|3|3|3|3
+>61.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	61.0.0_Specific_miRNAs	34	8	miR-146a
+2	protein	61.0.0_Genes/Proteins	76	3	TBP
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target,bind	3|3|3|3|3|3
+>222.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	222.0.0_Genes/Proteins	35	22	high-mobility group A2
+2	protein	222.0.0_Specific_miRNAs	89	5	let-7
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	neg,regul	3|3|3|3|3|3
+>329.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	329.0.0_Genes/Proteins	79	6	IRAK-1
+2	protein	329.0.0_Specific_miRNAs	101	13	microRNA-146a
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	ofbyBetw	regul	5|5|3|1|3|1
+>64.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	64.0.0_Genes/Proteins	89	5	BACE1
+2	protein	64.0.0_Specific_miRNAs	132	10	miR-485-5p
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	ofbyBetw	repress	5|5|1|1|5|3
+>186.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	186.0.0_Genes/Proteins	47	9	cyclin E1
+2	protein	186.0.0_Specific_miRNAs	94	7	miR-15b
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target	5|5|3|5|3|3
+>2.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	2.0.0_Specific_miRNAs	12	8	miR-200a
+2	protein	2.0.0_Genes/Proteins	137	12	beta-catenin
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	suppressor,effect	3|3|3|3|3|3
+>124.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	124.0.0_Genes/Proteins	203	5	mdl-1
+2	protein	124.0.0_Specific_miRNAs	332	9	miR-64/65
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	gene,target,overexpress	3|3|3|3|3|3
+>107.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	107.0.0_Genes/Proteins	213	5	ptc-1
+2	protein	107.0.0_Specific_miRNAs	262	6	miR-65
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	gene,target	3|3|3|3|3|3
+>278.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	278.0.0_Specific_miRNAs	8	16	MicroRNA-199b-5p
+2	protein	278.0.0_Genes/Proteins	82	4	HES1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	neg,regul	3|3|3|3|3|3
+>137.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	137.0.0_Genes/Proteins	213	5	ptc-1
+2	protein	137.0.0_Specific_miRNAs	251	6	miR-64
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	gene,target	3|3|3|3|3|3
+>282.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	282.0.0_Specific_miRNAs	90	6	miR-92
+2	protein	282.0.0_Genes/Proteins	188	14	Sonic Hedgehog
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	overexpress,activ	3|3|3|3|3|3
+>280.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	280.0.0_Specific_miRNAs	50	6	miR-17
+2	protein	280.0.0_Genes/Proteins	188	14	Sonic Hedgehog
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	cluster,overexpress,activ	3|3|3|3|3|3
+>293.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	293.0.0_Specific_miRNAs	31	9	miRNA-493
+2	protein	293.0.0_Genes/Proteins	65	6	LGALS3
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	interact	5|1|3|5|1|1
+>66.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	66.0.0_Specific_miRNAs	59	10	miR-485-5p
+2	protein	66.0.0_Genes/Proteins	73	5	BACE1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	ofbyBetw	effect	5|5|3|1|3|3
+>276.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	276.0.0_Specific_miRNAs	83	11	miR-199b-5p
+2	protein	276.0.0_Genes/Proteins	193	4	HES1
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+2	1	nsubj	regul,pathwai,target,transcript	3|3|3|3|3|3
+>40.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	40.0.0_Specific_miRNAs	79	12	hsa-mir-520c
+2	protein	40.0.0_Genes/Proteins	140	3	APP
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	bind,target	3|3|3|3|3|3
+>314.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	314.0.0_Genes/Proteins	105	52	signal transducers and activators of transcription 3
+2	protein	314.0.0_Specific_miRNAs	230	6	miR-21
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	induc,suppress	3|3|3|3|3|3
+>374.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	374.0.0_Genes/Proteins	38	4	bcl2
+2	protein	374.0.0_Specific_miRNAs	81	7	miR-34a
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	import,function,target	3|3|3|3|3|3
+>387.0.0
+#HITS:hitno:	type	idlist	start	length	idlist	hittext
+1	protein	387.0.0_Genes/Proteins	16	6	EiF4E3
+2	protein	387.0.0_Specific_miRNAs	74	12	microRNA-338
+#RELATIONS:hitno_from	hitno_to	rule	keywords	characterization
+1	2	nsubj	target	5|5|3|5|3|3
