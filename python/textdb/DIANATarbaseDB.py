@@ -206,7 +206,7 @@ class DIANATarbaseDB(DataBaseDescriptor):
     @classmethod
     def loadFromFile(cls, filepath, dbtype='pmid', normGeneSymbols=None):
 
-        syns = Synfile(os.path.dirname(filepath) + "/../textmine/synonyms/celllines.all.syn")
+        syns = Synfile(os.path.dirname(filepath) + "/celllines.all.syn")
         syngrepFile = os.path.dirname(filepath) + "/celllines.index"
 
         cellline2obo = defaultdict(set)

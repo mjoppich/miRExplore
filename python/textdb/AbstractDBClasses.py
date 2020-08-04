@@ -137,7 +137,7 @@ class DataBaseDescriptor(ABC, SQLiteBase):
 
         try:
             oMirna = miRNA(mirna)
-            mirna = oMirna.normalized_str()
+            mirna = str(oMirna)# was oMirna.normalized_str()
 
         except:
             pass

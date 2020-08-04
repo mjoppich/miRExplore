@@ -593,6 +593,7 @@ if __name__ == '__main__':
     parser.add_argument('--accept_pmids', type=argparse.FileType('r'), required=False, default=None)
 
     parser.add_argument('--relex', type=argparse.FileType('r'), required=False, default=None)
+    parser.add_argument('--mine-path', type=str, default="/mnt/e/data/pmid_jun2020/", required=False)
 
     args = parser.parse_args()
 
@@ -603,16 +604,15 @@ if __name__ == '__main__':
     resultBase = args.resultdir
     dataDir = args.datadir
 
-    minePath = "/mnt/e/data/pmid_jun2020/"
 
     ent1Syns = SynfileMap(resultBase + "/"+args.folder1+"/synfile.map")
-    ent1Syns.loadSynFiles((minePath, dataDir))
+    ent1Syns.loadSynFiles((args.mine_path, dataDir))
 
     ent2Syns = SynfileMap(resultBase + "/"+args.folder2+"/synfile.map")
-    ent2Syns.loadSynFiles((minePath, dataDir))
+    ent2Syns.loadSynFiles((args.mine_path, dataDir))
 
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
-    relSyns.loadSynFiles((minePath, dataDir))
+    relSyns.loadSynFiles((args.mine_path, dataDir))
 
     relationSyns = AssocSynfile(args.datadir + '/obodir/allrels.csv')
 
@@ -637,7 +637,7 @@ if __name__ == '__main__':
 
 
     #allfileIDs = ["pubmed20n1231"]
-    threads = 1
+    threads = 8
 
     if __debug__:
         threads = 1

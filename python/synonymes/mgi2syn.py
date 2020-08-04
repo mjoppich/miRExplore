@@ -153,8 +153,13 @@ if __name__ == '__main__':
 
             allSyms.append(x)
 
-        synline = mgiID.replace(':', '_') + ":" + "|".join( allSyms)
+        printID = mgiID.replace(':', '_',1)
+        if printID in locID2sym and len(locID2sym[printID]) > 0:
+            allSyms.append(mgiID)
+            allSyms.append(mgiID.replace(':', '_'))
+            printID = locID2sym[printID]
 
+        synline = printID + ":" + "|".join( allSyms)
         synonyme = Synonym.parseFromLine(synline)
 
         vAllSyns.append(synonyme)

@@ -8,11 +8,12 @@ import shlex
 
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
+# HTSeq flask flask_cors bson pymongo
+
 
 from database.getNetworkFeatures import ExpressionNetwork
 from synonymes.SynonymFile import Synfile
 from synonymes.mirnaID import miRNA, miRNAPART
-from textdb.DIANATarbaseDB import DIANATarbaseDB
 from textdb.GeneNeighbourDB import GeneNeighbourDB
 from textdb.MirWalkDB import MirWalkDB
 from textdb.SymbolEnsemblDB import SymbolEnsemblDB
@@ -29,6 +30,9 @@ from synonymes.GeneOntology import GeneOntology
 from textdb.AbstractDBClasses import DataBaseDescriptor
 from textdb.MiGenRelDB import MiGenRelDB
 from textdb.MirTarBaseDB import MirTarBaseDB
+from analysis.miRecordDB import miRecordDB
+from textdb.DIANATarbaseDB import DIANATarbaseDB
+
 from textdb.MirandaRelDB import MirandaRelDB
 from textdb.PMID2PMCDB import PMID2PMCDB
 from textdb.PMID2XDB import PMID2XDB
@@ -36,7 +40,6 @@ from textdb.SentenceDB import SentenceDB
 from textdb.feedback_db import feedbackDB
 
 from textdb.TestRelLoader import TestRelLoader
-from analysis.miRecordDB import miRecordDB
 
 
 from io import StringIO
@@ -48,7 +51,7 @@ from collections import defaultdict, Counter
 
 from flask_cors import CORS
 
-
+fileurl = str(os.path.dirname(os.path.realpath(__file__))) + "/../"
 dataurl = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'frontend/src/static/'
 
 pdfStaticDir = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'pdf_frontend/src/static/'
@@ -821,6 +824,7 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
         lrEvs = foundRels[(lent, rent)]
 
         okEvs = []
+        seenEvidences = set()
 
         for jsonEV in lrEvs:
 
@@ -870,6 +874,14 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
                 if evSentTxt != None:
                     jsonEV['sentence'] = evSentTxt[1]
 
+            if evSent != None:
+                # remove duplicate sentences due to multiple text mining (human, mouse, ...)
+                evTuple = (jsonEV['rel_sentence'], jsonEV['lpos'], jsonEV['rpos'], jsonEV['lid'], jsonEV['rid'])
+
+                if evTuple in seenEvidences:
+                    continue
+                
+                seenEvidences.add(evTuple)
 
             okEvs.append(jsonEV)
 
@@ -1037,10 +1049,10 @@ def findID():
                 jsonResultByType[rtype].add(entName)
 
     jsonResult = []
-    for type in jsonResultByType:
+    for rtype in jsonResultByType:
 
         jsonResult += list(
-            [{'name': interact, 'group': type} for interact in jsonResultByType[type]]
+            [{'name': interact, 'group': rtype} for interact in jsonResultByType[rtype]]
         )
 
 
@@ -1275,7 +1287,7 @@ def start_app_from_args(args):
     pmidBase = args.textmine + '/aggregated_pmid/'
     pmcBase = args.textmine + '/aggregated_pmc/'
 
-    normGeneSymbols = normalize_gene_names(path=args.obodir + "/hgnc_no_withdrawn.syn")
+    normGeneSymbols = normalize_gene_names(path=fileurl + "/hgnc_no_withdrawn.syn")
 
 
 
@@ -1288,10 +1300,10 @@ def start_app_from_args(args):
 
     print(datetime.datetime.now(), "Loading Sym2Ens")
 
-    symbol2ensemblDB = SymbolEnsemblDB.loadFromFile(args.obodir + "/sym2ens/")
+    symbol2ensemblDB = SymbolEnsemblDB.loadFromFile(fileurl + "/sym2ens/")
 
     print(datetime.datetime.now(), "Loading MI2Mirna")
-    mi2mirna = MI2Mirna.loadFromFile(args.obodir + "mirnas_mirbase.csv")
+    mi2mirna = MI2Mirna.loadFromFile(fileurl + "/dbs/mirnas_mirbase.csv")
     print(datetime.datetime.now(), "Loading miranda interactions mm10")
     # mirandaDB_mm10 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/mm10_interactionsAllGenes.txt", symbol2ens=symbol2ensemblDB, org="mmu")
     # mirandaDB_hg38 = MirandaRelDB.loadFromFile(filepath=args.obodir + "/hg38_interactionsAllGenes.txt", org="hsa")
@@ -1300,11 +1312,11 @@ def start_app_from_args(args):
     mirandaDB_hg38 = None
 
     print(datetime.datetime.now(), "Loading miRecords")
-    recordsDB = miRecordDB.loadFromFile(filelocation=args.obodir + "/mirecords_v4.xlsx", normGeneSymbols=normGeneSymbols)
+    recordsDB = miRecordDB.loadFromFile(filelocation=fileurl + "/dbs/mirecords_v4.xlsx", normGeneSymbols=normGeneSymbols)
     print(datetime.datetime.now(), "Loading miRTarBase")
-    mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=args.obodir + "/miRTarBase.csv", normGeneSymbols=normGeneSymbols)
+    mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=fileurl + "/dbs/miRTarBase.csv", normGeneSymbols=normGeneSymbols)
     print(datetime.datetime.now(), "Loading hsa_mmu.diana")
-    dianaDB, celllInfos = DIANATarbaseDB.loadFromFile(args.obodir+"/hsa_mmu.diana.csv", normGeneSymbols=normGeneSymbols)
+    dianaDB, celllInfos = DIANATarbaseDB.loadFromFile(fileurl + "/dbs/hsa_mmu.diana.csv", normGeneSymbols=normGeneSymbols)
 
 
     allDBS = None
@@ -1407,7 +1419,7 @@ def start_app_from_args(args):
     print(datetime.datetime.now(), "Finished Adding CelllInfo Features")
 
     print(datetime.datetime.now(), "Loading Features")
-    rfDB = RFamDB.loadFromFile(pmidBase + '/rfam.regions.mirexplore')
+    rfDB = RFamDB.loadFromFile(fileurl + "/dbs/rfam.regions.mirexplore")
     #featureViewerMMU = FeatureViewer('mmu', args.obodir, rfamDB=rfDB)
     #featureViewerHSA = FeatureViewer('hsa', args.obodir, rfamDB=rfDB)
 

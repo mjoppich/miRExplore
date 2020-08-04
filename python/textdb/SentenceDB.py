@@ -133,6 +133,15 @@ class SentenceDB:
 
         ret = SentenceDB()
 
+        if not os.path.exists(infile):
+            print("Building Sentence DB")
+            cls.prepareDB(basepath, infile)
+
+            if not os.path.exists(infile):
+                print("Error creating sentence DB")
+                assert(os.path.exists(infile))
+
+
         with open(infile, 'r') as fin:
 
             for line in fin:

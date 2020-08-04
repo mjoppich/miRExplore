@@ -8,12 +8,12 @@ from lxml import etree
 
 from utils.idutils import eprint
 import logging
+import nltk.data
 
 from utils.parallel import MapReduce
 
 logger = logging.getLogger('convertJatsToText')
 
-import nltk.data
 
 class PubmedJournal:
     def __init__(self, journal, isoabbrev):
@@ -399,16 +399,12 @@ python3 removeDuplicateSentences.py
 
 if __name__ == '__main__':
 
-    nltk.data.path.append("/mnt/d/dev/nltk_data/")
+    #nltk.data.path.append("/mnt/d/dev/nltk_data/")
 
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-<<<<<<< HEAD
-    storagePath = '/mnt/raidtmpbio2/joppich/pmid_jun2020/'
-=======
-    storagePath = './'# '/mnt/raidtmpbio2/joppich/pmid_jun2020/'
->>>>>>> 1e1f3e076e188969f0e930a0905f0f510591e3e8
+    storagePath = '/mnt/d/dev/data/pmid_jul2020/'
     baseFileName = 'pubmed20n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
@@ -540,7 +536,7 @@ if __name__ == '__main__':
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(1)
+    ll = MapReduce(12)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)
 
     print("Done")

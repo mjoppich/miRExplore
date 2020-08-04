@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-
+import { createPopper } from '@popperjs/core';
 
 class ToolTip
 {
@@ -1872,10 +1872,12 @@ export default class FeatureViewer {
                 }
             }
 
+            /*
             if (!$.fn.popover) {
                 options.bubbleHelp = false;
                 console.warn("The bubble help requires tooltip and popover bootstrap js libraries. The feature viewer will continue to work, but without the info bubble");
             }
+            */
 
             // Create SVG
             if (options.zoomMax) {
@@ -2018,19 +2020,19 @@ export default class FeatureViewer {
 //                    }
 //                }
 
-                var headerZoom = d3.select(div).select(' .header-zoom');
+                var headerZoom1 = d3.select(div).select(' .header-zoom');
                 console.log("Header Zoom Element");
                 console.log(headerZoom);
                 console.log(headerOptions);
 
-                var headerZoom = $(div).find('.header-zoom').length ? d3.select(div).select('.header-zoom') : headerOptions;
+                var headerZoomOptions = $(div).find('.header-zoom').length ? d3.select(div).select('.header-zoom') : headerOptions;
                 if (options.bubbleHelp === true) {
                     if (!$(div).find('.header-help').length) {
                         var helpContent = "<div><strong>To zoom in :</strong> Left click to select area of interest</div>" +
                             "<div><strong>To zoom out :</strong> Right click to reset the scale</div>" +
                             "<div><strong>Zoom max  :</strong> Limited to <strong>" + self.zoomMax.toString() + " " + options.unit +"</strong></div>";
 //                        var headerHelp = headerOptions
-                        var headerHelp = headerZoom
+                        var headerHelp = headerZoomOptions
                             .append("div")
 //                            .insert("div",":first-child")
 //                            .attr("class", "pull-right")
@@ -2070,9 +2072,17 @@ export default class FeatureViewer {
                             //$('[data-toggle="popover"]').popover({html: true});
                             //var baseContID = self.div.substring(1);
                             //console.log("base div id: " + baseContID);
+                            
+                            var helpButton =$(div).find('.header-help');
+                            /*
+                            
+                            var hbut = helpButton;
 
-                            var helpButton = $(div).find('.header-help');
+                            createPopper( hbut, helpContent, {
+                                placement: 'top',
+                              });
 
+                            
                             helpButton.popover({
                                 container: "body",
                                 html: true,
@@ -2081,6 +2091,7 @@ export default class FeatureViewer {
                                   return helpContent;
                                 }
                               });
+                              */
 
                               helpButton.on('hide.bs.popover', function () {
                                 helpButton.find(".state").text("Show");

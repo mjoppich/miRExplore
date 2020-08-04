@@ -1,9 +1,13 @@
-from collections import defaultdict
-from nertoolkit.geneontology.GeneOntology import GeneOntology
+import os,sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
+
+
+from collections import defaultdict
 from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID
+from synonymes.GeneOntology import GeneOntology
 
 bodypartsObo = GeneOntology(dataDir + "miRExplore/foundational_model_anatomy/fma_obo.obo")
 vAllSyns = []
@@ -42,5 +46,5 @@ for cellID in bodypartsObo.dTerms:
 
 globalKeywordExcludes = loadExludeWords(cell_co=False)
 
-vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=10, maxCommonCount=5)
-printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/model_anatomy.syn")
+vPrintSyns = handleCommonExcludeWords(vAllSyns, globalKeywordExcludes, mostCommonCount=200, maxCommonCount=5)
+printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/model_anatomy.syn")

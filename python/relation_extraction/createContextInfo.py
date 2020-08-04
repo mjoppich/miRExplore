@@ -26,7 +26,10 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--datadir', type=str, help='where is te miRExplore bsae?', required=True)
 
     parser.add_argument('--obo', type=argparse.FileType('r'), required=True)
-    parser.add_argument('--accept_pmids', type=argparse.FileType('r'), required=False, default=None)
+    parser.add_argument('--phit', type=int, default=6, required=False)
+
+    parser.add_argument('--accept-pmids', type=argparse.FileType('r'), required=False, default=None)
+    parser.add_argument('--mine-path', type=str, default="/mnt/e/data/pmid_jun2020/", required=False)
 
 
     args = parser.parse_args()
@@ -50,7 +53,7 @@ if __name__ == '__main__':
     resultBase = args.resultdir
 
     oboSyns = SynfileMap(resultBase + "/synfile.map")
-    oboSyns.loadSynFiles( ('/home/users/joppich/ownCloud/data/', args.datadir) )
+    oboSyns.loadSynFiles( (args.mine_path, args.datadir) )
 
 
     allfiles = glob.glob(resultBase + "/*.index")
@@ -85,8 +88,9 @@ if __name__ == '__main__':
             if len(oboHits) == 0:
                 continue
 
-            sentFile = args.sentdir + "/" + splitFileID + ".sent"#"/mnt/c/dev/data/pmc/allsent/"+splitFileID +".sent"
-            sentDB = SentenceDB(sentFile)
+            # not used anyhow ...
+            #sentFile = args.sentdir + "/" + splitFileID + ".sent"
+            #sentDB = SentenceDB(sentFile)
 
             sys.stderr.write("Found something in: " + str(splitFileID) + "\n")
 
@@ -102,6 +106,10 @@ if __name__ == '__main__':
 
                 allSynIDs = set()
                 for hit in docHits:
+
+                    if len(hit.foundSyn) < args.phit:
+                        if hit.perfectHit != True:
+                            continue
 
                     if "and " in hit.foundSyn:
                         continue

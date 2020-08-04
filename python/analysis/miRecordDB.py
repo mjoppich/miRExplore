@@ -83,6 +83,7 @@ class miRecordDB(DataBaseDescriptor):
 
         ret = miRecordDB(ltype, rtype)
         print(filelocation)
+        print("new")
 
         wb = load_workbook(filelocation)
         ws = wb.active
@@ -110,15 +111,30 @@ class miRecordDB(DataBaseDescriptor):
             if not org in ['hsa', 'mmu']:
                 continue
 
+            ogene = gene
+
+
             if gene in normGeneSymbols:
                 gene = normGeneSymbols[gene]
                 geneSymbolsNormalized += 1
             elif gene[-1].isdigit():
-                agenename = gene[:-2] + " " + gene[-1]
-                if agenename in normGeneSymbols:
-                    gene = normGeneSymbols[agenename]
-                    geneSymbolsNormalized += 1
 
+                if gene[-2] == ' ':
+                    agenename = gene.replace(" ", "")
+
+                    if agenename in normGeneSymbols:
+                        gene = normGeneSymbols.get(agenename, agenename)
+                    else:
+                        gene = agenename
+                    
+                else:
+                    agenename = gene[:-2] + " " + gene[-1]
+                    if agenename in normGeneSymbols:
+                        gene = normGeneSymbols[agenename]
+                        geneSymbolsNormalized += 1
+
+            if ogene.upper().startswith("SMAD"):
+                print(ogene, gene)
 
             targetSitePosition = row[16].value
 

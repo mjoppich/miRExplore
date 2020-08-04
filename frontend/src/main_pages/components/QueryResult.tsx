@@ -1152,7 +1152,7 @@ export interface QueryResultState {
         {
             relDirection = tev['rel_direction_verb'];
         } else {
-            relDirection = tev['rel_direction'];
+            relDirection = tev['rel_interaction'];
         }
 
         var relNegated = "";
@@ -1183,7 +1183,7 @@ export interface QueryResultState {
         }
 
         var infoRow = <tr key={idx}>
-                        <td>{tev['rel_verb']}, {tev['rel_category']}</td>
+                        <td>{tev['rel_interaction']}, {tev['rel_category']}</td>
                         <td>{relDirection + relNegated}</td>
                         <td>{relLocation}</td>
                         <td>{orgInfo}</td>

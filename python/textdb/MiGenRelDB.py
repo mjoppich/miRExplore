@@ -20,12 +20,14 @@ class MiRGeneRel(DataBaseRel):
 
     def __init__(self, intuple, docid, sameParagraph, sameSentence, lent, rent, datasource, dataID):
 
-        self.assocDir = None
-        self.assocDirV = None
+        #self.assocDir = None
+        #self.assocDirV = None
         self.assocCat = None
+
         self.assocFound = None
         self.assocSent = None
         self.assocNeg = None
+        self.assocPass = None
         self.lPOS = None
         self.rPOS = None
         self.assocPos = None
@@ -40,12 +42,17 @@ class MiRGeneRel(DataBaseRel):
         self.data_id = dataID
         self.trustv = None
 
+        self.orig_names = None
+
 
         if intuple != None:
             #('12', '1V2', 'POS', 'express', '29138420.2.5', False, (26, 34), (0, 5), (6, 16))
-            self.assocDir = intuple[0]
-            self.assocDirV = intuple[1]
-            self.assocCat = intuple[2]
+            #self.assocDir = None #intuple[0]
+            #self.assocDirV = None #intuple[1]
+            self.assocCat = None #intuple[2]
+            self.assocInt = ""
+
+
             self.assocFound = intuple[3]
             self.assocSent = intuple[4]
             self.assocNeg = intuple[5]
@@ -79,6 +86,8 @@ class MiRGeneRel(DataBaseRel):
     def docid(self):
         return self.pubID
 
+    def __str__(self):
+        return str(self.toJSON())
 
     def toJSON(self):
 
@@ -91,12 +100,14 @@ class MiRGeneRel(DataBaseRel):
             trust['relex'] = self.trustv[-1]
 
         retJSON =  {
-            'rel_direction': self.assocDir,
-            'rel_direction_verb': self.assocDirV,
+            #'rel_direction': self.assocDir,
+            #'rel_direction_verb': self.assocDirV,
             'rel_category': self.assocCat,
+            'rel_interaction': self.assocInt,
             'rel_verb': self.assocFound,
             'rel_sentence': self.assocSent,
             'rel_negated': self.assocNeg,
+            'rel_passive': self.assocPass,
             'lpos': self.lPOS,
             'rpos': self.rPOS,
             'rel_pos': self.assocPos,
@@ -111,7 +122,8 @@ class MiRGeneRel(DataBaseRel):
             'rontid': self.rontent[0],
             'data_source': self.data_source,
             'data_id': self.data_id,
-            'trust': trust
+            'trust': trust,
+            'orig_ids': self.orig_names
         }
 
         if self.orgs != None:
@@ -320,6 +332,8 @@ class MiGenRelDB(DataBaseDescriptor):
         geneSymbolsNormalized = 0
 
         seenMirnas = {}
+        seenHarmMirnas = set()
+        seenGenes = set()
 
         ignoredDocs = set()
         takenDocs = set()
@@ -330,6 +344,7 @@ class MiGenRelDB(DataBaseDescriptor):
 
 
             #miR-182 mir-182 MIRNA   CBFA3   RUNX3   GENE    29054094        True    True    [('21', 'V21', 'POS', 'express', '29054094.2.3', False, (92, 99), (82, 87), (62, 72), 'all_rels')]
+            #MIR_497	miR-497	MIRNA	INSR	insulin receptor	GENE	26300412	True	True	[('21', '2V1', 'DOWN', '', '26300412.2.8', False, (39, 46), (166, 182), (0, 0), 'spacy', 1, 1, 0, 0, True, False, False, 'MIR_GENE', 'DOWN')]
 
             for lineIdx, line in enumerate(fin):
 
@@ -356,9 +371,20 @@ class MiGenRelDB(DataBaseDescriptor):
                     aline[4] = tmp[1]
                     aline[5] = tmp[2]
 
+                lIDIdx = 0
+                rIDIdx = 3
 
-                lid = aline[0]
-                rid = aline[3]
+                if ltype == "mirna":
+                    lIDIdx += 1
+
+                if rtype == "mirna":
+                    rIDIdx += 1
+
+                lid = aline[lIDIdx]
+                rid = aline[rIDIdx]
+
+                olid = lid
+                orid = rid
 
                 if ret.l_ont_based and lReplaceSc:
                     lid = lid.replace('_', ':', 1)
@@ -370,6 +396,10 @@ class MiGenRelDB(DataBaseDescriptor):
                     tmp = lid
                     lid = rid
                     rid = tmp
+
+                    tmp = olid
+                    olid = orid
+                    orid = tmp
 
                     turnEvs = not turnEvs
 
@@ -406,6 +436,9 @@ class MiGenRelDB(DataBaseDescriptor):
                         origRid = lid
                         org, lid = cls.harmonizeMIRNA(lid)
                         seenMirnas[origRid] = (org, lid)
+                        seenHarmMirnas.add(lid)
+                    
+                    lid = olid
 
                 elif rtype == 'mirna':
 
@@ -415,7 +448,15 @@ class MiGenRelDB(DataBaseDescriptor):
                         origRid = rid
                         org, rid = cls.harmonizeMIRNA(rid)
                         seenMirnas[origRid] = (org, rid)
+                        seenHarmMirnas.add(rid)
 
+                    rid = orid
+
+
+                if ltype == "gene":
+                    seenGenes.add(lid)
+                elif rtype == "gene":
+                    seenGenes.add(rid)
 
                 docOrgs = set()
                 if org != None:
@@ -448,17 +489,45 @@ class MiGenRelDB(DataBaseDescriptor):
 
                     for relIdx, rel in enumerate(tmRelations):
 
+                        newrel = MiRGeneRel(rel, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), dbtype, None)
+                        newrel.orig_names = (olid, orid)
+
+                        #('21', '2V1', 'DOWN', '', '26300412.2.8', False, (39, 46), (166, 182), (0, 0), 'spacy', 1, 1, 0, 0, True, False, False, 'MIR_GENE', 'DOWN')
+
                         if len(rel) > 10:
                             stackEv = rel[10]
                             verbEv = rel[11]
 
                             if not stackEv and not verbEv:
                                 continue
+                        
+                            """
+                            if ltype == "mirna":
+                                if rel[17] == "MIR_GENE":
+                                    newrel.assocDir = "12"
+                                    newrel.assocDirV = "1V2"
+                                else:
+                                    newrel.assocDir = "21"
+                                    newrel.assocDirV = "2V1"
+
+                            else:
+                            
+                                if rel[17] == "GENE_MIR":
+                                    newrel.assocDir = "12"
+                                    newrel.assocDirV = "1V2"
+                                else:
+                                    newrel.assocDir = "21"
+                                    newrel.assocDirV = "2V1"
+                            """
+
+                            newrel.assocCat = rel[18]
+                            newrel.assocInt = rel[17]
+
+                            newrel.assocPass = rel[15]
+                            newrel.assocNeg = rel[16]
 
 
-
-                        newrel = MiRGeneRel(rel, docid, sameParagraph, sameSentence, (lid, ltype), (rid, rtype), dbtype, None)
-
+                        """
                         if turnEvs:
 
                             tmp = newrel.lPOS
@@ -473,9 +542,10 @@ class MiGenRelDB(DataBaseDescriptor):
 
                                 newrel.assocDirV = nAssocDirV
                                 newrel.assocDir = nAssocDirV.replace('V', '')
+                        """
 
-                        if isinstance(rel[-4], int):
-                            newrel.trustv = rel[-4:]
+                        if isinstance(stackEv, int):
+                            newrel.trustv = (rel[10], rel[11], rel[12], rel[13])
 
                         relCopy = copy.deepcopy(newrel)
 
@@ -554,6 +624,9 @@ class MiGenRelDB(DataBaseDescriptor):
         print("Loaded file", filepath)
         print("Accepted Doc IDs", len(takenDocs))
         print("Rejected Doc IDs", len(ignoredDocs))
+        print("Seen genes", len(seenGenes))
+        print("Seen miRNAs", len(seenMirnas))
+        print("Seen Harm. miRNAs", len(seenHarmMirnas))
 
         if getDocs:
             return ret, takenDocs

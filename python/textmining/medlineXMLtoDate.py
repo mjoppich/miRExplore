@@ -13,7 +13,6 @@ from utils.parallel import MapReduce
 
 logger = logging.getLogger('convertJatsToText')
 
-import nltk.data
 
 class PubmedJournal:
     def __init__(self, journal, isoabbrev):
@@ -480,8 +479,8 @@ import traceback
 
 if __name__ == '__main__':
 
-    storagePath = '/mnt/raidtmpbio/joppich/pmid/'
-    baseFileName = 'pubmed18n'
+    storagePath = '/mnt/d/dev/data/pmid_jul2020/'
+    baseFileName = 'pubmed20n'
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
 

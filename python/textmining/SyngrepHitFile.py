@@ -9,7 +9,7 @@ class SyngrepHitFile:
 
         self.docid2hits = defaultdict(list)
 
-        with io.open(filename, 'r', encoding="UTF-8") as infile:
+        with io.open(filename, 'r', encoding="UTF-8", errors="ignore") as infile:
 
             for line in infile:
 

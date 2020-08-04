@@ -1,4 +1,6 @@
-import argparse
+import argparse, os, sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
 
 from synonymes.GeneOntology import GeneOntology
 from synonymes.mirnaID import miRNA, miRNAPART
@@ -61,8 +63,14 @@ if __name__ == '__main__':
     for rdb in relDBs:
         for mirna in rdb.all_rtypes:
 
-            mirObj = miRNA(mirna)
-            allMirnas.add(mirObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]))
+            try:
+                mirObj = miRNA(mirna)
+                allMirnas.add(mirObj.getStringFromParts([miRNAPART.MATURE, miRNAPART.ID, miRNAPART.PRECURSOR]))
+
+            except:
+
+                print(mirna)
+                exit(-1)
 
     print("Number of mirnas with interaction", len(allMirnas))
 

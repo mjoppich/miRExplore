@@ -8,17 +8,10 @@ import createBrowserHistory from 'history/createBrowserHistory';
 //@ts-ignore
 import {configureAnchors} from 'react-scrollable-anchor';
 
-/*
-//@ts-ignore
-import * as tep from 'react-tap-event-plugin';
-*/
 
 import MainPage from './MainPage';
 import NotFoundPage from './NotFoundPage';
 
-
-var injectTapEventPlugin = require("react-tap-event-plugin");
-injectTapEventPlugin();
 configureAnchors({offset: -60});
 
 //var routerHistory = createBrowserHistory();

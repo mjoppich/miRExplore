@@ -1,6 +1,6 @@
 import os, sys
 
-sys.path.append("/home/users/joppich/python/miRExplore/python/")
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 from urllib import request
 from urllib.error import URLError
@@ -11,16 +11,16 @@ downloadBase = True
 downloadUpdates = False
 downloadUpdatesParallel = True
 updateStart = 1016
-updateEnd = 1233
+updateEnd = 1284
 medlineBase="pubmed20n"
 
-downloadLocation = "/mnt/raidtmpbio2/joppich/pmid_jun2020/"
+downloadLocation = "/mnt/d/dev/data/pmid_jul2020/"
 
 directory = os.path.dirname(downloadLocation)
 if not os.path.exists(directory):
     os.makedirs(directory)
 
-
+onlyNew = True
 
 def downloadDataBase(data, env):
 
@@ -29,6 +29,10 @@ def downloadDataBase(data, env):
         fileID = "{:>4}".format(i).replace(" ", "0")
         downloadFile = medlineBase+fileID+".xml.gz"
         print(downloadFile)
+
+        if onlyNew:
+            if os.path.exists(downloadLocation + "/" + downloadFile):
+                continue
 
         request.urlretrieve("ftp://ftp.ncbi.nlm.nih.gov/pubmed/baseline/"+downloadFile, downloadLocation + "/" + downloadFile)
 
@@ -39,6 +43,10 @@ def downloadDataUpdate(data, env):
         fileID = "{:>4}".format(i).replace(" ", "0")
         downloadFile = medlineBase+fileID+".xml.gz"
         print(downloadFile)
+
+        if onlyNew:
+            if os.path.exists(downloadLocation + "/" + downloadFile):
+                continue
 
         request.urlretrieve("ftp://ftp.ncbi.nlm.nih.gov/pubmed/updatefiles/"+downloadFile, downloadLocation + "/" + downloadFile)
 
