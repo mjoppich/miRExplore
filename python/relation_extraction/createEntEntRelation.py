@@ -27,9 +27,11 @@ from textmining.MirGeneRelCheck import SentenceRelationChecker, SentenceRelation
 
 from utils.parallel import MapReduce
 from enum import Enum
+from intervaltree import Interval, IntervalTree
 
 #nlp = spacy.load('/mnt/d/spacy/models/en_core_web_lg-2.2.0/en_core_web_lg/en_core_web_lg-2.2.0/')  # create blank Language class #en_core_web_lg
-nlp = spacy.load('/mnt/d/spacy/en_core_sci_lg-0.2.5/en_core_sci_lg/en_core_sci_lg-0.2.5/')
+nlp = spacy.load('/mnt/f/spacy/en_core_sci_lg-0.2.4/en_core_sci_lg/en_core_sci_lg-0.2.4/')
+nlp_ent = spacy.load("/mnt/f/spacy/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
 
 
 def augmentMiRNAs(sentence, y, entSyns):
@@ -317,6 +319,14 @@ def findRelationBySyns(ent1Hit, ent2Hit, sentence, relHits, ent1Type, ent2Type):
     e1Loc = ent1Hit.position
     e2Loc = ent2Hit.position
 
+    if ent1Hit.foundSyn == "Th1":
+        print(ent1Hit.documentID, ent1Hit.originalLine, file=sys.stderr)
+        print(ent1Hit.documentID, sentence, file=sys.stderr)
+
+    if ent2Hit.foundSyn == "Th1":
+        print(ent2Hit.documentID, ent2Hit.originalLine, file=sys.stderr)
+        print(ent2Hit.documentID, sentence, file=sys.stderr)
+
     relRes = relChecker.check_sentence(sentText
                                     , {"entity_type": ent1Type, "entity_type_token": "e1", "entity_location": e1Loc} #mirna
                                     , {"entity_type": ent2Type, "entity_type_token": "e2", "entity_location": e2Loc} #gene
@@ -597,7 +607,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    relChecker = SentenceRelationChecker(nlp)
+    relChecker = SentenceRelationChecker(nlp, nlp_ent)
     relClassifier = SentenceRelationClassifier()
 
     #resultBase = dataDir + "/miRExplore/textmine/results_pmc/"

@@ -151,6 +151,9 @@ if __name__ == '__main__':
             if x.startswith("EC "):
                 continue
 
+            if x.upper() in ["TH1"]:
+                continue
+
             allSyms.append(x)
 
         printID = mgiID.replace(':', '_',1)

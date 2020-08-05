@@ -2,6 +2,7 @@ from collections import defaultdict, Counter
 import regex as re
 import os,sys
 import copy
+from intervaltree import Interval, IntervalTree
 
 #nlp = spacy.load("/mnt/d/spacy/models/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
 
@@ -388,7 +389,7 @@ class SentenceRelationClassifier:
                 tokenBetween, tokenBetweenStrict, textBetween, textBefore, textAfter = self.getTextBetween(tokSrc, mirword, geneword)
 
                 if verbose:    
-                    print(textbetween)
+                    print(textBetween)
                 
                 if self.allowed_check("between mir gene pos corr", "between") and any([x in textBetween for x in ["positive correlation"]]) and stemTypes2Count.get("NEG", 0) == 0:
                     return {"regulation_dir": "UP", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between mir gene pos corr", "reg_detect_major": "between"}
@@ -589,9 +590,10 @@ class SentenceRelationClassifier:
 
 class SentenceRelationChecker:
 
-    def __init__(self, nlp):
-        self.relCheck = MirGeneRelCheck()
+    def __init__(self, nlp, nlp_ent=None):
+        self.relCheck = MirGeneRelCheck(nlp_ent=nlp_ent)
         self.nlp = nlp
+        self.nlp_ent = nlp_ent
 
     def fixPos(self, pos, sentence):
         posElems = [(idx, chr(i), i) for idx, i in enumerate(sentence) if i > 127 and idx < pos]
@@ -752,6 +754,7 @@ class SentenceRelationChecker:
             print("(u\"{}\", {}, {})".format(doc.text_with_ws, e1Token.i, e2Token.i))
         
             print("geneword", geneWord, "mirword", mirWord)
+
 
         checkResults = self.relCheck.checkRelation(doc, mirWord, geneWord, verbose=verbose, relClassifier=relClassifier)
 
@@ -966,8 +969,11 @@ class SentenceRelationChecker:
 
 class MirGeneRelCheck:
 
-    def __init__(self):
+    def __init__(self, nlp_ent=None):
 
+        self.nlp_ent = nlp_ent
+
+        #(re.compile('(%s){e<=1}' % "-mediated"), 15),
         self.surGeneContexts = [
             (re.compile('(%s){e<=3}' % "signaling pathway"), 30),
             (re.compile('(%s){e<=3}' % "signaling circuit"), 22),
@@ -975,11 +981,13 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=3}' % "receptor signaling"), 30),
             (re.compile('(%s){e<=2}' % "pathway"), 15),
             (re.compile('(%s){e<=1}' % "generation"), 12),
-            #(re.compile('(%s){e<=1}' % "-mediated"), 15),
             (re.compile('(%s){e<=1}' % "-sensitive"), 15),
             (re.compile('(%s){e<=1}' % "-driven"), 13),
             (re.compile('(%s){e<=1}' % "adenomas"), 15),
             (re.compile('(%s){e<=1}' % "transgenic"), 15),
+            (re.compile('(%s){e<=1}' % "genotype"), 15),
+            (re.compile('(%s){e<=1}' % "differentiation"), 20), #Th1/Th2 differentiation
+            #(re.compile('(%s){e<=1}' % "cells"), 11), #Th1/Th2 cells
             (re.compile('(%s){e<=1}' % "signaling through"), 22),
             (re.compile('(%s){e<=1}' % "signaling"), 10),
             (re.compile('(%s){e<=1}' % "knockout"), 15),
@@ -988,7 +996,7 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=1}' % "treated"), 15),
             (re.compile('(%s){e<=1}' % "peptides"), 10),
             (re.compile('(%s){e<=1}' % "-positive"), 15),
-            (re.compile('(%s){e<=1}' % "-negative"), 15),
+            (re.compile('(%s){e<=1}' % "-negative"), 10),
             (re.compile('(%s){e<=1}' % "-producing"), 12),
             (re.compile('(%s){e<=1}' % "stressed.{1-7}cells"), 30),
             (re.compile('(%s){e<=2}' % "expressing vector"), 25),
@@ -1324,8 +1332,6 @@ class MirGeneRelCheck:
 
                 mRes = surContext.search(contextStr)
 
-                #print(contextStr, surContext)
-
                 if mRes != None:
                     
                     if verbose:
@@ -1333,6 +1339,7 @@ class MirGeneRelCheck:
                     return False
 
             return True
+
 
         if not checkPostContext(doc, geneword, self.surGeneContexts):
             return False
@@ -1459,6 +1466,44 @@ class MirGeneRelCheck:
 
         return True
 
+    def check_entity(self, doc, mirword, geneword, verbose):
+
+        if self.nlp_ent != None:
+            entDoc = self.nlp_ent(doc.text_with_ws)
+    
+            enttree = IntervalTree()
+            for ent in entDoc.ents:
+                enttree.addi(ent.start_char, ent.end_char, (ent.label_, ent.text))
+
+            possTokenEnts = enttree.overlap(geneword.idx, geneword.idx+len(geneword.text))
+
+            if verbose:
+                print("Recognized overlapping entities:", possTokenEnts)
+
+            ents = set([x.data[0] for x in possTokenEnts])
+
+            if 'CELL' in ents:
+                if verbose:
+                    print("Gene reject:", ents)                
+                return False
+
+            for x in possTokenEnts:
+                if x.data[0] in ['ORGANISM']:
+
+                    if x.begin == geneword.idx:
+
+                        if verbose:
+                            pass
+                    
+                        print("Organism reject:", ents, geneword, doc.text_with_ws)
+
+                        return False
+
+
+            return True
+                
+                
+        return True
 
     def checkRelation(self, doc, mirword, geneword, verbose=False, relClassifier=None):
 
@@ -1479,6 +1524,10 @@ class MirGeneRelCheck:
 
         sigPathway = self.checkSurContext(doc, mirword, geneword, verbose)
         singleResults["context"] = sigPathway
+
+
+        entityCheck = self.check_entity(doc, mirword, geneword, verbose)
+        singleResults["entity"] = entityCheck
 
         """
         Create overall result        
