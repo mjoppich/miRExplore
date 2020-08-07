@@ -331,7 +331,7 @@ class GOTerm:
             if not x.term in already_seen:
 
                 if x.term == None:
-                    print("None observed", x, x.termid)
+                    #print("None observed", x, x.termid)
                     continue
 
                 already_seen.add(x.term)

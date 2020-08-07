@@ -31,6 +31,14 @@ class PubmedDateDB:
 
         return dtDate
 
+    def get_document_timestamp(self, docid):
+
+        dt = self.get_document_date(docid)
+
+        if dt == None:
+            return None
+
+        return datetime.datetime.timestamp(dt)
 
     def get_document(self, docid):
 

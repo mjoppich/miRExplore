@@ -21,7 +21,7 @@ from textdb.featureviewer import FeatureViewer
 from textdb.mi2mirna import MI2Mirna
 from textdb.rfamDB import RFamDB
 from utils.tmutils import normalize_gene_names
-
+from textdb.PubmedDateDB import PubmedDateDB
 
 
 import time
@@ -883,6 +883,11 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
                 
                 seenEvidences.add(evTuple)
 
+            if 'docid' in jsonEV:
+
+                docDate = dateDB.get_document_timestamp(jsonEV["docid"])
+                jsonEV['docdate'] = docDate
+
             okEvs.append(jsonEV)
 
 
@@ -1280,6 +1285,7 @@ def start_app_from_args(args):
     global geneNeighbourHoods
 
     global mi2mirna
+    global dateDB
 
 
 
@@ -1334,6 +1340,9 @@ def start_app_from_args(args):
     geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.pmid", ltype="gene", rtype="lncrna")
 
     print(datetime.datetime.now(), "Finished mirel")
+
+    allDatesFile = pmidBase + "/allpmids.date"
+    dateDB = PubmedDateDB.loadFromFile(allDatesFile)
 
 
     print(datetime.datetime.now(), "Loading mirWalk")

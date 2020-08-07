@@ -363,6 +363,9 @@ class MiGenRelDB(DataBaseDescriptor):
 
                     tmp = aline[0:3]
 
+                    if len(aline) < 4:
+                        print(aline)
+
                     aline[0] = aline[3]
                     aline[1] = aline[4]
                     aline[2] = aline[5]

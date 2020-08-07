@@ -1492,10 +1492,8 @@ class MirGeneRelCheck:
 
                     if x.begin == geneword.idx:
 
-                        if verbose:
-                            pass
-                    
-                        print("Organism reject:", ents, geneword, doc.text_with_ws)
+                        if verbose:                    
+                            print("Organism reject:", ents, geneword, doc.text_with_ws)
 
                         return False
 
