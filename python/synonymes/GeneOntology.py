@@ -273,7 +273,7 @@ class GOTerm:
         return allchildren
 
 
-    def getAllChildren(self, maxLevel=-1, withLevel=False):
+    def getAllChildren(self, maxLevel=-1, withLevel=False, includeTerm=False):
 
         allchildren = set()
 
@@ -281,6 +281,9 @@ class GOTerm:
 
         if withLevel:
             allchildren = set([(x, maxLevel-l) for x,l in allchildren])
+
+        if includeTerm:
+            allchildren.add(GORelation(GORelationType['IS_A'], desc=self.name, termid=self.id, term=self))
 
         return allchildren
 
