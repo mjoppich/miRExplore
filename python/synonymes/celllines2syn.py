@@ -1,7 +1,6 @@
 from collections import defaultdict
-import sys
-
-print(sys.path)
+import sys, os
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 from synonymes.GeneOntology import GeneOntology
 from synonymes.Synonym import Synonym
@@ -9,6 +8,22 @@ from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID
 
 celloObo = GeneOntology(dataDir + "miRExplore/meta_cells.obo")
+
+ignoreTerms = []
+for ignoreTerm in ["META:3", "META:707", "EFO:0000408", "META:403", "EFO:0000408", "BFO:0000017"]:
+    ignoreTerms += [x.termid for x in celloObo[ignoreTerm].getAllChildren()]
+
+ignoreTerms = set(ignoreTerms)
+
+ignoreTerms.add("META:340")
+ignoreTerms.add("META:10")
+
+for term in celloObo.dTerms:
+    oboNode = celloObo.dTerms[term]
+    if oboNode.id.startswith(("CHEBI", "PR", "DOID", "UBERON", "IAO")):
+        ignoreTerms.add(oboNode.id)
+
+print("Total terms:", len(celloObo.dTerms), "Ignore terms", len(ignoreTerms))
 
 tax2cells = defaultdict(set)
 
@@ -21,9 +36,10 @@ for cellID in celloObo.dTerms:
     oboID = oboNode.id
     oboName = oboNode.name
 
-
-
     if oboID.startswith('GO'):
+        continue
+
+    if oboID in ignoreTerms:
         continue
 
     oboSyns = oboNode.synonym
@@ -104,6 +120,6 @@ for taxid in tax2cells:
     taxSyns = tax2cells[taxid]
 
     vPrintSyns = handleCommonExcludeWords(taxSyns, globalKeywordExcludes, mostCommonCount=66, maxCommonCount=15)
-    printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/celllines.{}.syn".format(taxid)) #dataDir + "/miRExplore/textmine/synonyms/celllines."+taxid+".syn")
+    printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jul2020/synonyms/celllines.{}.syn".format(taxid)) #dataDir + "/miRExplore/textmine/synonyms/celllines."+taxid+".syn")
 
     print("Wrote", dataDir + "/miRExplore/textmine/synonyms/celllines."+taxid+".syn")

@@ -10,7 +10,7 @@ from utils.idutils import isNumber
 class Synonym:
 
     @classmethod
-    def parseFromLine(cls, line):
+    def parseFromLine(cls, line, lidx=None):
         aLine = line.split(':', 1)
 
         retSyn = Synonym(aLine[0].strip())
@@ -24,6 +24,9 @@ class Synonym:
         else:
             retSyn.syns.append(aLine[0].strip())
 
+        if lidx != None:
+            retSyn.synIdx = lidx
+
         return retSyn
 
     def __init__(self, id,idIsSyn=True):
@@ -32,6 +35,7 @@ class Synonym:
         id = id.replace(':', '_')
         self.id = id
         self.currentIdx = 0
+        self.synIdx = -1
 
         if idIsSyn:
             self.syns = [self.id]

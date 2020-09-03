@@ -47,7 +47,7 @@ class Synfile:
 
         def addSyn(sLine, iLine):
 
-            oSyn = Synonym.parseFromLine(sLine)
+            oSyn = Synonym.parseFromLine(sLine, iLine)
 
             self.mSyns[ oSyn.id ] = oSyn
             self.line2syn[iLine] = oSyn.id

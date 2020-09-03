@@ -1,4 +1,7 @@
 from collections import defaultdict
+import sys, os
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
 
 from synonymes.GeneOntology import GeneOntology
 from synonymes.Synonym import Synonym
@@ -10,9 +13,17 @@ namespace2syn = defaultdict(set)
 
 allowedTaxIDs = set([str(speciesName2TaxID[x]) for x in speciesName2TaxID])
 
+ignoreTerms = set()
+ignoreTerms.add("GO:0005574") #obsolete DNA/DNA
+
+print("Total terms:", len(celloObo.dTerms), "Ignore terms", len(ignoreTerms))
+
 for cellID in celloObo.dTerms:
 
     oboNode = celloObo.dTerms[cellID]
+
+    if oboNode.id in ignoreTerms:
+        continue
 
     if len(oboNode.namespace)==0:
         print("has no namespace: " + oboNode.id)

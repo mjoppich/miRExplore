@@ -26,12 +26,13 @@ class PubmedEntry:
     def __init__(self, pubmedId):
 
         self.pmid = pubmedId
+        self.pmc = None
         self.created = None
         self.journal = None
 
         self.title = None
         self.abstract = None
-        self.abstract_text = None
+        self.sections = None
 
         self.pub_types = None
         self.cites = None
@@ -40,12 +41,8 @@ class PubmedEntry:
         self.doi = None
 
     def getID(self):
-
-        try:
-            val = int(self.pmid)
-            return val
-        except:
-            return self.pmid
+        return self.pmid
+            
 
     def _makeSentences(self, content, tokenizer):
 
@@ -69,6 +66,9 @@ class PubmedEntry:
         abstracts = [self.abstract[x] for x in self.abstract]
         abstractSents = self._makeSentences(abstracts, tokenizer)
 
+        sections = [self.sections[x] for x in self.sections]
+        textSents = self._makeSentences(sections, tokenizer)
+
         titleSents = self._prepareSentences(str(self.pmid), 1, [self.title])
         for x in titleSents:
             finalSents.append(x)
@@ -77,6 +77,12 @@ class PubmedEntry:
             abstractSents = self._prepareSentences(str(self.pmid), 2, abstractSents)
 
             for x in abstractSents:
+                finalSents.append(x)
+
+        if len(textSents) > 0:
+            textSents = self._prepareSentences(str(self.pmid), 3, textSents)
+
+            for x in textSents:
                 finalSents.append(x)
 
         return finalSents
@@ -108,6 +114,42 @@ class PubmedEntry:
         for (section, cnt) in self.ignoredSections.most_common():
             print(str(section) + " " + str(cnt))
 
+    @classmethod
+    def get_node_with_attrib(cls, node, path, attrib, attribvalue, default=None):
+        try:
+            values = [x for x in node.findall(path)]
+
+            for idNode in values:
+                if not attrib in idNode.attrib:
+                    continue
+
+                idType = idNode.attrib[attrib]
+
+                if idType == attribvalue:
+                    return idNode
+
+            return default
+        except:
+            return default
+
+    @classmethod
+    def get_nodes_with_attrib(cls, node, path, attrib, attribvalue, default=None):
+        try:
+            values = [x for x in node.findall(path)]
+            keepNodes = []
+
+            for idNode in values:
+                if not attrib in idNode.attrib:
+                    continue
+
+                idType = idNode.attrib[attrib]
+
+                if idType == attribvalue:
+                    keepNodes.append(idNode)
+
+            return keepNodes
+        except:
+            return default
 
     @classmethod
     def get_node(cls, node, path, default=None):
@@ -145,7 +187,12 @@ class PubmedEntry:
     @classmethod
     def get_inner_text_from_path(cls, node, path, default=None):
         fnode = cls.get_node(node, path, None)
-        return cls.get_inner_text_from_node(fnode, default=default)
+        textReturn =  cls.get_inner_text_from_node(fnode, default=default)
+
+        if type(textReturn) == list:
+            textReturn = " ".join(textReturn)
+        
+        return textReturn
 
     @classmethod
     def get_nodes(cls, node, path):
@@ -177,21 +224,19 @@ class PubmedEntry:
         if node == None:
             return None
 
-        authNodes = cls.get_nodes(node, 'AuthorList')
+        authNodes = cls.get_nodes_with_attrib(node, 'front/article-meta/contrib-group//contrib',"contrib-type", "author")
 
         allAuthors = []
 
         for authorNode in authNodes:
-            if 'ValidYN' in authorNode.attrib:
-                validAuthor = authorNode.attrib['ValidYN'] == 'Y'
 
-                if not validAuthor:
-                    continue
+            lastName = cls.get_value_from_node(authorNode, 'name/given-names', '')
+            foreName = cls.get_value_from_node(authorNode, 'name/surname', '')
+            initials = ''
+            affiliation = ''
 
-            lastName = cls.get_value_from_node(authorNode, 'LastName', '')
-            foreName = cls.get_value_from_node(authorNode, 'ForeName', '')
-            initials = cls.get_value_from_node(authorNode, 'Initials', '')
-            affiliation = cls.get_inner_text_from_path(authorNode, 'AffiliationInfo', '')
+            if lastName == '' and foreName == '':
+                continue 
 
             allAuthors.append( (lastName, foreName, initials, affiliation) )
 
@@ -230,16 +275,11 @@ class PubmedEntry:
         # TODO care for structued abstracts https://www.nlm.nih.gov/bsd/licensee/elements_descriptions.html#publicationtypelist
         structuredAbstract = {}
 
-        abstractTexts = cls.get_nodes(node, 'Abstract')
-        if abstractTexts == None or len(abstractTexts) == 0:
-            abstractTexts = cls.get_nodes(node, 'OtherAbstract')
+        abstractTexts = cls.get_nodes(node, '//abstract')
 
         for atext in abstractTexts:
 
-            if atext.tag != 'AbstractText':
-                continue
-
-            label = atext.attrib.get('Label', 'GENERAL').upper()
+            label = atext.attrib.get('id', 'p1').upper()
             text = "".join([x for x in atext.itertext()])#atext.text
 
             if text != None:
@@ -250,26 +290,46 @@ class PubmedEntry:
         return structuredAbstract
 
     @classmethod
+    def get_text(cls, node):
+
+        # TODO care for structued abstracts https://www.nlm.nih.gov/bsd/licensee/elements_descriptions.html#publicationtypelist
+        structuredText = {}
+
+        abstractTexts = cls.get_nodes(node, '/body')
+
+        for secText in abstractTexts:
+
+            secTitle = cls.get_inner_text_from_path(secText, "title")
+
+            
+
+            if secTitle == None:
+                secTitle = secText.attrib.get('id', 'general').upper()
+
+            text = "".join([x for x in secText.itertext()])#atext.text
+
+            if text != None:
+                text = cls.removeLinebreaks(text)
+                structuredText[secTitle] = text
+
+
+        return structuredText
+
+    @classmethod
     def get_literature(cls, node):
 
         if node == None:
             return None
 
-        foundNodes = cls.get_nodes(node, 'MedlineCitation/CommentsCorrectionsList')
+        foundNodes = node.findall('back/ref-list//element-citation/pub-id')
 
         allReturnValues = []
 
         for subNode in foundNodes:
-            if not 'RefType' in subNode.attrib:
-                continue
+            PMID = subNode.text
 
-            validAuthor = subNode.attrib['RefType'] == 'Cites'
-
-            if not validAuthor:
-                continue
-
-            PMID = cls.get_value_from_node(subNode, 'PMID')
-            allReturnValues.append( PMID )
+            if PMID != None and PMID != '':
+                allReturnValues.append( PMID )
 
         return allReturnValues
 
@@ -285,49 +345,66 @@ class PubmedEntry:
     @classmethod
     def fromXMLNode(cls, node):
 
+        pmidIDNode = cls.get_node_with_attrib(node, 'front/article-meta/article-id', 'pub-id-type', 'pmid')
+        pmcIDNode = cls.get_node_with_attrib(node, 'front/article-meta/article-id', 'pub-id-type', 'pmc')
 
-        pmid = cls.get_value_from_node(node, 'MedlineCitation/PMID')
+        pmid = cls.get_value_from_node(pmidIDNode, None)
+        pmc = cls.get_value_from_node(pmcIDNode, None)
 
-        date_created = cls.get_inner_text_from_path(node, 'MedlineCitation/DateCreated')
+        print(pmid)
+        print(pmc)
 
-        articleNode = cls.get_node(node, 'MedlineCitation/Article')
+        if pmc == None:
+            raise ValueError("could not find PMC ID")
 
-        if articleNode == None:
-            return None
+        pmc = "PMC{}".format(pmc)
 
-        journal_title = cls.get_inner_text_from_path(articleNode, 'Journal/Title')
-        journal_abbrev_title = cls.get_inner_text_from_path(articleNode, 'Journal/ISOAbbreviation')
+        journal_title = cls.get_inner_text_from_path(node, 'front/journal-meta/journal-title-group/journal-title')
+        journal_abbrev_title_node = cls.get_node_with_attrib(node, 'front/journal-meta/journal-id', 'journal-id-type', 'iso-abbrev')
+        journal_abbrev_title = cls.get_value_from_node(journal_abbrev_title_node, None)
 
-        title = cls.get_inner_text_from_path(articleNode, 'ArticleTitle')
-        if title != None and type(title) != str:
-            title = "".join(title)
 
-        if title != None and len(title) > 1 and title[0] == '[':
-            if title[len(title)-1] == ']':
-                title = title[1:len(title)-1]
-            elif title[len(title)-2] == ']':
-                title = title[1:len(title)-2] + title[len(title)-1]
+        journal_doi_node = cls.get_node_with_attrib(node, 'front/article-meta/article-id', 'pub-id-type', 'doi')
+        journal_doi = cls.get_value_from_node(journal_doi_node, None)
 
-        abstract = cls.get_abstract(articleNode)
 
-        doi = cls._find_doi( node )
-        authors = cls._find_authors( articleNode )
+        print(journal_title)
+        print(journal_abbrev_title)
+        print(journal_doi)
 
-        publicationTypes = cls.get_node_values(cls.get_node(articleNode, 'PublicationTypeList'))
+        title = cls.get_inner_text_from_path(node, 'front/article-meta/title-group/article-title')
+        date_published_node = cls.get_node_with_attrib(node, 'front/article-meta/pub-date', "pub-type", "nihms-submitted")
+
+        if date_published_node == None:
+            date_published_node = cls.get_node_with_attrib(node, 'front/article-meta/pub-date', "pub-type", "pmc-release")
+
+        date_day = cls.get_value_from_node(date_published_node, "day", "1")
+        date_month = cls.get_value_from_node(date_published_node, "month", "1")
+        date_year = cls.get_value_from_node(date_published_node, "year", "1")
+
+        print(title)
+
+        abstract = cls.get_abstract(node)
+        text = cls.get_text(node)
+
+        authors = cls._find_authors( node )
+
+        publicationTypes = node.find('.').attrib.get("article-type", "unknown")
         citedLiterature = cls.get_literature(node)
 
-        pubmed = PubmedEntry(pmid)
-        pubmed.created = date_created
+        pubmed = PubmedEntry(pmc)
+        pubmed.pmc = pmid
+        pubmed.created = (date_year, date_month, date_day)
         pubmed.journal = (journal_title, journal_abbrev_title)
 
         pubmed.title = cls.removeLinebreaks(title)
         pubmed.abstract = abstract
-        pubmed.abstract_text = abstract
+        pubmed.sections = text
 
         pubmed.authors = authors
-        pubmed.doi = doi
+        pubmed.doi = journal_doi
 
-        pubmed.pub_types = publicationTypes
+        pubmed.pub_types = [publicationTypes]
         pubmed.cites = citedLiterature
 
         return pubmed
@@ -379,7 +456,7 @@ class PubmedArticleIterator:
         if self.parser == None:
             return self
 
-        return self.parser.tree.findall('PubmedArticle').__iter__()
+        return self.parser.tree.findall('article').__iter__()
 
     def __next__(self):
         raise StopIteration()
@@ -402,50 +479,42 @@ if __name__ == '__main__':
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-    storagePath = '/mnt/d/dev/data/pmid_jul2020/'
-    baseFileName = 'pubmed20n'
+    storagePath = '/mnt/f/dev/data/pmcxml/raw/'
 
-    allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
+    allXMLFiles = [y for x in os.walk(storagePath) for y in glob.glob(os.path.join(x[0], '*.xml'))]
+    #allXMLFiles = ['/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1249490.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1249491.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1249508.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1266050.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1266051.xml']
+    #allXMLFiles = ["/mnt/f/dev/data/pmcxml/raw/PMC0014XXXXX/PMC1455165.xml"]
 
-    startFrom = 0
-    endOn = 2000
+    print("Found", len(allXMLFiles), "files")
 
-
-    allfiles = []
-    for filename in allXMLFiles:
-        basefile = os.path.basename(filename)
-        basefile = basefile.split('.')[0]
-        basefile = basefile.replace(baseFileName, '')
-        number = int(basefile)
-
-        if startFrom <= number and number <= endOn:
-
-            allfiles.append(filename)
-
-    print("Going through", len(allfiles), " files.")
+    print("Going through", len(allXMLFiles), " files.")
 
     def senteniceFile(filenames, env):
 
 
         for filename in filenames:
             print(filename)
+            storagePath = os.path.dirname(filename) + "/"
 
             basefile = os.path.basename(filename)
-            sentfile = basefile.replace(".xml.gz", ".sent")
-            titlefile = basefile.replace(".xml.gz", ".title")
-            authorfile = basefile.replace(".xml.gz", ".author")
-            citationfile = basefile.replace(".xml.gz", ".citation")
+            sentfile = basefile.replace(".xml", ".sent")
+            titlefile = basefile.replace(".xml", ".title")
+            authorfile = basefile.replace(".xml", ".author")
+            citationfile = basefile.replace(".xml", ".citation")
+            datefile = basefile.replace(".xml", ".date")
+            typefile = basefile.replace(".xml", ".pubtype")
+            pmidfile = basefile.replace(".xml", ".pmid")
 
             pmid2title = {}
             pmid2authors = defaultdict(set)
             pmid2citations = defaultdict(set)
 
-            with open(storagePath + sentfile, 'w') as outfile:
+            with open(storagePath + sentfile, 'w') as outfile, open(storagePath + datefile, 'w') as outdate, open(storagePath + typefile, "w") as outtype, open(storagePath + pmidfile, "w") as outpmid:
 
                 pubmedParser = PubmedXMLParser()
                 pubmedParser.parseXML(filename)
 
-                for elem in PubmedArticleIterator(pubmedParser):
+                for elem in [pubmedParser.tree]:
 
                     try:
                         entry = PubmedEntry.fromXMLNode(elem)
@@ -459,6 +528,16 @@ if __name__ == '__main__':
                             outfile.write(x + "\n")
 
                         pmidID = entry.getID()
+
+                        if entry.created != None:
+                            print(pmidID, "\t".join([str(x) for x in entry.created]), sep="\t", file=outdate)
+
+                        if entry.pub_types != None:
+                            for ept in entry.pub_types:
+                                print(pmidID, ept, sep="\t", file=outtype)
+
+                        if entry.pmc != None:
+                            print(pmidID, entry.pmc, sep="\t", file=outpmid)
 
                         if entry.title != None:
                             pmid2title[pmidID] = entry.title
@@ -480,9 +559,10 @@ if __name__ == '__main__':
                     except:
 
                         eprint("Exception", sentfile)
+                        exit(-1)
                         try:
 
-                            pmid = elem.find('MedlineCitation/PMID').text
+                            pmid = PubmedEntry.fromXMLNode(elem)
                             eprint(pmid)
 
                         except:
@@ -534,7 +614,7 @@ if __name__ == '__main__':
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(12)
-    result = ll.exec( allfiles, senteniceFile, None, 1, None)
+    ll = MapReduce(8)
+    result = ll.exec( allXMLFiles, senteniceFile, None, 1, None)
 
     print("Done")
