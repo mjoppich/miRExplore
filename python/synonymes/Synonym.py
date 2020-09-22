@@ -326,8 +326,12 @@ class Synonym:
                 idx = self.syns.index(syn)
                 self.removeSyn(idx)
 
-        else:
+        elif type(syn) in [list, tuple]:
 
+            for synWord in syn:
+                self.removeSyn(synWord)
+
+        else:
             isyn = int(syn)
 
             #print("Removing syn", self.syns[isyn])

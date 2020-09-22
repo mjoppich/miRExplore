@@ -1,6 +1,6 @@
 from synonymes.SynfileMap import SynonymID
 from textmining.SentenceID import SentenceID
-
+import sys
 
 class SyngrepHit:
 
@@ -25,7 +25,7 @@ class SyngrepHit:
 
 
     @classmethod
-    def fromLine(cls, line, synfileMap):
+    def fromLine(cls, line, synfileMap,sentIDNoText=False):
 
 
         aline = [x.strip() for x in line.split('\t')]
@@ -49,7 +49,13 @@ class SyngrepHit:
         sentStart = int(aline[3])
         sentLength = int(aline[4])
 
-        sentStart -= len(str(retObj.documentID))+1
+        if not sentIDNoText:
+            sentStart -= len(str(retObj.documentID))+1
+
+        if not sentStart >= 0:
+            print(aline, file=sys.stderr)
+            print(sentStart, sentLength, file=sys.stderr)
+
 
         retObj.position = (int(sentStart), int(sentStart)+int(sentLength))
 

@@ -154,13 +154,30 @@ class Synfile:
             self.line2syn[iLine] = oSyn.id
             self.synid2line[oSyn.id] = iLine
 
-        with io.open(sFileLocation, 'r') as infile:
-            idx = 0
-            for line in infile:
-                addSyn(line, idx)
-                idx += 1
+        for encoding in [("utf8", "strict"), ("latin1", "strict"),("utf8", "ignore"), ("latin1", "ignore")]:
 
-            self.location = sFileLocation
+            if self.location != None:
+                continue
+
+            try:
+                print("Loading", sFileLocation, "with encoding", encoding)
+                with io.open(sFileLocation, 'r', encoding=encoding[0], errors=encoding[1]) as infile:
+                    idx = 0
+                    for line in infile:
+                        addSyn(line, idx)
+                        idx += 1
+
+                    self.location = sFileLocation
+            except:
+                
+                self.mSyns = {}
+                self.line2syn = {}
+                self.synid2line = {}
+
+                continue
+
+        if len(self.mSyns) == 0:
+            raise ValueError("No Synonymes!")
 
     def __iter__(self):
 
@@ -224,12 +241,17 @@ if __name__ == '__main__':
 
     # test run: /usr/bin/python3 /mnt/f/dev/git/miRExplore/python/textmining/textmineDocument.py --input textmining/textmineTestSents.sent --synonyms textmining/textmineTestSyns.syn --output -
     
-    # actual run: /usr/bin/python3 /mnt/f/dev/git/miRExplore/python/textmining/textmineDocument.py --synonyms /mnt/f/dev/data/pmid_jun2020/synonyms/hgnc.syn --output /tmp/ -tl 5 -prunelevel none -e /mnt/f/dev/data/pmid_jun2020/excludes/all_excludes.syn --input /mnt/f/dev/data/pmid_jun2020/pmc/pmc_118.sent
+    # actual run: /usr/bin/python3 /mnt/f/dev/git/miRExplore/python/textmining/textmineDocument.py --synonyms /mnt/f/dev/data/pmid_jun2020/synonyms/disease.syn --output /tmp/ -tl 5 -prunelevel none -e /mnt/f/dev/data/pmid_jun2020/excludes/all_excludes.syn --input /mnt/f/dev/data/pmid_jun2020/pmc/pmc_118.sent
 
     args = parser.parse_args()
 
+    
     if args.output != "-":
         assert(os.path.isdir(args.output))
+        synfileMapFile = open(os.path.join(args.output, "synfile.map"), 'w')
+    else:
+        synfileMapFile = sys.stderr
+        
 
     whiteSpaceReplaceChars = args.characters[5:] # leave out blank?   
 
@@ -238,10 +260,18 @@ if __name__ == '__main__':
     for inFile in args.synonyms:
         idx = len(synfileMap)
 
+        inFile = os.path.abspath(inFile)
+
         synFile = Synfile(inFile)
 
         synfileMap[idx] = synFile
         mapSynfile[synFile] = idx
+
+        print(inFile, idx, sep=": ", file=synfileMapFile)
+
+    if args.output != '-':
+        synfileMapFile.close()
+
 
     def makeUpper(word):
         return word.replace('ß', 'ẞ').upper()
@@ -301,6 +331,10 @@ if __name__ == '__main__':
             for synWord in synonym.syns:
 
                 synWord = str(synWord)
+
+                if len(synWord) == 1:
+                    # this removes single char synonyms, like a P T ....
+                    continue
 
                 # easy cases: word directly
                 addSynwordToAutomaton(A, synWord, (file_idx, syn_idx, synWord, synWord, synonym))
@@ -506,7 +540,7 @@ if __name__ == '__main__':
 
 
 
-
+    print("Starting analysis with TL", args.trustLength)
 
     ll = MapReduce(args.threads)
     result = ll.exec( args.input, textmineFile, None, 1, None)

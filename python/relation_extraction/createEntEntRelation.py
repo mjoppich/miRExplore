@@ -36,7 +36,11 @@ nlp_ent = spacy.load("/mnt/f/spacy/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_
 
 def augmentMiRNAs(sentence, y, entSyns):
     # get sentence from position to next blank
-    nextWord = sentence.text.find(b" ", y.position[1])
+
+    if type(sentence.text) == bytes:
+        nextWord = sentence.text.find(b" ", y.position[1])
+    else:
+        nextWord = sentence.text.find(" ", y.position[1])
 
     allY = [y]
 
@@ -44,10 +48,16 @@ def augmentMiRNAs(sentence, y, entSyns):
 
         newMirna = []
 
-        textForSent = sentence.text#.encode("utf-8")
+        if type(sentence.text) == bytes:
 
-        foundText = textForSent[y.position[0]:nextWord].decode(errors="replace")
-        addText = textForSent[y.position[1]:nextWord].decode(errors="replace")
+            textForSent = sentence.text#.encode("utf-8")
+            foundText = textForSent[y.position[0]:nextWord].decode(errors="replace")
+            addText = textForSent[y.position[1]:nextWord].decode(errors="replace")
+        
+        else:
+            textForSent = sentence.text
+            foundText = textForSent[y.position[0]:nextWord]
+            addText = textForSent[y.position[1]:nextWord]
 
         if len(addText) > 1 and not foundText in [",", ";", "-"] and foundText.startswith("miR"):
 
@@ -379,7 +389,7 @@ def handleHarmonizedNameMirna(x):
 
 def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
     def checkSynHit(synhit):
-        if len(synhit.foundSyn) <= 5:
+        if len(synhit.foundSyn) <= 5 and len(synhit.foundSyn) > 1:
             return synhit.perfectHit == True
 
         return True
@@ -488,6 +498,15 @@ def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
                 if ent1Loc[1] == ent2Loc[1]:
                     #foundCooc.sameSentence = True
 
+                    yStartsInX = x.position[0] <= y.position[0] and y.position[0] <= x.position[1]
+                    xStartsInY = y.position[0] <= x.position[0] and x.position[0] <= y.position[1]
+
+                    if xStartsInY or yStartsInX:
+                        print("Overlapping gene/mirna hit", file=sys.stderr)
+                        print(x.originalLine, x.position, x.synType, file=sys.stderr)
+                        print(y.originalLine, y.position, y.synType, file=sys.stderr)
+                        continue
+
                     sentence = sentDB.get_sentence(x.documentID)
                     relations = findRelationBySyns(x, y, sentence, pmidRelBySent, ftype1.lower(), ftype2.lower())
 
@@ -505,21 +524,23 @@ def analyseFile(splitFileIDs, env):
 
     for splitFileID in splitFileIDs:
 
+        print(splitFileID, file=sys.stderr)
+
         ent1File = resultBase + "/"+args.folder1+"/" + splitFileID + ".index"
         ent2File = resultBase + "/"+args.folder2+"/" + splitFileID + ".index"
         relFile = resultBase + "/relations/" + splitFileID + ".index"
 
         sentFile = args.sentdir + "/" + splitFileID + ".sent"
 
-        ent1Hits = SyngrepHitFile(ent1File, ent1Syns)
+        ent1Hits = SyngrepHitFile(ent1File, ent1Syns, sentIDNoText=args.sentid_no_text)
         if len(ent1Hits) == 0:
             continue
 
-        ent2Hits = SyngrepHitFile(ent2File, ent2Syns)
+        ent2Hits = SyngrepHitFile(ent2File, ent2Syns, sentIDNoText=args.sentid_no_text)
         if len(ent2Hits) == 0:
             continue
 
-        relHits = SyngrepHitFile(relFile, relSyns)
+        relHits = SyngrepHitFile(relFile, relSyns, sentIDNoText=args.sentid_no_text)
 
         # only load sentences if there's a hit ...
         sentDB = None
@@ -538,7 +559,7 @@ def analyseFile(splitFileIDs, env):
             if docID in ent2Hits:
 
                 if sentDB == None:
-                    sentDB = SentenceDB(sentFile)
+                    sentDB = SentenceDB(sentFile, sent_no_byte=args.sent_no_byte)
 
                 ent1SynHits = ent1Hits.getHitsForDocument(docID)
                 ent2SynHits = ent2Hits.getHitsForDocument(docID)
@@ -599,11 +620,14 @@ if __name__ == '__main__':
     parser.add_argument('-ft1', '--folderType1', type=str, help='entity type 1: entity: mirna, gene, lncrna, ...', default="gene", required=False)
     parser.add_argument('-ft2', '--folderType2', type=str, help='entity type 2: entity: mirna', default="mirna", required=False)
 
+    parser.add_argument('--sentid-no-text', dest='sentid_no_text', action="store_true", required=False, default=False)
+    parser.add_argument('--sent-no-byte', dest='sent_no_byte', action="store_true", required=False, default=False)
+
     parser.add_argument('--same-sentence', dest='same_sentence', action="store_true", required=False, default=False)
     parser.add_argument('--accept_pmids', type=argparse.FileType('r'), required=False, default=None)
 
     parser.add_argument('--relex', type=argparse.FileType('r'), required=False, default=None)
-    parser.add_argument('--mine-path', type=str, default="/mnt/e/data/pmid_jun2020/", required=False)
+    parser.add_argument('--mine-path', type=str, default="/mnt/f/data/pmid_jun2020/", required=False)
 
     args = parser.parse_args()
 

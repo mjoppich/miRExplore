@@ -1,7 +1,7 @@
 import io
 from collections import defaultdict
 
-import os
+import os, sys
 from enum import Enum
 
 from textmining.SentenceID import SentenceID
@@ -59,18 +59,55 @@ class Sentence:
 
 class SentenceDB:
 
-    def __init__(self, file):
+    def __init__(self, file, sent_no_byte=False):
 
         self.pubmed2sents = defaultdict(list)
         self.filename = os.path.abspath(file)
+        self.sent_no_byte = sent_no_byte
 
         if not os.path.isfile(self.filename):
             raise ValueError("Not a valid filename: " + self.filename)
 
-        self.pubmed2sents = self.loadFile(self.filename)
+        if self.sent_no_byte:
+            self.pubmed2sents = self.loadFile_nobytes(self.filename)
+        else:
+            self.pubmed2sents = self.loadFile_bytes(self.filename)
+
+    def loadFile_nobytes(self, filename):
 
 
-    def loadFile(self, filename):
+        for encoding in [("utf8", "strict"), ("latin1", "strict"),("utf8", "ignore"), ("latin1", "ignore")]:
+            try:
+                print("Loading", filename, "with encoding", encoding, file=sys.stderr)
+                with io.open(filename, 'r', encoding=encoding[0], errors=encoding[1]) as infile:
+                    retObj = defaultdict(list)
+
+                    for line in infile:
+                        #line = line.decode('latin1')
+
+                        line = line.strip()
+                        if len(line) == 0:
+                            continue
+
+                        aline = line.split("\t")
+
+                        if len(aline) != 2:
+                            continue
+
+                        sentID = SentenceID.fromStr(aline[0])
+                        sentText = aline[1]
+
+                        retObj[sentID.docID].append(Sentence(sentID, sentText))
+
+                    return retObj
+
+            except:
+                continue
+
+        return None
+
+
+    def loadFile_bytes(self, filename):
 
         retObj = defaultdict(list)
 

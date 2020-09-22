@@ -4,10 +4,6 @@ import sys, os
 sys.path.append(os.path.dirname(__file__) + "/../")
 
 from utils.idutils import loadExludeWords
-
-sys.path.insert(0, "/mnt/d/dev/git/nameConvert/")
-
-
 from utils.DataFrame import DataFrame
 
 from utils.idutils import printToFile
@@ -167,6 +163,19 @@ if __name__ == '__main__':
 
         vAllSyns.append(synonyme)
 
+
+    for syn in vAllSyns:
+
+        removeSyns = []
+        for synword in syn.syns:
+
+            if len(synword) == 1:
+                removeSyns.append(synword)
+
+        if len(removeSyns) > 0:
+            print(syn.id, removeSyns)
+
+            syn.removeSyn(removeSyns)
 
     #exWords = loadExludeWords(common=True, generic=True, disease=False, taxnames=False, cell_co=False)
 

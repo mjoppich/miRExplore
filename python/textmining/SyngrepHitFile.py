@@ -5,7 +5,7 @@ from textmining.SyngrepHit import SyngrepHit
 
 class SyngrepHitFile:
 
-    def __init__(self, filename, synfileMap = None):
+    def __init__(self, filename, synfileMap = None, sentIDNoText=False):
 
         self.docid2hits = defaultdict(list)
 
@@ -15,7 +15,7 @@ class SyngrepHitFile:
 
                 #line = line.decode('latin1')
 
-                hit = SyngrepHit.fromLine(line, synfileMap)
+                hit = SyngrepHit.fromLine(line, synfileMap, sentIDNoText=sentIDNoText)
 
                 if hit == None:
                     continue

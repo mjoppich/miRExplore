@@ -1,5 +1,9 @@
 import shlex
 from collections import Counter
+import os, sys
+
+sys.path.append(os.path.dirname(__file__) + "/../")
+
 
 from utils.DataFrame import DataFrame
 
@@ -82,9 +86,9 @@ for syn in vAllSyns:
     for synword in syn.syns:
 
         if len(synword) == 1:
-            print(syn.id, syn.syns)
-
             removeSyns.append(synword)
+
+    syn.removeSyn(removeSyns)
 
 
 globalKeywordExcludes = loadExludeWords(cell_co=False, common=False, generic=True, syngrep=False)

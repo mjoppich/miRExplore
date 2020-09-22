@@ -31,6 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('--accept-pmids', type=argparse.FileType('r'), required=False, default=None)
     parser.add_argument('--mine-path', type=str, default="/mnt/e/data/pmid_jun2020/", required=False)
 
+    parser.add_argument('--sentid-no-text', dest='sentid_no_text', action="store_true", required=False, default=False)
 
     args = parser.parse_args()
 
@@ -84,7 +85,7 @@ if __name__ == '__main__':
 
             indexFile = resultBase + "/"+splitFileID +".index"
 
-            oboHits = SyngrepHitFile(indexFile, oboSyns)
+            oboHits = SyngrepHitFile(indexFile, oboSyns, sentIDNoText=args.sentid_no_text)
             if len(oboHits) == 0:
                 continue
 
@@ -113,6 +114,9 @@ if __name__ == '__main__':
 
                     if "and " in hit.foundSyn:
                         continue
+
+                    if hit.synonym == None:
+                        print(hit)
 
                     allSynIDs.add(hit.synonym.id)
 
