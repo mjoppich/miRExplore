@@ -50,6 +50,9 @@ class PubmedDateDB:
 
         return self.docid2date.get(docid, None)
 
+    def add_database(self, odb):
+        for x in odb.docid2date:
+            self.docid2date[x] = odb.docid2date[x]
 
     @classmethod
     def loadFromFile(cls, infile):

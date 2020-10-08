@@ -29,8 +29,15 @@ class PMID2PMCDB:
 
         return default
 
+
+    def getAllPMIDs(self):
+        return [x for x in self.pmid2pmc]
+
+    def getAllPMCs(self):
+        return [x for x in self.pmc2pmid]
+
     @classmethod
-    def loadFromFile(cls, filepath):
+    def loadFromFile(cls, filepath, PMC2PMID=True):
 
 
         ret = PMID2PMCDB()
@@ -40,15 +47,18 @@ class PMID2PMCDB:
             # 29113155        PMC22222222
             for line in fin:
 
-                line = line.strip()
+                aline = line.strip().split('\t')
 
-                aline = line.split('\t')
+                assert(len(aline) == 2)
 
-                if len(aline) < 2:
-                    continue
+                if PMC2PMID:
+                    pmid = aline[1]
+                    pmc = aline[0]
+                else:
+                    pmid = aline[0]
+                    pmc = aline[1]
 
-                pmid = aline[0]
-                pmc = aline[1]
+                assert(pmc.startswith("PMC"))
 
                 ret.pmid2pmc[pmid].add(pmc)
                 ret.pmc2pmid[pmc].add(pmid)

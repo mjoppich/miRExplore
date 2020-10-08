@@ -129,7 +129,7 @@ class SentenceDB:
 
 
     @classmethod
-    def loadFromFile(cls, basepath, infile):
+    def loadFromFile(cls, basepath, infile, requiredIDs=None):
 
         ret = SentenceDB()
 
@@ -151,6 +151,11 @@ class SentenceDB:
                 pmids = line[1].split(",")
 
                 for docid in pmids:
+
+                    if not requiredIDs is None:
+                        if not docid in requiredIDs:
+                            continue
+                        
                     ret.docid2file[docid] = basepath + "/" + line[0]
 
         return ret

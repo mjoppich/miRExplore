@@ -1328,57 +1328,106 @@ def start_app_from_args(args):
     allDBS = None
 
     print(datetime.datetime.now(), "Loading PMID2PMC")
-    #pmid2pmcDB = PMID2PMCDB.loadFromFile(args.textmine + '/pmid2pmc')
+    pmid2pmcDB = None
+    excludePMIDs = None
+    
+    if args.load_pmc:
+        pmid2pmcDB = PMID2PMCDB.loadFromFile(pmcBase + '/pmc2pmid', PMC2PMID=True)
+        excludePMIDs = pmid2pmcDB.getAllPMIDs()
+        print("Got", len(excludePMIDs), "exclude PMIDs")
+
+        if len(excludePMIDs)>5:
+            print(list(excludePMIDs)[:5])
+
+
+    print(datetime.datetime.now(), "Finished PMID2PMC")
+
     print(datetime.datetime.now(), "Loading mirel")
 
     testRels = None  # TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
 
-    mirelPMIDhsa = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
-    mirelPMIDmmu = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
+    print(datetime.datetime.now(), "Loading mirel PMID")
+    mirelPMIDhsa = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
+    mirelPMIDmmu = MiGenRelDB.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
+
+    print(datetime.datetime.now(), "Loading mirel PMC")
+    mirelPMChsa = None
+    mirelPMCmmu = None   
+
+    if args.load_pmc:
+        mirelPMChsa = MiGenRelDB.loadFromFile(pmcBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
+        mirelPMCmmu = MiGenRelDB.loadFromFile(pmcBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
 
     lncMirPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/lncrna_mirna.pmid", ltype="lncrna", rtype="mirna")
     geneLncPMID = None#MiGenRelDB.loadFromFile(pmidBase + "/gene_lncrna.pmid", ltype="gene", rtype="lncrna")
 
     print(datetime.datetime.now(), "Finished mirel")
 
-    allDatesFile = pmidBase + "/allpmids.date"
-    dateDB = PubmedDateDB.loadFromFile(allDatesFile)
+
+    print(datetime.datetime.now(), "Loading Dates")
+    dateDB = PubmedDateDB.loadFromFile(pmidBase + "/allpmids.date")
+
+    if args.load_pmc:
+        pmc_dateDB = PubmedDateDB.loadFromFile(pmcBase + "/allpmc.date")
+        dateDB.add_database(pmc_dateDB)
+
+    print(datetime.datetime.now(), "Finished Dates")
 
 
     print(datetime.datetime.now(), "Loading mirWalk")
     mirWalkMMU3UTRDB = None#MirWalkDB.loadFromFile('/mnt/c/ownCloud/data/miRExplore/mirwalk/mmu_miRWalk_3UTR.txt', org="mmu", bindSite="3UTR", normGeneSymbols=normGeneSymbols)
     print(datetime.datetime.now(), "Loading mirWalk finished")
-    relDBs = [recordsDB, mirtarbaseDB, dianaDB, mirelPMIDhsa, mirelPMIDmmu, lncMirPMID, geneLncPMID, mirandaDB_mm10, mirWalkMMU3UTRDB]
-
+    
+    
+    relDBs = [recordsDB, mirtarbaseDB, dianaDB, mirelPMIDhsa, mirelPMIDmmu, mirelPMChsa, mirelPMCmmu, lncMirPMID, geneLncPMID, mirandaDB_mm10, mirWalkMMU3UTRDB]
     relDBs = [x for x in relDBs if x != None]
 
 
     mirFeedback = feedbackDB(args.feedback)
 
+    requiredDocuments = set()
+    for relDB in relDBs:
+        requiredDocuments = requiredDocuments.union(relDB.get_evidence_docids())
+
+    print("Requiring", len(requiredDocuments), "documents")
+
     print(datetime.datetime.now(), "Loading sents")
-    sentDB = SentenceDB.loadFromFile(args.sentdir, pmidBase + "/pmid2sent")
+    print(datetime.datetime.now(), "Loading sents PMID")
+    sentDB = SentenceDB.loadFromFile(args.sentdir, pmidBase + "/pmid2sent", requiredIDs = requiredDocuments)
+    print(datetime.datetime.now(), "Loading sents PMC")
+    sentDBPMC = SentenceDB.loadFromFile(args.sentdir_pmc, pmcBase + "/pmc2sent", requiredIDs = requiredDocuments)
+
+    print(datetime.datetime.now(), "Merging sentence DBs")
+    sentDB.add_database(sentDBPMC)
     print(datetime.datetime.now(), "Finished sents")
 
-    requiredPMIDs = set()
-    for rdb in relDBs:
-
-        assert (isinstance(rdb, DataBaseDescriptor))
-
-        for rpmid in rdb.get_evidence_docids():
-            requiredPMIDs.add(rpmid)
-
+    allDBsPMID = None
     if os.path.isfile(pmidBase + "/dbs.pickle"):
-        print(datetime.datetime.now(), "Loading pickle")
+        print(datetime.datetime.now(), "Loading pickle PMID")
         with open(pmidBase + "/dbs.pickle", 'rb') as fin:
-            allDBS = pickle.load(fin)
+            allDBsPMID = pickle.load(fin)
 
-        pmid2go = allDBS[0]
-        pmid2disease = allDBS[1]
-        pmid2fma = allDBS[2]
-        pmid2cell = allDBS[3]
-        pmid2ncit = allDBS[4]
+        pmid2go = allDBsPMID[0]
+        pmid2disease = allDBsPMID[1]
+        pmid2fma = allDBsPMID[2]
+        pmid2cell = allDBsPMID[3]
+        pmid2ncit = allDBsPMID[4]
 
-        print(datetime.datetime.now(), "Loading pickle ended")
+        print(datetime.datetime.now(), "Loading pickle PMID ended")
+
+    allDBsPMC = None
+    if os.path.isfile(pmcBase + "/dbs.pickle") and args.load_pmc:
+        print(datetime.datetime.now(), "Loading pickle PMC")
+        with open(pmidBase + "/dbs.pickle", 'rb') as fin:
+            allDBsPMC = pickle.load(fin)
+
+        pmc2go = allDBsPMC[0]
+        pmc2disease = allDBsPMC[1]
+        pmc2fma = allDBsPMC[2]
+        pmc2cell = allDBsPMC[3]
+        pmc2ncit = allDBsPMC[4]
+
+        print(datetime.datetime.now(), "Loading pickle PMC ended")
 
     print(datetime.datetime.now(), "Loading ontologies")
 
@@ -1391,7 +1440,7 @@ def start_app_from_args(args):
 
     print(datetime.datetime.now(), "Loading ontologies finished")
 
-    if allDBS == None:
+    if allDBsPMID is None:
         pmid2go = None
         pmid2disease = None
         pmid2fma = None
@@ -1399,39 +1448,80 @@ def start_app_from_args(args):
         pmid2ncit = None
 
         print(datetime.datetime.now(), "Loading GO")
-        pmid2go = PMID2XDB.loadFromFile(pmidBase + "/go.pmid", goObo, requiredPMIDs)
+        pmid2go = PMID2XDB.loadFromFile(pmidBase + "/go.pmid", goObo, requiredDocuments)
         print(datetime.datetime.now(), "Loading Disease")
-        pmid2disease = PMID2XDB.loadFromFile(pmidBase + "/disease.pmid", diseaseObo, requiredPMIDs)
+        pmid2disease = PMID2XDB.loadFromFile(pmidBase + "/disease.pmid", diseaseObo, requiredDocuments)
         print(datetime.datetime.now(), "Loading FMA")
-        pmid2fma = PMID2XDB.loadFromFile(pmidBase + "/model_anatomy.pmid", fmaObo, requiredPMIDs)
+        pmid2fma = PMID2XDB.loadFromFile(pmidBase + "/model_anatomy.pmid", fmaObo, requiredDocuments)
         print(datetime.datetime.now(), "Loading cellline")
-        pmid2cell = PMID2XDB.loadFromFile(pmidBase + "/celllines.pmid", cellObo, requiredPMIDs)
+        pmid2cell = PMID2XDB.loadFromFile(pmidBase + "/celllines.pmid", cellObo, requiredDocuments)
         print(datetime.datetime.now(), "Loading ncit")
-        pmid2ncit = PMID2XDB.loadFromFile(pmidBase + "/ncit.pmid", ncitObo, requiredPMIDs)
+        pmid2ncit = PMID2XDB.loadFromFile(pmidBase + "/ncit.pmid", ncitObo, requiredDocuments)
 
-        allDBS = (pmid2go, pmid2disease, pmid2fma, pmid2cell, pmid2ncit)
+        allDBsPMID = (pmid2go, pmid2disease, pmid2fma, pmid2cell, pmid2ncit)
 
         print(datetime.datetime.now(), "Writing Pickle")
 
         with open(pmidBase + "/dbs.pickle", 'wb') as fout:
-            pickle.dump(allDBS, fout)
+            pickle.dump(allDBsPMID, fout)
 
         print(datetime.datetime.now(), "Finished Writing Pickle")
 
+    if allDBsPMC is None and args.load_pmc:
+        pmc2go = None
+        pmc2disease = None
+        pmc2fma = None
+        pmc2cell = None
+        pmc2ncit = None
 
-    print(datetime.datetime.now(), "Adding CelllInfo Features")
+        print(datetime.datetime.now(), "Loading GO")
+        pmc2go = PMID2XDB.loadFromFile(pmcBase + "/go.pmid", goObo, requiredDocuments)
+        print(datetime.datetime.now(), "Loading Disease")
+        pmc2disease = PMID2XDB.loadFromFile(pmcBase + "/disease.pmid", diseaseObo, requiredDocuments)
+        print(datetime.datetime.now(), "Loading FMA")
+        pmc2fma = PMID2XDB.loadFromFile(pmcBase + "/model_anatomy.pmid", fmaObo, requiredDocuments)
+        print(datetime.datetime.now(), "Loading cellline")
+        pmc2cell = PMID2XDB.loadFromFile(pmcBase + "/celllines.pmid", cellObo, requiredDocuments)
+        print(datetime.datetime.now(), "Loading ncit")
+        pmc2ncit = PMID2XDB.loadFromFile(pmcBase + "/ncit.pmid", ncitObo, requiredDocuments)
+
+        allDBsPMID = (pmc2go, pmc2disease, pmc2fma, pmc2cell, pmc2ncit)
+
+        print(datetime.datetime.now(), "Writing Pickle")
+
+        with open(pmcBase + "/dbs.pickle", 'wb') as fout:
+            pickle.dump(allDBsPMID, fout)
+
+        print(datetime.datetime.now(), "Finished Writing Pickle")
+
+    if args.load_pmc:
+        print(datetime.datetime.now(), "Merging Context DBs")
+        print(datetime.datetime.now(), "Merging Context GO")
+        pmid2go.add_database(pmc2go)
+        print(datetime.datetime.now(), "Merging Context DISEASE")
+        pmid2disease.add_database(pmc2disease)
+        print(datetime.datetime.now(), "Merging Context FMA")
+        pmid2fma.add_database(pmc2fma)
+        print(datetime.datetime.now(), "Merging Context CELL")
+        pmid2cell.add_database(pmc2cell)
+        print(datetime.datetime.now(), "Merging Context NCIT")
+        pmid2ncit.add_database(pmc2ncit)
+        print(datetime.datetime.now(), "Finished Merging Context DBs")
+
 
     if celllInfos != None:
+        print(datetime.datetime.now(), "Adding CelllInfo Features")
         for celllInfo in celllInfos:
             pmid2cell.docid2info[celllInfo['docid']].append(celllInfo)
 
-    print(datetime.datetime.now(), "Finished Adding CelllInfo Features")
+        print(datetime.datetime.now(), "Finished Adding CelllInfo Features")
 
     print(datetime.datetime.now(), "Loading Features")
-    rfDB = RFamDB.loadFromFile(fileurl + "/dbs/rfam.regions.mirexplore")
+    #rfDB = RFamDB.loadFromFile(fileurl + "/dbs/rfam.regions.mirexplore")
     #featureViewerMMU = FeatureViewer('mmu', args.obodir, rfamDB=rfDB)
     #featureViewerHSA = FeatureViewer('hsa', args.obodir, rfamDB=rfDB)
 
+    print(datetime.datetime.now(), "Loading Features finished")
     print(datetime.datetime.now(), "Loading finished")
 
 
@@ -1439,9 +1529,11 @@ def getCLParser():
     parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)
     parser.add_argument('-t', '--textmine', type=str, help='Base for Textmining. Includes aggregated_ and results folder', required=True)
     parser.add_argument('-o', '--obodir', type=str, help='Path to all obo-files/existing databases', required=True)
-    parser.add_argument('-s', '--sentdir', type=str, help='Path to sentences', required=True)
+    parser.add_argument('-s',  '--sentdir', type=str, help='Path to sentences', required=True)
+    parser.add_argument('-sp', '--sentdir-pmc', type=str, help='Path to sentences', default=None, required=False)
     parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
     parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=65500)
+    parser.add_argument('-l', '--load-pmc', action='store_true', help="Load PMC results?", required=False, default=False)
 
     return parser
 

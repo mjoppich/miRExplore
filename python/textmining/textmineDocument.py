@@ -322,7 +322,7 @@ if __name__ == '__main__':
 
     for file_idx in synfileMap:
 
-        synFile = synfileMap[idx]
+        synFile = synfileMap[file_idx]
 
         for synonym in synFile:
 

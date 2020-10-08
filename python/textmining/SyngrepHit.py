@@ -23,6 +23,17 @@ class SyngrepHit:
     def __hash__(self):
         return hash(self.position) ^ hash(self.foundSyn) ^ hash(self.hitSyn) ^ hash(self.documentID)
 
+    def __str__(self):
+
+        return "{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
+            self.documentID,
+            self.synonymID,
+            self.foundSyn,
+            self.position[0],
+            self.position[1]-self.position[0],
+            self.hitSyn,
+            self.perfectHit,
+        )
 
     @classmethod
     def fromLine(cls, line, synfileMap,sentIDNoText=False):

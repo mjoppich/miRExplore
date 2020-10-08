@@ -303,7 +303,7 @@ class MiGenRelDB(DataBaseDescriptor):
 
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None, switchLR=False, lReplaceSc=True, rReplaceSc=True, ignoreDocIDs=None, stopAfter=-1, getDocs=False):
+    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', normGeneSymbols=None, lontology=None, rontology=None, switchLR=False, lReplaceSc=True, rReplaceSc=True, ignoreDocIDs=None, stopAfter=-1, getDocs=False, excludeIDs=None):
 
 
         if switchLR:
@@ -356,6 +356,11 @@ class MiGenRelDB(DataBaseDescriptor):
                 aline = line.split('\t')
 
                 turnEvs= False
+                docid = aline[6]
+
+                if excludeIDs != None:
+                    if docid in excludeIDs:
+                        continue
 
 
                 if switchLR:
@@ -465,7 +470,6 @@ class MiGenRelDB(DataBaseDescriptor):
                 if org != None:
                     docOrgs.add(org)
 
-                docid = aline[6]
 
                 if ignoreDocIDs != None and docid in ignoreDocIDs:
                     ignoredDocs.add(docid)

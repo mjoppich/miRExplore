@@ -115,8 +115,9 @@ if __name__ == '__main__':
                     if "and " in hit.foundSyn:
                         continue
 
-                    if hit.synonym == None:
-                        print(hit)
+                    if hit.synonym is None:
+                        print(hit, file=sys.stderr)
+                        sys.stderr.flush()
 
                     allSynIDs.add(hit.synonym.id)
 
