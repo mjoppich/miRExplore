@@ -27,6 +27,26 @@ class SentenceDB:
             self.docid2file[docid] = odb.docid2file[docid]
 
 
+    def get_all_sentences(self):
+
+        allFiles = set()
+        for docid in self.docid2file:
+            allFiles.add(self.docid2file[docid])
+
+        retObj = {}
+
+        for filename in allFiles:
+            loadFile = filename + ".sent"
+
+            #sys.stderr.write("Loading file: " + loadFile  + " for docid " + docid + "\n")
+            doc2sents = self.loadFile(loadFile)
+
+            for docID in doc2sents:
+
+                for (sentID, sentText) in doc2sents[docID]:
+                    retObj[sentID] = sentText
+
+        return retObj
 
     def get_sentence(self, docid):
 
@@ -49,7 +69,7 @@ class SentenceDB:
         if filename != self.loadedSentFilePath:
             loadFile = filename + ".sent"
 
-            sys.stderr.write("Loading file: " + loadFile  + " for docid " + docid + "\n")
+            #sys.stderr.write("Loading file: " + loadFile  + " for docid " + docid + "\n")
             self.loadedSentFile = self.loadFile(loadFile)
             self.loadedSentFilePath = filename
 
@@ -108,7 +128,7 @@ class SentenceDB:
             filename, fileExt = os.path.splitext(os.path.basename(file))
             with open(file, 'r') as fin:
 
-                print(file)
+                #print(file)
 
                 for line in fin:
 
@@ -129,11 +149,11 @@ class SentenceDB:
 
 
     @classmethod
-    def loadFromFile(cls, basepath, infile, requiredIDs=None):
+    def loadFromFile(cls, basepath, infile, requiredIDs=None, returnAll=False, redoPmid2Sent=False):
 
         ret = SentenceDB()
 
-        if not os.path.exists(infile):
+        if not os.path.exists(infile) or redoPmid2Sent:
             print("Building Sentence DB")
             cls.prepareDB(basepath, infile)
 
@@ -141,6 +161,7 @@ class SentenceDB:
                 print("Error creating sentence DB")
                 assert(os.path.exists(infile))
 
+        allPMIDs = set()
 
         with open(infile, 'r') as fin:
 
@@ -150,6 +171,8 @@ class SentenceDB:
 
                 pmids = line[1].split(",")
 
+                allPMIDs = allPMIDs.union(pmids)
+
                 for docid in pmids:
 
                     if not requiredIDs is None:
@@ -158,6 +181,9 @@ class SentenceDB:
                         
                     ret.docid2file[docid] = basepath + "/" + line[0]
 
+        if returnAll:
+            return ret, allPMIDs
+        
         return ret
 
 

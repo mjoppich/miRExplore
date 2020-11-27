@@ -3623,8 +3623,8 @@
             <entity charOffset="165-169" id="miRNA-corp.d70.s12.e5" text="Bcl-2" type="Genes/Proteins"/>
             <entity charOffset="195-203" id="miRNA-corp.d70.s12.e6" text="caspase-3" type="Genes/Proteins"/>
             <pair e1="miRNA-corp.d70.s12.e1" e2="miRNA-corp.d70.s12.e3" id="miRNA-corp.d70.s12.p0" interaction="True" type="Specific_miRNAs-Genes/Proteins"/>
-            <pair e1="miRNA-corp.d70.s12.e1" e2="miRNA-corp.d70.s12.e5" id="miRNA-corp.d70.s12.p1" interaction="False" type="Specific_miRNAs-Genes/Proteins"/>
-            <pair e1="miRNA-corp.d70.s12.e1" e2="miRNA-corp.d70.s12.e6" id="miRNA-corp.d70.s12.p2" interaction="False" type="Specific_miRNAs-Genes/Proteins"/>
+            <pair e1="miRNA-corp.d70.s12.e1" e2="miRNA-corp.d70.s12.e5" id="miRNA-corp.d70.s12.p1" interaction="True" type="Specific_miRNAs-Genes/Proteins"/>
+            <pair e1="miRNA-corp.d70.s12.e1" e2="miRNA-corp.d70.s12.e6" id="miRNA-corp.d70.s12.p2" interaction="True" type="Specific_miRNAs-Genes/Proteins"/>
         </sentence>
         <sentence id="miRNA-corp.d70.s13" origId="20633539.s13" text="Compared to control cells, cells treated with TMZ showed a significant increase in the Bax/Bcl-2 ratio and caspase-3 activity (P&lt;0.01). ">
             <entity charOffset="87-89" id="miRNA-corp.d70.s13.e0" text="Bax" type="Genes/Proteins"/>

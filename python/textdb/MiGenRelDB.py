@@ -325,7 +325,10 @@ class MiGenRelDB(DataBaseDescriptor):
         file_base = os.path.basename(filepath)
         fileDir = os.path.dirname(filepath)
 
-        docOrgDB = DocOrganismDB.loadFromFile(fileDir + "/organism."+dbtype)
+
+        docOrgDB = None
+        if os.path.exists(fileDir + "/organism."+dbtype):
+            docOrgDB = DocOrganismDB.loadFromFile(fileDir + "/organism."+dbtype)
 
         seenRels = set()
 
@@ -477,7 +480,10 @@ class MiGenRelDB(DataBaseDescriptor):
 
                 takenDocs.add(docid)
 
-                docOrgRes = docOrgDB.getDocOrgs(docid)
+                docOrgRes = None
+                
+                if docOrgDB != None:
+                    docOrgRes = docOrgDB.getDocOrgs(docid)
 
                 if docOrgRes != None:
                     docOrgs = docOrgs.union(docOrgRes)

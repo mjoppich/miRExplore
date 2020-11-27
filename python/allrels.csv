@@ -116,7 +116,7 @@ INT,influenc:influencing|influences|influence|influenced
 NEG,inhibit:inhibitions|inhibiton|inhibiting|inhibitors|inhibition|inhibited|inhibitory|inhibits|inhibit|inhibitive|inhibitor
 POS,initiat:initiate|initiates|initiated|initiating|initiation|initiations
 INT,interact:interacts|interactions|interactor|interact|interacted|interactors|interactively|interactive|interacting|interaction
-NEG,interfer:interfere|interference|interfered|interfering|interferes
+NEU,interfer:interfere|interference|interfered|interfering|interferes
 NEG,interrupt:interrupting|interrupted|interrupts|interruption|interrupt|interruptions
 NEG,knockdown:knock-down|knockdown|knocked-down
 COMBINE,ligand:ligand|ligands
