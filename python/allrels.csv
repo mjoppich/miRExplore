@@ -93,6 +93,8 @@ INT,exert:exert|exerts|exertion|exerting
 INT,exhibit:exhibits|exhibit|exhibited
 INT,expos:expose|exposes|exposed|exposition|exposing
 NEU,express:expressed|expressible|expresses|express|expression|expressive|expressions|expressing
+NEG,reexpress:reexpression|reexpressed|re-expression|re-expressed
+NEG,revers:reversion|reverse
 COMBINE,form:forms|formations|formation|formed|form|formability|forming
 NEU,functio:function|functions
 COMBINE,fuse:fuse|fuses|fused|fusion
