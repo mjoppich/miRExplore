@@ -398,7 +398,7 @@ def findCooccurrences(pubmed, ent1Hits, ent2Hits, sentDB, relHits):
 
         if len(synhit.foundSyn) <= 5:
             foundSyn = synhit.foundSyn.lower()
-            return foundSyn.startswith('mir') or foundSyn.startswith('micro')
+            return foundSyn.startswith('mir') or foundSyn.startswith('micro') or foundSyn.startswith('let')
 
         return True
 

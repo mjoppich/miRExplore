@@ -308,7 +308,7 @@ class SentenceRelationClassifier:
                 
             #return {"regulation_dir": regStem, "interaction_dir": idir, "passive": isPassive, "reg_detect": "sdp counts"}
             
-        targetWords = ["associated with", "regulator of", " regulation of", "direct regulator of", "direct regulator for", "binds to", "bind to", "bound to", "interacting with","targeting of"]
+        targetWords = ["associated with","regulator of", " regulation of", "direct regulator of", "direct regulator for", "binding to", "binds to", "bind to", "bound to", "interacting with","targeting of"]
         targetWordsBy = [ "regulation by", "regulated by", "targets of", "target of", "effect of", "effects of", "effect by", "effects by", "recognized by"]
             
         if compartment != None:
@@ -335,7 +335,7 @@ class SentenceRelationClassifier:
 
                     for x in targetWords:
                         if x in textBetween and not x in textRight:
-                            if x in textLeft and not x in textBetweenStrict:
+                            if x in textLeft and not x in textBetweenStrict and not textRight.startswith("promoter"):
                                 return {"regulation_dir": "NEU", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": regDetect, "reg_detect_major": "compartment"}
                             else:
                                 return {"regulation_dir": "NEU", "interaction_dir": "GENE_MIR", "passive": isPassive, "reg_detect": regDetect, "reg_detect_major": "compartment"}
@@ -431,7 +431,7 @@ class SentenceRelationClassifier:
             
             
     
-            if self.allowed_check("between gene mir", "between") and any([x in textBetween for x in targetWords]) or any([x in textBetween for x in ["target", "targeted by", "binding efficiency", "binding site for", "recognizing"]]):
+            if self.allowed_check("between gene mir", "between") and any([x in textBetweenStrict for x in targetWords]) or any([x in textBetweenStrict for x in ["target", "targeted by", "binding efficiency", "binding site for", "recognizing"]]):
                 return {"regulation_dir": "NEU", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between gene mir", "reg_detect_major": "between"}
             
 
@@ -485,7 +485,7 @@ class SentenceRelationClassifier:
             if self.allowed_check("between mir gene", "between") and  any([x in textBetween for x in ["directly inhibits", "directly represses", "translational inhibition" ]]):
                 return {"regulation_dir": "DOWN", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between mir gene", "reg_detect_major": "between"}
             
-            if self.allowed_check("between mir gene", "between") and  any([x in textBetween for x in targetWords + ["by targeting", "by regulating", "directly regulated", "its target gene", "binding site"]]): #, "regulation of"
+            if self.allowed_check("between mir gene", "between") and  any([x in textBetweenStrict for x in targetWords + ["by targeting", "by regulating", "directly regulated", "its target gene", "binding site"]]): #, "regulation of"
                 return {"regulation_dir": "NEU", "interaction_dir": "MIR_GENE", "passive": isPassive, "reg_detect": "between mir gene", "reg_detect_major": "between"}
             
             if self.allowed_check("between mir gene rb", "between") and  any([x in textBetweenStrict for x in ["regulated by", "targeted by"]]):
@@ -508,37 +508,97 @@ class SentenceRelationClassifier:
             return tBtwnRes
         
             
+
+
+        """
+        FIRST GUESS
+        """
+
+        madeGuess = False
         regDir = "MIR_GENE"
         regStem = "NEU"
+
+        if mirword.i < geneword.i:
+            
+            if str(geneword).endswith( ("-regulating") ):
+                regDir = "MIR_GENE"
+                regStem = "NEU"
+                madeGuess = True
+
+            elif str(geneword).endswith( ("dependent", "independent") ):
+                regDir = "GENE_MIR"
+                regStem = "NEU"
+                madeGuess = True
+
+            elif any([str(doc[geneword.i+j]) in ["target"] for j in [1]]):
+                regDir = "MIR_GENE"
+                regStem = "NEU"
+                madeGuess = True
+
+
+        elif geneword.i < mirword.i:
+
+            if str(mirword).endswith( ("-regulating") ):
+                regDir = "GENE_MIR"
+                regStem = "NEU"
+                madeGuess = True
+
+            elif str(mirword).endswith( ("dependent", "independent") ):
+                regDir = "MIR_GENE"
+                regStem = "NEU"
+                madeGuess = True
+
+            elif str(geneword).endswith(("-regulating", "-targeting")):
+                regStem = "NEU"
+                regDir = "MIR_GENE"
+                madeGuess = True
+
+            elif str(geneword).endswith(("dependent", "induced")):
+                regDir = "GENE_MIR"
+                regStem = "NEU"
+                madeGuess = True
+
+            elif any([str(doc[mirword.i+j]) in ["target", "targets"] for j in [1]]):
+                regDir = "MIR_GENE"
+                regStem = "NEU"
+                madeGuess = True
+
+
+        if madeGuess:
+
+            if self.allowed_check("return", "return"):
+                return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "return", "reg_detect_major": "return"}
+
+        else:
         
-        regeluateWords = ["mediated",]
-        
-        if mirword.i < geneword.i and "mediated" in str(mirword):
-            regStem = "DOWN"
+            regeluateWords = ["mediated",]
             
-        if self.allowed_check("return mediated", "return") and  geneword.i < mirword.i and ("mediated" in str(mirword) or any([str(doc[mirword.i-j]) in ["mediated",] for j in [1]])):
-            regStem = "NEU"
-            regDir = "MIR_GENE"
+            if mirword.i < geneword.i and "mediated" in str(mirword):
+                regStem = "DOWN"
+                
+            if self.allowed_check("return mediated", "return") and  geneword.i < mirword.i and ("mediated" in str(mirword) or any([str(doc[mirword.i-j]) in ["mediated",] for j in [1]])):
+                regStem = "NEU"
+                regDir = "MIR_GENE"
+                
+                return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "return mediated", "reg_detect_major": "return"}
+                
+            if self.allowed_check("return m g by", "return") and  mirword.i<geneword.i and any([str(doc[geneword.i-j]) in ["by", "with"] for j in [1,2,3]]):
+                regStem = "NEU"
+                regDir = "MIR_GENE"
+                
+                return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "return m g by", "reg_detect_major": "return"}
+                
+            if geneword.i < mirword.i:
+                regStem = "NEU"
+                regDir = "GENE_MIR"
             
-            return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "return mediated", "reg_detect_major": "return"}
-            
-        if self.allowed_check("return m g by", "return") and  mirword.i<geneword.i and any([str(doc[geneword.i-j]) in ["by", "with"] for j in [1,2,3]]):
-            regStem = "NEU"
-            regDir = "MIR_GENE"
-            
-            return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "return m g by", "reg_detect_major": "return"}
-            
-        if geneword.i < mirword.i:
-            regStem = "NEU"
-            regDir = "GENE_MIR"
-        
-        if geneword.i < mirword.i and any([str(doc[mirword.i-j]) in ["by", "with"] for j in [1,2,3]]):
-            regStem = "NEU"
-            regDir = "MIR_GENE"
-            
-        if mirword.i < geneword.i and str(doc[mirword.i+1]) == "target":
-            regStem = "NEU"
-            regDir = "MIR_GENE"
+            if geneword.i < mirword.i and any([str(doc[mirword.i-j]) in ["by", "with"] for j in [1,2,3]]):
+                regStem = "NEU"
+                regDir = "MIR_GENE"
+                
+            if mirword.i < geneword.i and str(doc[mirword.i+1]) == "target":
+                regStem = "NEU"
+                regDir = "MIR_GENE"
         
         #if mirword.i < geneword.i:
         #    regDir = "MIR_GENE"
@@ -620,6 +680,8 @@ class SentenceRelationClassifier:
                 
                 #if any(x in textBetween for x in ["after"]):
                 #    regDir = self.dir2opp[regDir]
+                #for (tkn, tkndir) in tknEvs:
+                #    print(tkn,str(doc[tkn.i - 1]), str(doc[tkn.i + 1]))
 
                 if any(str(doc[tkn.i - 1]) in ["by", "after"] for (tkn, tkndir) in tknEvs):
 
@@ -627,6 +689,13 @@ class SentenceRelationClassifier:
                         regDir = "MIR_GENE"
                     else:
                         regDir = "GENE_MIR"
+
+                if any(str(doc[tkn.i + 1]) in ["following", "after"] for (tkn, tkndir) in tknEvs):
+
+                    if mirword.i < geneword.i:
+                        regDir = "GENE_MIR"
+                    else:
+                        regDir = "MIR_GENE"
                 
                 return {"regulation_dir": regStem, "interaction_dir": regDir, "passive": isPassive, "reg_detect": "counts between equal", "reg_detect_major": "counts"}
             
@@ -688,14 +757,19 @@ class SentenceRelationClassifier:
                     for (tkn, tknDir) in tknEvs:
 
                         if str(doc[tkn.i + 1]) in ["with"]:
-                            regStem = "NEU"
+                            #regStem = "NEU"
                             regDir = "MIR_GENE"
+
                 
                 lBound = mirword.i if mirword.i < geneword.i else geneword.i
                 rBound = mirword.i if mirword.i > geneword.i else geneword.i
 
                 betweenTokens = [x for x in tknEvs if lBound < x[0].i < rBound]
                 betweenTokenTypes = Counter([x[1] for x in betweenTokens])
+
+                if verbose:
+                    print("Between Tokens", betweenTokens)
+
                 if len(betweenTokenTypes) == 1 and 'NEG' in betweenTokenTypes:
                     if len(betweenTokens) % 2 == 0:
                         regDir = "MIR_GENE"
@@ -704,28 +778,67 @@ class SentenceRelationClassifier:
                         if verbose:
                             print("Between Tokens Switch")
 
+                
+                if len(betweenTokens) > 0:
+                    
+                    rTkn = sorted(betweenTokens, key=lambda x: rBound-x[0].i)[0]
+
+                    #for tkn, tknStem in betweenTokens:
+                    if str(doc[rTkn[0].i+1]) in ["by", "on"]:
+
+                        if verbose:
+                            print("visited switch dir")
+
+                        if mirword.i < geneword.i:
+                            regDir = "GENE_MIR"
+                        
+                        #break
+
                 if stemTypes2Count["POS"] > 0 and stemTypes2Count["POS"] == stemTypes2Count["NEG"]:
                     regStem = "NEU"                       
                     
-                if geneword.i < mirword.i:
-                    if str(geneword).endswith("-regulating"):
-                        regStem = "NEU"
+                #if geneword.i < mirword.i:
+                #    if str(geneword).endswith("-regulating"):
+                #        regStem = "NEU"
 
                 if mirword.i < geneword.i:
                     
                     if str(geneword).endswith( ("-regulating") ):
                         regDir = "MIR_GENE"
                         regStem = "NEU"
-                    elif str(geneword).endswith( ("-dependent") ):
+                    elif str(geneword).endswith( ("dependent", "independent") ) or str(doc[geneword.i+1]) in ["dependent", "independent"]:
                         regDir = "GENE_MIR"
                         regStem = "NEU"
-                else:
+
+                    elif any([str(doc[geneword.i+j]) in ["target"] for j in [1]]):
+                        regDir = "GENE_MIR"
+                        regStem = "NEU"
+
+                    elif any([str(doc[mirword.i+j]) in ["target", "targets"] for j in [1]]):
+                        regDir = "MIR_GENE"
+                        regStem = "NEU"
+
+
+                elif geneword.i < mirword.i:
+
                     if str(mirword).endswith( ("-regulating") ):
                         regDir = "GENE_MIR"
                         regStem = "NEU"
-                    elif str(mirword).endswith( ("-dependent") ):
+                    elif str(mirword).endswith( ("dependent", "independent") ):
                         regDir = "MIR_GENE"
                         regStem = "NEU"
+
+                    elif str(geneword).endswith(("-regulating", "-targeting")):
+                        regStem = "NEU"
+                        regDir = "MIR_GENE"
+                    elif str(geneword).endswith(("dependent", "induced")):
+                        regDir = "GENE_MIR"
+                        regStem = "NEU"
+
+                    elif any([str(doc[mirword.i+j]) in ["target", "targets"] for j in [1]]):
+                        regDir = "MIR_GENE"
+                        regStem = "NEU"
+
 
 
                         
@@ -734,7 +847,7 @@ class SentenceRelationClassifier:
                         regStem = "DOWN"
                         regDir = "GENE_MIR"
                     
-                    elif any([str(doc[geneword.i-j]) in ["after"] for j in [1,2,3]]):
+                    elif any([str(doc[geneword.i-j]) in ["after", "following"] for j in [1,2,3]]):
                         regStem = "DOWN"
                         regDir = "GENE_MIR"
                         
@@ -1199,9 +1312,9 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=0}' % "\+"), 1),
             (re.compile('(%s){e<=0}' % "\-\W"), 2),
             (re.compile('(%s){e<=0}' % "cells"), 10),
-            (re.compile('(%s){e<=2}' % "phosphorylation"), 20),
-            
-            (re.compile('(%s){e<=0}' % "methylation"), 16),
+            (re.compile('(%s){e<=2}' % "phosphorylation"), 30),
+            (re.compile('(%s){e<=0}' % "methylation"), 30),
+
             (re.compile('(%s){e<=0}' % "administration"), 20),
             (re.compile('(%s){e<=0}' % "axis"), 10),
             (re.compile('(%s){e<=0}' % "siRNA"), 10),
@@ -1214,6 +1327,8 @@ class MirGeneRelCheck:
 
             (re.compile('(%s){e<=0}' % "components"), 16),
             (re.compile('(%s){e<=0}' % "deposition"), 16),
+            (re.compile('(%s){e<=0}' % "stage"), 10),
+            (re.compile('(%s){e<=0}' % "mutants"), 10),
 
         ]
 
@@ -1232,6 +1347,8 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=1}' % "cluster"), 15),
             (re.compile('(%s){e<=0}' % "cells"), 20),
             (re.compile('(%s){e<=0}' % "-modulated"), 15),
+            (re.compile('(%s){e<=0}' % "axis"), 15),
+            (re.compile('(%s){e<=0}' % "pathway"), 15),
 
         ]
 
@@ -1243,9 +1360,16 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=1}' % "intron of"), 15),
             (re.compile('(%s){e<=1}' % "experienced"), 18), #disease/condition
             (re.compile('(%s){e<=0}' % "healthy"), 18), #disease/condition
+
             (re.compile('(%s){e<=1}' % "acetylated"), 18),
             (re.compile('(%s){e<=1}' % "phosphorylated"), 22),
             (re.compile('(%s){e<=1}' % "methylated"), 18),
+
+            (re.compile('(%s){e<=2}' % "phosphorylation of"), 30),
+            (re.compile('(%s){e<=0}' % "methylation of"), 30),
+            (re.compile('(%s){e<=0}' % "acetylation of"), 30),
+
+            (re.compile('(%s){e<=1}' % "soluble"), 18),
         ]
 
         self.surPreMiRContexts = [
@@ -2184,16 +2308,25 @@ class MirGeneRelCheck:
             if mirword in celes and geneword in celes:
 
                 if mirword.i < geneword.i:
-                    textBetween = doc[ mirword.i : geneword.i ]
+                    tokenBetween = doc[ mirword.i : geneword.i ]
                 else:
-                    textBetween = doc[ geneword.i : mirword.i ]
+                    tokenBetween = doc[ geneword.i : mirword.i ]
 
-                textBetween = [str(x) for x in textBetween]
+                conjTargetRule = False
+                for tkn in tokenBetween:
 
-                if all(x in textBetween for x in ["its", "target"]):
+                    if str(tkn) in ["target", "targets"]:
+                        if str(doc[tkn.i+1]) == "of":
+                            conjTargetRule = True
+                            break
+                            
+                        if str(doc[tkn.i-1]) == "its":
+                            conjTargetRule = True
+                            break
+                    
+                if conjTargetRule:
                     if verbose:
-                        print(textBetween)
-                        print("CONJ ITS TARGET RULE", textBetween)
+                        print("CONJ TARGET OF RULE", tokenBetween)
                     continue
 
                 
