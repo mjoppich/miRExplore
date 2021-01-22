@@ -56,7 +56,11 @@ dataurl = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'fronte
 
 pdfStaticDir = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'pdf_frontend/src/static/'
 app = Flask(__name__, static_folder=dataurl, static_url_path='/static')
-CORS(app)
+
+# add CORS compatibility
+CORS(app, resources={r"/*": {"origins": "*"}})
+app.config['CORS_HEADERS'] = 'Content-Type'
+
 
 app.config['DEBUG'] = False
 app.config['UPLOAD_FOLDER'] = ""
@@ -787,6 +791,11 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
 
     def getAllowedTermIDs(restrictions, obo):
+
+        if not restrictions is None:
+            if len(restrictions) > 0:
+                if type(restrictions[0]) in [str]:
+                    restrictions = [{'termid': x} for x in restrictions]
 
         allowedTermIDs = []
         for delem in restrictions:
