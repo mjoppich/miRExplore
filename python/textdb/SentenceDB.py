@@ -4,7 +4,7 @@ import glob
 import os
 
 from collections import defaultdict, deque
-
+import progressbar
 import sys
 
 
@@ -165,13 +165,19 @@ class SentenceDB:
 
         with open(infile, 'r') as fin:
 
-            for line in fin:
+            bar = progressbar.ProgressBar()
+
+            for idx, line in enumerate(fin):
+
+                if idx % 100 == 0:
+                    print("At line", idx)
 
                 line = line.strip().split('\t')
 
                 pmids = line[1].split(",")
 
-                allPMIDs = allPMIDs.union(pmids)
+                if returnAll:
+                    allPMIDs = allPMIDs.union(pmids)
 
                 for docid in pmids:
 

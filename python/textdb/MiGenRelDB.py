@@ -446,10 +446,20 @@ class MiGenRelDB(DataBaseDescriptor):
                     else:
                         origRid = lid
                         org, lid = cls.harmonizeMIRNA(lid)
+
+                        
+                        if lid == "None" and aline[lIDIdx-1] == "LET_7":
+                            lid="let-7"
+                            origlid = lid
+                            print(lid)
+
+                        if lid == None or lid == "None":
+                            continue
+
                         seenMirnas[origRid] = (org, lid)
                         seenHarmMirnas.add(lid)
                     
-                    lid = olid
+                    #lid = olid #WHY???
 
                 elif rtype == 'mirna':
 
@@ -458,10 +468,19 @@ class MiGenRelDB(DataBaseDescriptor):
                     else:
                         origRid = rid
                         org, rid = cls.harmonizeMIRNA(rid)
+
+                        if rid == "None" and aline[rIDIdx-1] == "LET_7":
+                            rid="let-7"
+                            origRid = rid
+                            print(rid)
+
+                        if rid == None or rid == "None":
+                            continue
+
                         seenMirnas[origRid] = (org, rid)
                         seenHarmMirnas.add(rid)
 
-                    rid = orid
+                    #rid = orid # WHYYY?
 
 
                 if ltype == "gene":

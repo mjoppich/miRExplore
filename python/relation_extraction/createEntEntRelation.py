@@ -627,7 +627,7 @@ if __name__ == '__main__':
     parser.add_argument('--accept_pmids', type=argparse.FileType('r'), required=False, default=None)
 
     parser.add_argument('--relex', type=argparse.FileType('r'), required=False, default=None)
-    parser.add_argument('--mine-path', type=str, default="/mnt/f/data/pmid_jun2020/", required=False)
+    parser.add_argument('--mine-path', type=str, default="/mnt/f/dev/data/pmid_jun2020/", required=False)
 
     args = parser.parse_args()
 

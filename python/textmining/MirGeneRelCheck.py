@@ -530,7 +530,7 @@ class SentenceRelationClassifier:
                 regStem = "NEU"
                 madeGuess = True
 
-            elif any([str(doc[geneword.i+j]) in ["target"] for j in [1]]):
+            elif (len(doc) > geneword.i+1) and any([str(doc[geneword.i+j]) in ["target"] for j in [1]]):
                 regDir = "MIR_GENE"
                 regStem = "NEU"
                 madeGuess = True
@@ -558,7 +558,7 @@ class SentenceRelationClassifier:
                 regStem = "NEU"
                 madeGuess = True
 
-            elif any([str(doc[mirword.i+j]) in ["target", "targets"] for j in [1]]):
+            elif (len(doc) > mirword.i+1) and any([str(doc[mirword.i+j]) in ["target", "targets"] for j in [1]]):
                 regDir = "MIR_GENE"
                 regStem = "NEU"
                 madeGuess = True
@@ -806,15 +806,15 @@ class SentenceRelationClassifier:
                     if str(geneword).endswith( ("-regulating") ):
                         regDir = "MIR_GENE"
                         regStem = "NEU"
-                    elif str(geneword).endswith( ("dependent", "independent") ) or str(doc[geneword.i+1]) in ["dependent", "independent"]:
+                    elif str(geneword).endswith( ("dependent", "independent") ) or ((len(doc) > geneword.i+1) and str(doc[geneword.i+1]) in ["dependent", "independent"]):
                         regDir = "GENE_MIR"
                         regStem = "NEU"
 
-                    elif any([str(doc[geneword.i+j]) in ["target"] for j in [1]]):
+                    elif (len(doc) > geneword.i+1) and any([str(doc[geneword.i+j]) in ["target"] for j in [1]]):
                         regDir = "GENE_MIR"
                         regStem = "NEU"
 
-                    elif any([str(doc[mirword.i+j]) in ["target", "targets"] for j in [1]]):
+                    elif (len(doc) > geneword.i+1) and any([str(doc[mirword.i+j]) in ["target", "targets"] for j in [1]]):
                         regDir = "MIR_GENE"
                         regStem = "NEU"
 
@@ -835,7 +835,7 @@ class SentenceRelationClassifier:
                         regDir = "GENE_MIR"
                         regStem = "NEU"
 
-                    elif any([str(doc[mirword.i+j]) in ["target", "targets"] for j in [1]]):
+                    elif (len(doc) > mirword.i+1) and any([str(doc[mirword.i+j]) in ["target", "targets"] for j in [1]]):
                         regDir = "MIR_GENE"
                         regStem = "NEU"
 

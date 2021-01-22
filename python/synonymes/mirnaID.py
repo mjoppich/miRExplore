@@ -1,6 +1,9 @@
 from collections import OrderedDict, defaultdict
 from enum import Enum
 
+import os, sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
 import re
 
 from utils.idutils import isNumber, containsDigitAndChars
@@ -368,6 +371,10 @@ class miRNA:
                 self.idx2part[x[1]-1] = key
 
         mirIdx = self.part2idx[miRNAPART.MATURE][0]
+
+        if len(amirna) <= mirIdx:
+            print("Stupid amirna", amirna)
+
         if len(amirna[mirIdx]) > 3 and amirna[mirIdx].upper()[0:3].upper() in self.validMature:
             amirna.insert(mirIdx+1, amirna[mirIdx][3:])
             amirna[mirIdx] = amirna[mirIdx][:3]
@@ -534,7 +541,13 @@ if __name__ == '__main__':
 
         print(testMirna.accept("miR-126"))
 
+    allTestMirs = ['miR-4251', 'miR-551a', 'miR-7846-3p', 'miR-4632-5p', 'miR-4632-3p', 'miR-4684-5p', 'miR-4684-3p', 'miR-1976', 'miR-4420', 'miR-4254', 'miR-12132', 'miR-3116', 'miR-3117-5p', 'miR-3117-3p', 'miR-7156-5p', 'miR-7156-3p', 'miR-137-5p', 'miR-137-3p', 'miR-2682-5p', 'miR-2682-3p', 'miR-190b-5p', 'miR-190b-3p', 'miR-488-5p', 'miR-488-3p', 'miR-181b-3p', 'miR-181a-5p', 'miR-181b-5p', 'miR-181a-3p', 'miR-6740-5p', 'miR-6740-3p', 'miR-6769b-3p', 'miR-6769b-5p', 'miR-29b-2-5p', 'miR-29c-3p', 'miR-29c-5p', 'miR-29b-3p', 'miR-3122', 'miR-4428', 'miR-559', 'miR-5192', 'miR-3126-3p', 'miR-3126-5p', 'miR-3679-3p', 'miR-3679-5p', 'miR-7157-5p', 'miR-7157-3p', 'miR-6888-5p', 'miR-6888-3p', 'miR-4774-3p', 'miR-4774-5p', 'miR-10b-3p', 'miR-10b-5p', 'miR-561-3p', 'miR-561-5p', 'miR-548f-3p', 'miR-6809-3p', 'miR-6809-5p', 'miR-6811-5p', 'miR-6811-3p', 'miR-885-5p', 'miR-885-3p', 'miR-4270', 'miR-3134', 'miR-128-3p', 'miR-128-2-5p', 'miR-26a-1-3p', 'miR-26a-5p', 'miR-564', 'miR-3921', 'miR-567', 'miR-198', 'miR-5682', 'miR-5002-5p', 'miR-6083', 'miR-5002-3p', 'miR-5092', 'miR-5704', 'miR-6827-5p', 'miR-6827-3p', 'miR-3919', 'miR-28-3p', 'miR-28-5p', 'miR-944', 'miR-4274', 'miR-4798-3p', 'miR-4798-5p', 'miR-574-5p', 'miR-574-3p', 'miR-4802-5p', 'miR-4802-3p', 'miR-4449', 'miR-548ah-5p', 'miR-548ah-3p', 'miR-4450', 'miR-4451', 'miR-3684', 'miR-8066', 'miR-1255a', 'miR-3139', 'miR-4799-3p', 'miR-4799-5p', 'miR-4635', 'miR-581', 'miR-5687', 'miR-4803', 'miR-548p', 'miR-143-5p', 'miR-145-3p', 'miR-145-5p', 'miR-143-3p', 'miR-378a-3p', 'miR-378a-5p', 'miR-218-2-3p', 'miR-585-3p', 'miR-585-5p', 'miR-218-5p', 'miR-378e', 'miR-5003-3p', 'miR-5003-5p', 'miR-340-5p', 'miR-340-3p', 'miR-7853-5p', 'miR-4639-3p', 'miR-4639-5p', 'miR-6891-3p', 'miR-6891-5p', 'miR-6835-3p', 'miR-6835-5p', 'miR-30c-2-3p', 'miR-30a-5p', 'miR-30c-5p', 'miR-30a-3p', 'miR-3145-3p', 'miR-3145-5p', 'miR-4648', 'miR-550a-5p', 'miR-550a-3p', 'miR-1200', 'miR-4649-5p', 'miR-4649-3p', 'miR-3914', 'miR-4652-3p', 'miR-4652-5p', 'miR-6875-3p', 'miR-6875-5p', 'miR-6132', 'miR-592', 'miR-153-5p', 'miR-595', 'miR-153-3p', 'miR-3690', 'miR-6086', 'miR-4768-5p', 'miR-4768-3p', 'miR-3915', 'miR-1468-5p', 'miR-1468-3p', 'miR-4329', 'miR-504-3p', 'miR-504-5p', 'miR-1184', 'miR-6842-5p', 'miR-6842-3p', 'miR-6843-3p', 'miR-4662b', 'miR-7848-3p', 'miR-151a-3p', 'miR-151a-5p', 'miR-6845-5p', 'miR-6845-3p', 'miR-6852-3p', 'miR-6852-5p', 'miR-6853-5p', 'miR-6853-3p', 'miR-3153', 'miR-3910', 'miR-4670-3p', 'miR-4670-5p', 'miR-24-3p', 'miR-27b-5p', 'miR-23b-3p', 'miR-2278', 'miR-27b-3p', 'miR-24-1-5p', 'miR-23b-5p', 'miR-6081', 'miR-6854-5p', 'miR-6854-3p', 'miR-32-5p', 'miR-32-3p', 'miR-4668-3p', 'miR-4668-5p', 'miR-4672', 'miR-6855-5p', 'miR-6855-3p', 'miR-126-3p', 'miR-126-5p', 'miR-6722-3p', 'miR-6722-5p', 'miR-7114-3p', 'miR-7114-5p', 'miR-7847-3p', 'miR-675-3p', 'miR-675-5p', 'miR-483-5p', 'miR-483-3p', 'miR-6124', 'miR-4486', 'miR-4688', 'miR-6745', 'miR-3161', 'miR-6746-5p', 'miR-6746-3p', 'miR-6753-3p', 'miR-6753-5p', 'miR-139-5p', 'miR-139-3p', 'miR-326', 'miR-5579-3p', 'miR-5579-5p', 'miR-708-5p', 'miR-708-3p', 'miR-6716-5p', 'miR-6716-3p', 'miR-6756-5p', 'miR-6756-3p', 'miR-100-3p', 'let-7a-5p', 'miR-125b-5p', 'miR-10526-3p', 'miR-125b-1-3p', 'miR-100-5p', 'let-7a-2-3p', 'miR-4697-5p', 'miR-4697-3p', 'miR-5699-3p', 'miR-5699-5p', 'miR-511-5p', 'miR-511-3p', 'miR-8086', 'miR-938', 'miR-604', 'miR-605-5p', 'miR-605-3p', 'miR-7151-5p', 'miR-7151-3p', 'miR-7152-3p', 'miR-7152-5p', 'miR-4676-3p', 'miR-4676-5p', 'miR-3085-5p', 'miR-3085-3p', 'miR-6507-3p', 'miR-6507-5p', 'miR-936', 'miR-4681', 'miR-614', 'miR-6505-3p', 'miR-6505-5p', 'miR-4701-3p', 'miR-4701-5p', 'miR-9898', 'miR-6757-5p', 'miR-6757-3p', 'miR-548c-5p', 'miR-548c-3p', 'miR-617', 'miR-618', 'miR-3922-5p', 'miR-3922-3p', 'miR-6761-3p', 'miR-6761-5p', 'miR-1178-3p', 'miR-1178-5p', 'miR-2681-3p', 'miR-2681-5p', 'miR-4705', 'miR-8073', 'miR-624-5p', 'miR-624-3p', 'miR-7855-5p', 'miR-4709-3p', 'miR-4709-5p', 'miR-4506', 'miR-2392', 'miR-770-5p', 'miR-12121', 'miR-6765-5p', 'miR-6765-3p', 'miR-4715-5p', 'miR-4715-3p', 'miR-1233-5p', 'miR-1233-3p', 'miR-4510', 'miR-10393-5p', 'miR-10393-3p', 'miR-147b-3p', 'miR-147b-5p', 'miR-7973', 'miR-1266-5p', 'miR-1266-3p', 'miR-190a-3p', 'miR-190a-5p', 'miR-12135', 'miR-11181-5p', 'miR-11181-3p', 'miR-3174', 'miR-4714-5p', 'miR-4714-3p', 'miR-6511b-5p', 'miR-1225-3p', 'miR-6511b-3p', 'miR-1225-5p', 'miR-193b-3p', 'miR-365a-5p', 'miR-193b-5p', 'miR-365a-3p', 'miR-484', 'miR-4518', 'miR-6771-5p', 'miR-6771-3p', 'miR-140-3p', 'miR-140-5p', 'miR-6504-3p', 'miR-7854-3p', 'miR-6504-5p', 'miR-8058', 'miR-3182', 'miR-6774-3p', 'miR-6774-5p', 'miR-6775-5p', 'miR-6775-3p', 'miR-22-3p', 'miR-22-5p', 'miR-1180-5p', 'miR-1180-3p', 'miR-4728-5p', 'miR-4728-3p', 'miR-6783-3p', 'miR-6783-5p', 'miR-6784-3p', 'miR-6784-5p', 'miR-152-3p', 'miR-152-5p', 'miR-10a-5p', 'miR-10a-3p', 'miR-3614-3p', 'miR-3614-5p', 'miR-301a-3p', 'miR-454-5p', 'miR-454-3p', 'miR-301a-5p', 'miR-4729', 'miR-548aa', 'miR-4524a-5p', 'miR-4524a-3p', 'miR-6787-5p', 'miR-6787-3p', 'miR-6718-5p', 'miR-4317', 'miR-5190', 'miR-4526', 'miR-3975', 'miR-924', 'miR-5583-5p', 'miR-5583-3p', 'miR-4743-5p', 'miR-4743-3p', 'miR-4320', 'miR-548av-3p', 'miR-548av-5p', 'miR-6870-5p', 'miR-6870-3p', 'miR-3194-5p', 'miR-3194-3p', 'miR-4758-3p', 'miR-4758-5p', 'miR-6813-5p', 'miR-6813-3p', 'miR-637', 'miR-4747-5p', 'miR-4747-3p', 'miR-6885-5p', 'miR-6885-3p', 'miR-23a-3p', 'miR-24-2-5p', 'miR-27a-3p', 'miR-23a-5p', 'miR-27a-5p', 'miR-6795-5p', 'miR-6795-3p', 'miR-6796-5p', 'miR-6796-3p', 'miR-330-5p', 'miR-330-3p', 'miR-4751', 'miR-8061', 'miR-3198', 'miR-648', 'miR-650', 'miR-548j-5p', 'miR-548j-3p', 'miR-4764-3p', 'miR-4764-5p', 'miR-6819-3p', 'miR-6819-5p', 'miR-1249-3p', 'miR-1249-5p', 'miR-4535', 'miR-3667-3p', 'miR-3667-5p', 'miR-6821-3p', 'miR-6821-5p', 'miR-6508-3p', 'miR-6508-5p', 'miR-6814-5p', 'miR-6814-3p', 'miR-6815-3p', 'miR-6815-5p']
+    allTestMirs = ['miR-193b']
 
+    for x in allTestMirs:
+        testMIRNA(x)
+
+    exit(0)
 
 
     testMirna = miRNA("miR-335-g-5p")

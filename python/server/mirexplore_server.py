@@ -1568,11 +1568,14 @@ if __name__ == '__main__':
     print([rule.rule for rule in app.url_map.iter_rules() if rule.endpoint != 'static'])
     app.run(threaded=True, host="0.0.0.0", port=args.port)
 
-def gunicorn_start( datadir="/home/proj/biosoft/ws/projekte/dataintegration/yancDB",
-                    sentdir="/home/proj/biocluster/praktikum/neap_ss18/neapss18_noncoding/pmid_sent",
+def gunicorn_start( datadir="/mnt/biosoft/ws/projekte/dataintegration/mirexplore/pmid_jun2020/",
+                    sentdir="/mnt/biosoft/ws/projekte/dataintegration/mirexplore/pmid_jun2020/pmid/",
                     feedbackFile=None):
 
     parser = getCLParser()
+
+    "python3 $CURDIR/mirexplore_server.py --textmine $BASE --obodir $BASE/obodir/ --sentdir $BASE/pmid/ --feedback $BASE/obodir/feedback --port 65500"
+    #--load-pmc --sentdir-pmc $BASE/pmc/
 
     argstr = "--textmine {datadir} --obodir {datadir}/obodir --sentdir {sentdir} --feedback {feedbackFile}".format(datadir=datadir, sentdir=sentdir, feedbackFile=feedbackFile)
 
