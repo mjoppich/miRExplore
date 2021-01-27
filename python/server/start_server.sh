@@ -4,6 +4,4 @@ CURDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 BASE=/mnt/f/dev/data/pmid_jun2020/
 
-python3 $CURDIR/mirexplore_server.py --textmine $BASE --obodir $BASE/obodir/ --sentdir $BASE/pmid/ --feedback $BASE/obodir/feedback --port 65500
-
-#--load-pmc --sentdir-pmc $BASE/pmc/
+python3 $CURDIR/mirexplore_server.py --textmine $BASE --obodir $BASE/obodir/ --sentdir $BASE/pmid/ --feedback $BASE/obodir/feedback --port 65500 --load-pmc --sentdir-pmc $BASE/pmc/

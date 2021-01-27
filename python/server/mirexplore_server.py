@@ -1579,7 +1579,8 @@ if __name__ == '__main__':
 
 def gunicorn_start( datadir="/mnt/biosoft/ws/projekte/dataintegration/mirexplore/pmid_jun2020/",
                     sentdir="/mnt/biosoft/ws/projekte/dataintegration/mirexplore/pmid_jun2020/pmid/",
-                    feedbackFile=None):
+                    feedbackFile=None,
+                    loadPMC=False, sentdir_pmc=None):
 
     parser = getCLParser()
 
@@ -1587,6 +1588,13 @@ def gunicorn_start( datadir="/mnt/biosoft/ws/projekte/dataintegration/mirexplore
     #--load-pmc --sentdir-pmc $BASE/pmc/
 
     argstr = "--textmine {datadir} --obodir {datadir}/obodir --sentdir {sentdir} --feedback {feedbackFile}".format(datadir=datadir, sentdir=sentdir, feedbackFile=feedbackFile)
+
+    if loadPMC:
+        if not sentdir_pmc is None:
+            print("Loading PMC too")
+
+        pmcstr = "--load-pmc --sentdir-pmc {}"-format(sentdir_pmc)
+        argstr = " ".join([argstr, pmcstr])
 
     print("Starting app with")
     print(argstr)

@@ -887,10 +887,17 @@ class SentenceRelationClassifier:
 
 class SentenceRelationChecker:
 
-    def __init__(self, nlp, nlp_ent=None):
+    def __init__(self, nlp, nlp_ent=None, active_checks=None):
         self.relCheck = MirGeneRelCheck(nlp_ent=nlp_ent)
         self.nlp = nlp
         self.nlp_ent = nlp_ent
+
+        if active_checks is None:
+            active_checks = self.relCheck.checks_available
+
+        self.active_checks = [x for x in active_checks if x in self.relCheck.checks_available]
+
+
 
     def fixPos(self, pos, sentence):
         posElems = [(idx, chr(i), i) for idx, i in enumerate(sentence) if i > 127 and idx < pos]
@@ -1058,7 +1065,13 @@ class SentenceRelationChecker:
         if verbose:
             print(checkResults)
 
-        acceptInteraction = checkResults[0]
+        allActiveResults = [checkResults[1][x] for x in self.active_checks]
+        acceptInteraction = all(allActiveResults)
+
+        if len(self.active_checks) == 0:
+            acceptInteraction = True
+
+        #acceptInteraction = checkResults[0]
 
         ent1 = doc.text_with_ws[e1p["entity_location"][0]:e1p["entity_location"][1]]
         ent2 = doc.text_with_ws[e2p["entity_location"][0]:e2p["entity_location"][1]]
@@ -1933,6 +1946,11 @@ class MirGeneRelCheck:
                 
         return True
 
+    @property
+    def checks_available(self):
+        return ["conj", "sdp", "compartment", "context", "entity"]
+
+
     def checkRelation(self, doc, mirword, geneword, verbose=False, relClassifier=None):
 
         singleResults = {}
@@ -1952,7 +1970,6 @@ class MirGeneRelCheck:
 
         sigPathway = self.checkSurContext(doc, mirword, geneword, verbose)
         singleResults["context"] = sigPathway
-
 
         entityCheck = self.check_entity(doc, mirword, geneword, verbose)
         singleResults["entity"] = entityCheck

@@ -372,8 +372,8 @@ class miRNA:
 
         mirIdx = self.part2idx[miRNAPART.MATURE][0]
 
-        if len(amirna) <= mirIdx:
-            print("Stupid amirna", amirna)
+        #if len(amirna) <= mirIdx:
+        #    print("Stupid amirna", amirna)
 
         if len(amirna[mirIdx]) > 3 and amirna[mirIdx].upper()[0:3].upper() in self.validMature:
             amirna.insert(mirIdx+1, amirna[mirIdx][3:])

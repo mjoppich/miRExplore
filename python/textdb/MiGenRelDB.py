@@ -451,7 +451,7 @@ class MiGenRelDB(DataBaseDescriptor):
                         if lid == "None" and aline[lIDIdx-1] == "LET_7":
                             lid="let-7"
                             origlid = lid
-                            print(lid)
+                            #print(lid)
 
                         if lid == None or lid == "None":
                             continue
@@ -472,7 +472,7 @@ class MiGenRelDB(DataBaseDescriptor):
                         if rid == "None" and aline[rIDIdx-1] == "LET_7":
                             rid="let-7"
                             origRid = rid
-                            print(rid)
+                            #print(rid)
 
                         if rid == None or rid == "None":
                             continue
