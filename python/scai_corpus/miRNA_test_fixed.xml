@@ -3829,7 +3829,7 @@
             <entity charOffset="149-154" id="miRNA-corp.d74.s7.e7" text="target" type="Relation_Trigger"/>
             <pair e1="miRNA-corp.d74.s7.e5" e2="miRNA-corp.d74.s7.e0" id="miRNA-corp.d74.s7.p0" interaction="True" type="Specific_miRNAs-Genes/Proteins"/>
             <pair e1="miRNA-corp.d74.s7.e5" e2="miRNA-corp.d74.s7.e1" id="miRNA-corp.d74.s7.p1" interaction="True" type="Specific_miRNAs-Genes/Proteins"/>
-            <pair e1="miRNA-corp.d74.s7.e5" e2="miRNA-corp.d74.s7.e2" id="miRNA-corp.d74.s7.p2" interaction="False" type="Specific_miRNAs-Genes/Proteins"/>
+            <pair e1="miRNA-corp.d74.s7.e5" e2="miRNA-corp.d74.s7.e2" id="miRNA-corp.d74.s7.p2" interaction="True" type="Specific_miRNAs-Genes/Proteins"/>
         </sentence>
     </document>
     <document id="miRNA-corp.d75" origId="21205669">
