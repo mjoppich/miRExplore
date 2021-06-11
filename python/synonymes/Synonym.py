@@ -86,6 +86,10 @@ class Synonym:
         for x in vAllWords:
             self.addSyn(x)
 
+    def addSyns(self, newSyns):
+
+        for x in newSyns:
+            self.addSyn(x)
 
     def addSyn(self, newSyn):
 

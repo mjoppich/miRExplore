@@ -1,6 +1,6 @@
 import os, sys
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
-sys.path.insert(0, "/mnt/d/dev/git/NERtoolkit/")
+sys.path.insert(0, "/mnt/f/dev/git/NERtoolkit/")
 
 
 from collections import defaultdict
@@ -10,7 +10,11 @@ from synonymes.Synonym import Synonym
 from synonymes.SynonymUtils import handleCommonExcludeWords
 from utils.idutils import dataDir, loadExludeWords, printToFile, speciesName2TaxID
 
-celloObo = GeneOntology(dataDir + "miRExplore/doid.obo")
+
+infile = sys.argv[1] # dataDir + "miRExplore/doid.obo"
+outfile = sys.argv[2] #"/mnt/d/dev/data/pmid_jun2020/synonyms/disease.syn"
+
+celloObo = GeneOntology(infile)
 
 ignoreTerms = set()
 
@@ -30,6 +34,10 @@ for cellID in celloObo.dTerms:
     if oboID in ignoreTerms:
         continue
 
+    if oboNode.is_obsolete:
+        print("skipping", oboName)
+        continue
+
     oboSyns = oboNode.synonym
     oboRels = oboNode.is_a
 
@@ -47,4 +55,6 @@ for cellID in celloObo.dTerms:
 globalKeywordExcludes = loadExludeWords()
 
 vPrintSyns = handleCommonExcludeWords(vAllSyns, None, mostCommonCount=10, maxCommonCount=5)
-printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/disease.syn")
+
+
+printToFile(vPrintSyns, outfile, codec='utf8')

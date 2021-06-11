@@ -14,7 +14,7 @@ class NcitTermSymbolDB:
     @classmethod
     def loadFromFolder(cls):
 
-        baseFolder = "/mnt/d/ownCloud/data/miRExplore/obodir/map_ncit_syms/"
+        baseFolder = "/mnt/t/ownCloud/data/miRExplore/obodir/map_ncit_syms/"
 
 
         ncit2swissprotDF = DataFrame.parseFromFile(baseFolder + "NCIt-SwissProt_Mapping.txt")

@@ -4,7 +4,7 @@ import os
 from collections import defaultdict
 import sys
 
-dataDir = "/mnt/d/owncloud/data/"
+dataDir = "/mnt/t/owncloud/data/"
 #dataDir = "/home/users/joppich/ownCloud/data/"
 
 miRExploreDir = dataDir + "miRExplore/"

@@ -235,15 +235,21 @@ if __name__ == '__main__':
     parser.add_argument('-tl', '--trustLength', type=int, required=False, default=4)
 
     parser.add_argument('-nocells', '--nocells',action="store_true", required=False, default=False)
+    parser.add_argument('-generules', '--generules',action="store_true", required=False, default=False)
+
     parser.add_argument('-prunelevel', '--prunelevel', type=str, required=False, default="")
 
     parser.add_argument('-np', '--threads', type=int, required=False, default=8)
 
     # test run: /usr/bin/python3 /mnt/f/dev/git/miRExplore/python/textmining/textmineDocument.py --input textmining/textmineTestSents.sent --synonyms textmining/textmineTestSyns.syn --output -
+    # test run: /usr/bin/python3 /mnt/f/dev/git/miRExplore/python/textmining/textmineDocument.py --input textmineTestSents.sent --synonyms textmineTestSyns.syn --output -
     
     # actual run: /usr/bin/python3 /mnt/f/dev/git/miRExplore/python/textmining/textmineDocument.py --synonyms /mnt/f/dev/data/pmid_jun2020/synonyms/disease.syn --output /tmp/ -tl 5 -prunelevel none -e /mnt/f/dev/data/pmid_jun2020/excludes/all_excludes.syn --input /mnt/f/dev/data/pmid_jun2020/pmc/pmc_118.sent
 
     args = parser.parse_args()
+
+    #python3 textmineDocument.py --input /mnt/f/dev/data/pmid_jun2020/pmid/pubmed20n0049.sent --synonyms /mnt/f/dev/data/pmid_jun2020/synonyms/hgnc.syn --output - --trustLength 4
+
 
     
     if args.output != "-":
@@ -439,6 +445,29 @@ if __name__ == '__main__':
         return posMapped
 
 
+
+
+
+    def print_results(sentID, foundSyns, fout):
+        for file_idx in foundSyns:
+
+            for syn_idx in foundSyns[file_idx]:
+
+                for (start_index, end_index) in foundSyns[file_idx][syn_idx]:    
+                    sres = foundSyns[file_idx][syn_idx][(start_index, end_index)]    
+                    sres = sorted(sres, key=lambda x: x[0], reverse=True)[0]
+                    (score, text_word, matchWord, synWord, original_value, sentItIdx) = sres
+
+                    # PMC2663906.3.264	0:33862	LRP	61	3	LRP	true	(	−
+                    outline = "{sentid}\t{listid}:{synid}\t{matched}\t{start}\t{length}\t{syn}\t{exact}\t{prefix}\t{suffix}\t{sentit}".format(
+                        sentid=sentID, listid=file_idx, synid=syn_idx,
+                        matched=text_word, start=start_index, length=end_index-start_index+1,
+                        syn=synWord, exact=str(text_word==synWord).lower(), prefix="", suffix="", sentit=sentItIdx)
+
+                    print(outline, file=fout)
+
+
+
     def textmineFile(filenames, env):
 
         for filename in filenames:
@@ -521,22 +550,11 @@ if __name__ == '__main__':
                                     addres = (score, text_word, matchWord, synWord, original_value, sentItIdx)
                                     foundSyns[file_idx][syn_idx][(orig_start_index, orig_end_index)].add( addres )
 
-                    for file_idx in foundSyns:
 
-                        for syn_idx in foundSyns[file_idx]:
 
-                            for (start_index, end_index) in foundSyns[file_idx][syn_idx]:    
-                                sres = foundSyns[file_idx][syn_idx][(start_index, end_index)]    
-                                sres = sorted(sres, key=lambda x: x[0], reverse=True)[0]
-                                (score, text_word, matchWord, synWord, original_value, sentItIdx) = sres
+                    print_results(sentID, foundSyns, fout)
 
-                                # PMC2663906.3.264	0:33862	LRP	61	3	LRP	true	(	−
-                                outline = "{sentid}\t{listid}:{synid}\t{matched}\t{start}\t{length}\t{syn}\t{exact}\t{prefix}\t{suffix}\t{sentit}".format(
-                                    sentid=sentID, listid=file_idx, synid=syn_idx,
-                                    matched=text_word, start=start_index, length=end_index-start_index+1,
-                                    syn=synWord, exact=str(text_word==synWord).lower(), prefix="", suffix="", sentit=sentItIdx)
 
-                                print(outline, file=fout)
 
 
 

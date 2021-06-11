@@ -6,3 +6,5 @@ CCL26:CCL26|eotaxin-3
 FIND:FIND
 FACT:FACT
 EGFR:EGFR
+IL1B:IL1B|HGNC:5992|interleukin 1 beta|IL-1B|IL1-BETA|IL1F2|IL-1B|IL1F-2|IL1β|IL1-β|IL-1-β|IL-1β|interleukin 1 β
+IL18:IL18|HGNC:5986|interleukin 18|interleukin 18 (interferon-gamma-inducing factor)|IL1F4|IL-18|IGIF|IL-1g|interferon-gamma-inducing factor|IL-18|IL1F-4

@@ -1,3 +1,7 @@
+python/nbs/*.png
+python/nbs/*.pdf
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

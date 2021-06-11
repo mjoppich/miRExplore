@@ -48,6 +48,6 @@ globalKeywordExcludes = loadExludeWords()
 
 vPrintSyns = handleCommonExcludeWords(vAllSyns, None, mostCommonCount=100, maxCommonCount=5) #globalKeywordExcludes
 #printToFile(vPrintSyns, dataDir + "/miRExplore/textmine/synonyms/ncit.syn")
-printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/ncit.syn")
+printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/ncit.syn", codec='utf8')
 
 
