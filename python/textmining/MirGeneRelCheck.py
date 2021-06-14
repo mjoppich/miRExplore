@@ -8,12 +8,16 @@ from intervaltree import Interval, IntervalTree
 
 class SentenceRelationClassifier:
 
-    def __init__(self, active_checks = None):
+    def __init__(self, relationCSV, active_checks = None):
+
+        print("Setting relfile", relationCSV, file=sys.stderr)
+        self.relfile = relationCSV
 
         allStems, allRels, stem2class = self.loadStems()
         self.allStems = allStems
         self.allRels = allRels
         self.stem2class = stem2class
+
 
         self.dir2opp = {"MIR_GENE": "GENE_MIR", "GENE_MIR": "MIR_GENE"}
         self.idir2opp = {"POS": "NEG", "NEG": "POS"}
@@ -76,10 +80,11 @@ class SentenceRelationClassifier:
             "CHANGE": "NEU",
         }
 
-        if not os.path.exists("/mnt/d/dev/git/miRExplore/python/allrels.csv"):
+        if not os.path.exists(self.relfile):
+            print("Error Loading allrels file!", self.relfile, sys.stderr)
             exit(-1)
 
-        with open("/mnt/d/dev/git/miRExplore/python/allrels.csv") as fin:
+        with open(self.relfile) as fin:
 
             for line in fin:
                 aline = line.strip().split(",", 1)
@@ -1191,7 +1196,7 @@ class SentenceRelationChecker:
         for entity in [ent1, ent2]:
             if verbose:
                 print("add special case", entity)
-            self.nlp.tokenizer.add_special_case(entity, [{'ORTH': entity, 'TAG': 'NNP'}])
+            self.nlp.tokenizer.add_special_case(entity, [{'ORTH': entity}]) #, 'POS': 'PROPN'
 
         """
         Here we split the sentence - maybe also useful for and, concatenated sentences!

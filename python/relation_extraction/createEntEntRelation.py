@@ -8,7 +8,6 @@ import os
 import spacy
 import scispacy
 
-sys.path.insert(0, str(os.path.dirname("/mnt/d/dev/git/poreSTAT/")))
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 
@@ -30,8 +29,6 @@ from enum import Enum
 from intervaltree import Interval, IntervalTree
 
 #nlp = spacy.load('/mnt/d/spacy/models/en_core_web_lg-2.2.0/en_core_web_lg/en_core_web_lg-2.2.0/')  # create blank Language class #en_core_web_lg
-nlp = spacy.load('/mnt/f/spacy/en_core_sci_lg-0.2.4/en_core_sci_lg/en_core_sci_lg-0.2.4/')
-nlp_ent = spacy.load("/mnt/f/spacy/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
 
 
 def augmentMiRNAs(sentence, y, entSyns):
@@ -269,6 +266,9 @@ class EntEntRelation:
 
         self.passive = relRes["check_results"]["passive"]
         self.negated = relRes["check_results"]["negation"]
+
+    def accepted(self):
+        return self.accepted_relation_num == 1
 
 
     def _get_relation_tuple(self):
@@ -572,7 +572,8 @@ def analyseFile(splitFileIDs, env):
 
                 for relEntEnt in foundCoocs:
 
-                    print(str(relEntEnt), flush=True)
+                    if relEntEnt.accepted():
+                        print(str(relEntEnt), flush=True)
                     
                     """
                     print(
@@ -629,26 +630,44 @@ if __name__ == '__main__':
     parser.add_argument('--relex', type=argparse.FileType('r'), required=False, default=None)
     parser.add_argument('--mine-path', type=str, default="/mnt/f/dev/data/pmid_jun2020/", required=False)
 
+
+    parser.add_argument('--nlp', type=str, required=False, default='/mnt/f/spacy/en_core_sci_lg-0.2.4/en_core_sci_lg/en_core_sci_lg-0.2.4/')
+    parser.add_argument('--nlpent', type=str, required=False, default="/mnt/f/spacy/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
+
     args = parser.parse_args()
 
+    print("Loading NLP", file=sys.stderr)
+    nlp = spacy.load(args.nlp)
+    print("Loading NLPENT", file=sys.stderr)
+    nlp_ent = spacy.load(args.nlpent)
+    print("NLPs loaded", file=sys.stderr)
+
+    print("Creating relChecker", file=sys.stderr)
     relChecker = SentenceRelationChecker(nlp, nlp_ent)
-    relClassifier = SentenceRelationClassifier()
+    print("Creating relClassifier", file=sys.stderr)
+    relClassifier = SentenceRelationClassifier(args.datadir + '/obodir/allrels.csv')
+    print("miRExplore relation extraction models loaded", file=sys.stderr)
 
     #resultBase = dataDir + "/miRExplore/textmine/results_pmc/"
     resultBase = args.resultdir
     dataDir = args.datadir
 
-
+    print("Getting Folder1 synfile.map", file=sys.stderr)
     ent1Syns = SynfileMap(resultBase + "/"+args.folder1+"/synfile.map")
     ent1Syns.loadSynFiles((args.mine_path, dataDir))
 
+    print("Getting Folder2 synfile.map", file=sys.stderr)
     ent2Syns = SynfileMap(resultBase + "/"+args.folder2+"/synfile.map")
     ent2Syns.loadSynFiles((args.mine_path, dataDir))
 
+    print("Getting relations synfile.map", file=sys.stderr)
     relSyns = SynfileMap(resultBase + "/relations/synfile.map")
     relSyns.loadSynFiles((args.mine_path, dataDir))
 
+    print("Getting obodir/allrels.csv", file=sys.stderr)
     relationSyns = AssocSynfile(args.datadir + '/obodir/allrels.csv')
+    print("All maps loaded", file=sys.stderr)
+
 
     accept_pmids = None
 
@@ -668,7 +687,7 @@ if __name__ == '__main__':
     allfiles = glob.glob(resultBase + "/"+args.folder1+"/*.index")
     allfileIDs = [os.path.basename(x).replace(".index", "") for x in allfiles]
     allfileIDs = sorted(allfileIDs, reverse=True)
-
+    print("Going to process {} files!".format(len(allfileIDs)), file=sys.stderr)
 
     #allfileIDs = ["pubmed20n1231"]
     threads = 8
