@@ -35,7 +35,7 @@ class GOSynonyme:
         self.original_syn = None
 
         if self.scope == GOSynonymeScope.NARROW:
-            if any([x in synonyme for x in ['NARROW', 'EXACT', 'BRROAD', 'RELATED']]):
+            if any([x in synonyme for x in ['NARROW', 'EXACT', 'BROAD', 'RELATED']]):
                 try:
                     syn = GOTerm.handleSynonyme(self.syn)
 
@@ -180,6 +180,23 @@ class GOTerm:
         self.comment=None
         self.children = None
 
+    @classmethod
+    def from_synonym(cls, syn):
+
+        term = GOTerm()
+        term.id = syn.id
+        term.name = syn.id
+        term.synonym = set()
+        
+        for x in syn.syns[1:]:
+
+            termSyn = GOSynonyme(x, GOSynonymeScope.EXACT)
+
+            term.synonym.add(termSyn)
+
+        return term
+
+
     def get_parents(self):
 
         if self.is_a == None or len(self.is_a) == 0:
@@ -226,7 +243,7 @@ class GOTerm:
                 lines.append(str(rel))
 
         if self.definition != None:
-            lines.append("def: \"{definition}\"".format(definition=self.definition))
+            lines.append("def: \"{definition}\"".format(definition=str(self.definition).strip('"')))
 
         if self.xref != None:
 
