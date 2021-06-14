@@ -6,6 +6,6 @@
 CURDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 BASE=/mnt/biocluster/projekte/Corona2020/Texts/
-SENTDIR=$MAINDIR/output/LitCovid/singledocs/
+SENTDIR=$BASE/output/LitCovid/singledocs/
 
 python3 $CURDIR/mirexplore_server.py --textmine $BASE --obodir $BASE/obodir/ --sentdir $SENTDIR --feedback $BASE/obodir/feedback --port 65500
