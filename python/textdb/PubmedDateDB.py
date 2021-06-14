@@ -61,6 +61,10 @@ class PubmedDateDB:
 
         print("Loading Dates", file=sys.stderr)
 
+        if not os.path.isfile(infile):
+            print("DateFile does not exist", infile, file=sys.stderr)
+            return None
+
         with open(infile, 'r') as fin:
 
             for line in fin:

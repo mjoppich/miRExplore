@@ -471,9 +471,9 @@ class GOTerm:
                 elem = cls.handleSynonyme(value)
 
                 if elem == None:
-                    print(value)
-                    print(term.id)
-                    print(sLine)
+                    print("syn empty", value)
+                    print("syn empty", term.id)
+                    print("syn empty", sLine)
 
                 term.synonym.add(elem)
 
@@ -593,7 +593,7 @@ class GOTerm:
                         syn = GOSynonyme(splitval, scopeT, GOSynonymeType.UNKNOWN, None)
 
                         if syn == None:
-                            print(aValue)
+                            print("synExact empty", aValue)
                         term.synonym.add(syn)
 
 
@@ -605,7 +605,7 @@ class GOTerm:
                     syn = GOSynonyme(aValue[1], GOSynonymeScope.EXACT, GOSynonymeType.UNKNOWN, None)
 
                     if syn == None:
-                        print(aValue)
+                        print("synonym empty", aValue)
 
                     term.synonym.add(syn)
 

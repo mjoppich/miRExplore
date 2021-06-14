@@ -893,9 +893,10 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
                 seenEvidences.add(evTuple)
 
             if 'docid' in jsonEV:
-
-                docDate = dateDB.get_document_timestamp(jsonEV["docid"])
-                jsonEV['docdate'] = docDate
+                
+                if not dateDB is None:
+                    docDate = dateDB.get_document_timestamp(jsonEV["docid"])
+                    jsonEV['docdate'] = docDate
 
             okEvs.append(jsonEV)
 
@@ -1325,13 +1326,21 @@ def start_app_from_args(args):
 
     mirandaDB_mm10 = None
     mirandaDB_hg38 = None
+    recordsDB = None
+    mirtarbaseDB = None
+    dianaDB, celllInfos = None, None
 
-    print(datetime.datetime.now(), "Loading miRecords")
-    recordsDB = miRecordDB.loadFromFile(filelocation=fileurl + "/dbs/mirecords_v4.xlsx", normGeneSymbols=normGeneSymbols)
-    print(datetime.datetime.now(), "Loading miRTarBase")
-    mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=fileurl + "/dbs/miRTarBase.csv", normGeneSymbols=normGeneSymbols)
-    print(datetime.datetime.now(), "Loading hsa_mmu.diana")
-    dianaDB, celllInfos = DIANATarbaseDB.loadFromFile(fileurl + "/dbs/hsa_mmu.diana.csv", normGeneSymbols=normGeneSymbols)
+    if args.load_mirecords:
+        print(datetime.datetime.now(), "Loading miRecords")
+        recordsDB = miRecordDB.loadFromFile(filelocation=fileurl + "/dbs/mirecords_v4.xlsx", normGeneSymbols=normGeneSymbols)
+
+    if args.load_mirtarbase:
+        print(datetime.datetime.now(), "Loading miRTarBase")
+        mirtarbaseDB = MirTarBaseDB.loadFromFile(filepath=fileurl + "/dbs/miRTarBase.csv", normGeneSymbols=normGeneSymbols)
+    
+    if args.load_diana:
+        print(datetime.datetime.now(), "Loading hsa_mmu.diana")
+        dianaDB, celllInfos = DIANATarbaseDB.loadFromFile(fileurl + "/dbs/hsa_mmu.diana.csv", normGeneSymbols=normGeneSymbols)
 
 
     allDBS = None
@@ -1403,11 +1412,12 @@ def start_app_from_args(args):
     print(datetime.datetime.now(), "Loading sents")
     print(datetime.datetime.now(), "Loading sents PMID")
     sentDB = SentenceDB.loadFromFile(args.sentdir, pmidBase + "/pmid2sent", requiredIDs = requiredDocuments)
-    print(datetime.datetime.now(), "Loading sents PMC")
-    sentDBPMC = SentenceDB.loadFromFile(args.sentdir_pmc, pmcBase + "/pmc2sent", requiredIDs = requiredDocuments)
 
-    print(datetime.datetime.now(), "Merging sentence DBs")
-    sentDB.add_database(sentDBPMC)
+    if args.load_pmc:
+        print(datetime.datetime.now(), "Loading sents PMC")
+        sentDBPMC = SentenceDB.loadFromFile(args.sentdir_pmc, pmcBase + "/pmc2sent", requiredIDs = requiredDocuments)
+        print(datetime.datetime.now(), "Merging sentence DBs")
+        sentDB.add_database(sentDBPMC)
     print(datetime.datetime.now(), "Finished sents")
 
     allDBsPMID = None
@@ -1543,6 +1553,10 @@ def getCLParser():
     parser.add_argument('-f', '--feedback', type=str, help="Path for feedback stuff", required=True)
     parser.add_argument('-p', '--port', type=int, help="port to run on", required=False, default=65500)
     parser.add_argument('-l', '--load-pmc', action='store_true', help="Load PMC results?", required=False, default=False)
+
+    parser.add_argument('-ld', '--load-diana', action='store_true', help="Load DIANA-TarBase", required=False, default=False)
+    parser.add_argument('-lm', '--load-mirtarbase', action='store_true', help="Load MIRTARBASE", required=False, default=False)
+    parser.add_argument('-lr', '--load-mirecords', action='store_true', help="Load miRecords", required=False, default=False)
 
     return parser
 
