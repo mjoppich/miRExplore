@@ -1414,7 +1414,7 @@ class MirGeneRelCheck:
         
         return tks
 
-    def _deepCheck(self, doc, mirword, geneword, verbose):
+    def _deepCheck(self, doc, mirword, geneword, verbose, addConj = []):
 
         sentenceCompartments = []
         thisSubtree = [t for t in doc]
@@ -1426,7 +1426,7 @@ class MirGeneRelCheck:
 
             createCompartment = False
 
-            CONJDEP=["cconj", "xconj", "conj", "ccomp", "parataxis", "advcl", "xcomp"]
+            CONJDEP=["cconj", "xconj", "conj", "ccomp", "parataxis", "advcl", "xcomp"] + addConj
 
             if token.pos_ in ["VERB", "AUX"] and token.dep_ in CONJDEP: # remove "xcomp": appears to act as ... #"acl:relcl"
 
@@ -1454,10 +1454,9 @@ class MirGeneRelCheck:
                         subsentCheck = False
                         break
 
-                if token.dep_ in ["conj"]:
+                if token.dep_ in ["conj"] + addConj:
                     #should only be applied to "and" conjunction
                     allToks = [(t.i, t) for t in doc]
-
 
                     dobjs = self.__findByDep(token.head, ["dobj"])
 
@@ -1545,7 +1544,7 @@ class MirGeneRelCheck:
                 #not working!
                 createCompartment = createCompartment or aclclauseCheck
 
-            elif token.dep_ in ["conj"]:
+            elif token.dep_ in ["conj"]+addConj:
                 newSubtree = [x for x in token.subtree]
                 newSubtree = sorted(newSubtree, key=lambda x: x.idx)
 
@@ -1568,7 +1567,7 @@ class MirGeneRelCheck:
 
                 createCompartment = createCompartment or conjCheck
 
-            if token.dep_ in ["conj"]:
+            if token.dep_ in ["conj"]+addConj:
                 newSubtree = [x for x in token.subtree]
                 newSubtree = sorted(newSubtree, key=lambda x: x.idx)
 
@@ -1700,9 +1699,9 @@ class MirGeneRelCheck:
 
         return finalCompartments, splitPositions
 
-    def checkCompartments(self, doc, mirword, geneword, verbose=False):
+    def checkCompartments(self, doc, mirword, geneword, verbose=False, addConj=[]):
 
-        compartments, splitPositions = self._deepCheck(doc, mirword, geneword, verbose)
+        compartments, splitPositions = self._deepCheck(doc, mirword, geneword, verbose, addConj)
 
         compCheck = False
         for comp in compartments:
@@ -1976,6 +1975,9 @@ class MirGeneRelCheck:
 
         compPass = self.checkCompartments(doc, mirword, geneword, verbose)
         singleResults["compartment"] = compPass
+
+        compPass = self.checkCompartments(doc, mirword, geneword, verbose, ["nmod"])
+        singleResults["compartment_nmod"] = compPass
 
         sigPathway = self.checkSurContext(doc, mirword, geneword, verbose)
         singleResults["context"] = sigPathway
