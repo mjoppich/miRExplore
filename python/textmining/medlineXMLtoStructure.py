@@ -399,11 +399,20 @@ if __name__ == '__main__':
 
     #nltk.data.path.append("/mnt/d/dev/nltk_data/")
 
+    import argparse
+
+
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('-x', '--xml-path', type=str, required=True, help="path to folder with XML.GZ files.")
+    parser.add_argument('-b', '--base', default="pubmed22n", type=str, required=False)
+    parser.add_argument('-t', '--threads', type=int, default=8, required=False)
+    args = parser.parse_args()
+
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-    storagePath = '/mnt/d/dev/data/pmid_jul2020/'
-    baseFileName = 'pubmed20n'
+    storagePath = args.xml_path
+    baseFileName = args.base
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
 
@@ -534,7 +543,7 @@ if __name__ == '__main__':
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(12)
+    ll = MapReduce(args.threads)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)
 
     print("Done")

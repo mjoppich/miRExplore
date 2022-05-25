@@ -9,12 +9,13 @@ from utils.parallel import MapReduce
 
 downloadBase = True
 downloadUpdates = False
-downloadUpdatesParallel = True
-updateStart = 1016
-updateEnd = 1284
-medlineBase="pubmed20n"
+downloadUpdatesParallel = False
+updateStart = 1115
+updateEnd = 1115
+medlineBase="pubmed22n"
+baseEnd = updateStart-1
 
-downloadLocation = "/mnt/d/dev/data/pmid_jul2020/"
+downloadLocation = "/mnt/w/PubMed/"
 
 directory = os.path.dirname(downloadLocation)
 if not os.path.exists(directory):
@@ -52,8 +53,8 @@ def downloadDataUpdate(data, env):
 
 if downloadBase:
 
-    ll = MapReduce(8)
-    ll.exec([i for i in range(1,updateStart)], downloadDataBase, None)
+    ll = MapReduce(14)
+    ll.exec([i for i in range(1,baseEnd)], downloadDataBase, None)
 
 if downloadUpdatesParallel:
 
