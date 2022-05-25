@@ -66,9 +66,7 @@ class PMID2XDB:
             for line in fin:
 
                 line = line.strip()
-
                 aline = line.split('\t')
-
                 pmid = aline[0]
 
                 if reqDocIDs != None and not pmid in reqDocIDs:

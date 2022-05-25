@@ -1394,6 +1394,8 @@ class MirGeneRelCheck:
             (re.compile('(%s){e<=0}' % "near"), 10),
             (re.compile('(%s){e<=0}' % "but not"), 8),
             (re.compile('(%s){e<=1}' % "gene locus of"), 25),
+            (re.compile('(%s){e<=1}' % "antagomir to"), 18),
+            (re.compile('(%s){e<=1}' % "antagomir of"), 18),
             # new mirtex
             (re.compile('(%s){e<=0}' % "anti"), 6),
             (re.compile('(%s){e<=1}' % "acetylated"), 18),
@@ -1412,7 +1414,7 @@ class MirGeneRelCheck:
         
         return tks
 
-    def _deepCheck(self, doc, mirword, geneword, verbose):
+    def _deepCheck(self, doc, mirword, geneword, verbose, addConj = []):
 
         sentenceCompartments = []
         thisSubtree = [t for t in doc]
@@ -1424,7 +1426,7 @@ class MirGeneRelCheck:
 
             createCompartment = False
 
-            CONJDEP=["cconj", "xconj", "conj", "ccomp", "parataxis", "advcl", "xcomp"]
+            CONJDEP=["cconj", "xconj", "conj", "ccomp", "parataxis", "advcl", "xcomp"] + addConj
 
             if token.pos_ in ["VERB", "AUX"] and token.dep_ in CONJDEP: # remove "xcomp": appears to act as ... #"acl:relcl"
 
@@ -1452,10 +1454,9 @@ class MirGeneRelCheck:
                         subsentCheck = False
                         break
 
-                if token.dep_ in ["conj"]:
+                if token.dep_ in ["conj"] + addConj:
                     #should only be applied to "and" conjunction
                     allToks = [(t.i, t) for t in doc]
-
 
                     dobjs = self.__findByDep(token.head, ["dobj"])
 
@@ -1543,7 +1544,7 @@ class MirGeneRelCheck:
                 #not working!
                 createCompartment = createCompartment or aclclauseCheck
 
-            elif token.dep_ in ["conj"]:
+            elif token.dep_ in ["conj"]+addConj:
                 newSubtree = [x for x in token.subtree]
                 newSubtree = sorted(newSubtree, key=lambda x: x.idx)
 
@@ -1566,7 +1567,7 @@ class MirGeneRelCheck:
 
                 createCompartment = createCompartment or conjCheck
 
-            if token.dep_ in ["conj"]:
+            if token.dep_ in ["conj"]+addConj:
                 newSubtree = [x for x in token.subtree]
                 newSubtree = sorted(newSubtree, key=lambda x: x.idx)
 
@@ -1698,9 +1699,9 @@ class MirGeneRelCheck:
 
         return finalCompartments, splitPositions
 
-    def checkCompartments(self, doc, mirword, geneword, verbose=False):
+    def checkCompartments(self, doc, mirword, geneword, verbose=False, addConj=[]):
 
-        compartments, splitPositions = self._deepCheck(doc, mirword, geneword, verbose)
+        compartments, splitPositions = self._deepCheck(doc, mirword, geneword, verbose, addConj)
 
         compCheck = False
         for comp in compartments:
@@ -1966,12 +1967,17 @@ class MirGeneRelCheck:
 
         conjResult, conjs = self.checkCommonConj(doc, mirword, geneword, verbose)
         singleResults["conj"] = conjResult
+        conjResult, conjs = self.checkCommonConj(doc, mirword, geneword, verbose, "nmod")
+        singleResults["conj_nmod"] = conjResult
 
         sdpPass, passive, negated = self.checkSDP(doc, mirword, geneword, verbose)
         singleResults["sdp"] = sdpPass
 
         compPass = self.checkCompartments(doc, mirword, geneword, verbose)
         singleResults["compartment"] = compPass
+
+        compPass = self.checkCompartments(doc, mirword, geneword, verbose, ["nmod"])
+        singleResults["compartment_nmod"] = compPass
 
         sigPathway = self.checkSurContext(doc, mirword, geneword, verbose)
         singleResults["context"] = sigPathway
@@ -2161,7 +2167,7 @@ class MirGeneRelCheck:
 
         return tks
 
-    def __getConjuncts(self, doc, verbose):
+    def __getConjuncts(self, doc, verbose, conjLabel="conj"):
         commonEdges = defaultdict(set)
 
         def addElemsToCommon(telems):
@@ -2193,14 +2199,21 @@ class MirGeneRelCheck:
         for t in doc:
             #print(t.idx, t.text, t.dep_, t.pos_, t.head.text, t.conjuncts)
 
-            if len(t.conjuncts) > 0:
-                telems = list(t.conjuncts) + [t]
+            if conjLabel in ["conj"]:
+                tokenConjs = t.conjuncts
+            else:
+                tokenConjs = []
+                if t.dep_ in [conjLabel]:
+                    tokenConjs.append(t.head)
+
+            if len(tokenConjs) > 0:
+                telems = list(tokenConjs) + [t]
 
                 if verbose:
                     print("Conjuncts", telems)
 
                 idx2t = {e.i: e for e in doc}
-                for e in t.conjuncts:
+                for e in tokenConjs:
                     n = idx2t.get(e.i+1, None)
 
                     if verbose:
@@ -2245,9 +2258,9 @@ class MirGeneRelCheck:
 
         return retEdges
 
-    def checkCommonConj(self, doc, mirword, geneword, verbose):
+    def checkCommonConj(self, doc, mirword, geneword, verbose, conjLabel="conj"):
 
-        commonEdges = self.__getConjuncts(doc, verbose)
+        commonEdges = self.__getConjuncts(doc, verbose, conjLabel)
 
         # this is meant to add description of the conj as well.
         #commonEdges[cname] = commonEdges[cname].union(subtreeEdges)
@@ -2317,7 +2330,7 @@ class MirGeneRelCheck:
 
 
         if verbose:
-            print("Conjunctions")
+            print("Conjunctions (", conjLabel, ")")
             for cname in commonEdges:
                 celes = sorted(commonEdges[cname])
                 print(cname, celes)
@@ -2396,10 +2409,6 @@ class MirGeneRelCheck:
                             print("Pathway False")
 
                         return False, celes
-
-
-
-
 
         return True, None
 
