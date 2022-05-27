@@ -13,13 +13,19 @@ from synonymes.SynonymUtils import handleCommonExcludeWords
 
 
 if __name__ == '__main__':
+    import argparse
 
 
-    MGIdata = DataFrame.parseFromFile("/mnt/d/owncloud/data/miRExplore/MRK_Sequence.rpt")
+    parser = argparse.ArgumentParser(description='Convert Medline XML to miRExplore base files')
+    parser.add_argument('-r', '--rpt', type=argparse.FileType("r"), required=True, help="input genes file")
+    parser.add_argument('-s', '--syn', type=argparse.FileType("w"), required=True, help="output synonym file")
+    args = parser.parse_args()
+
+
+    MGIdata = DataFrame.parseFromFile(args.rpt.name)
 
     mgiID = MGIdata.getColumnIndex("MGI Marker Accession ID")
     mgiSym = MGIdata.getColumnIndex("Marker Symbol")
-    #mgiSyn = MGIdata.getColumnIndex("Marker Synonyms (pipe-separated)")
     mgiUniprot = MGIdata.getColumnIndex("UniProt IDs")
 
     mgiGeneType = 20
@@ -67,18 +73,23 @@ if __name__ == '__main__':
 
 
 
-    uniprotConvFile = "/mnt/d/owncloud/data/miRExplore/uniprotConv_mgi.tsv"
+    uniprotConvFile = args.rpt.name + "_uniprot_conversion.tsv"
 
-    if os.path.exists(uniprotConvFile):
-        convData = DataFrame.parseFromFile(uniprotConvFile )
+    if not os.path.exists(uniprotConvFile):
+        
+        sys.path.append(os.path.dirname(__file__) + "/../../../nameConvert")
 
-    else:
+        from nameconvert.stores.uniprotStore import UniprotStore
+        from nameconvert.stores.entities import GeneIdentity
+
 
         odb = UniprotStore()
         convData = odb.fetch(GeneIdentity.UNIPROT, list(foundUniprotIDs),
                              [GeneIdentity.ALIAS, GeneIdentity.PROTEIN_NAMES])
 
         printToFile([str(convData)], uniprotConvFile)
+
+    convData = DataFrame.parseFromFile( uniprotConvFile )
 
     uniprotIdx = convData.getColumnIndex( "GeneIdentity.UNIPROT" )
     geneNamesIdx = convData.getColumnIndex( "GeneIdentity.ALIAS" )
@@ -92,8 +103,6 @@ if __name__ == '__main__':
 
         if mgiIDs == None or len(mgiIDs) == 0:
             continue
-
-
 
         for mgiID in mgiIDs:
 
@@ -130,7 +139,7 @@ if __name__ == '__main__':
     for mgiID in MGIinfo:
 
         if mgiID in mirIDs:
-            print("Skipping mir ID", mgiID)
+            print("Skipping MGI ID", mgiID)
             continue
 
         if None in MGIinfo[mgiID]['sym']:
@@ -182,30 +191,5 @@ if __name__ == '__main__':
     exWords = loadExludeWords(cell_co=False, common=False, generic=True, syngrep=False)
     vPrintSyns = handleCommonExcludeWords(vAllSyns, exWords, mostCommonCount=500, maxCommonCount=7, addAlphaBeta=True, addHyphenGene=True, removeSyn=lambda synonym: synonym.id.startswith('MIR') and not synonym.id.endswith('HG'))
 
-    printToFile(vPrintSyns, "/mnt/d/dev/data/pmid_jun2020/synonyms/mgi.syn", codec="utf8")
+    printToFile(vPrintSyns, args.syn.name, codec="utf8")
 
-    """
-    for cat in exWords:
-        for w in exWords[cat]:
-            setCommonWords.add(w)
-
-    vPrintSyns = []
-
-    print("family" in setCommonWords)
-    print("DNA" in setCommonWords)
-
-    for synonyme in vAllSyns:
-
-        synonyme.removeCommonSynonymes(setCommonWords)
-
-        #if len(synonyme.syns) == 1:
-        #    continue
-
-        #if len(synonyme) > 0:
-        #    newID = locID2sym[synonyme.id]
-        #    synonyme.id = newID
-
-        vPrintSyns.append(synonyme)
-
-    printToFile( vPrintSyns, "/mnt/d/owncloud/data/miRExplore/textmine/synonyms/mgi.syn" )
-    """

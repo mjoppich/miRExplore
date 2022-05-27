@@ -33,6 +33,7 @@ class PubmedEntry:
         self.abstract = None
         self.abstract_text = None
 
+        self.pub_date = None
         self.pub_types = None
         self.cites = None
 
@@ -116,6 +117,16 @@ class PubmedEntry:
             return value
         except:
             return default
+
+    @classmethod
+    def get_node_dict(cls, node):
+
+        ret = {}
+
+        for x in node:
+            ret[x.tag] = cls.get_inner_text_from_node(x)
+
+        return ret
 
     @classmethod
     def get_value_from_node(cls, node, path, default=None):
@@ -283,6 +294,40 @@ class PubmedEntry:
         return text
 
     @classmethod
+    def month2int(cls, month):
+
+        mydict = {
+            "JANUARY": 1,
+            "FEBRUARY": 2,
+            "MARCH": 3,
+            "APRIL": 4,
+            "MAY": 5,
+            "JUNE": 6,
+            "JULY": 7,
+            "AUGUST": 8,
+            "SEPTEMBER": 9,
+            "OCTOBER": 10,
+            "NOVEMBER": 11,
+            "DECEMBER": 12,
+            "JAN": 1,
+            "FEB": 2,
+            "MAR": 3,
+            "APR": 4,
+
+            "JUN": 6,
+            "JUL": 7,
+            "AUG": 8,
+            "SEP": 9,
+            "OCT": 10,
+            "NOV": 11,
+            "DEC": 12,
+            "0": 0
+        }
+
+        return mydict.get(str(month).upper(), month)
+
+
+    @classmethod
     def fromXMLNode(cls, node):
 
 
@@ -330,7 +375,46 @@ class PubmedEntry:
         pubmed.pub_types = publicationTypes
         pubmed.cites = citedLiterature
 
+
+        artDateNode = cls.get_node(articleNode, 'ArticleDate')
+
+        articleDate = None
+        if artDateNode != None and len(artDateNode) == 3:
+            articleDate = (artDateNode[0].text,cls.month2int(artDateNode[1].text),artDateNode[2].text)
+
+        if articleDate == None:
+
+            journalNode = cls.get_node(articleNode, "Journal")
+            journalIssue = cls.get_node(journalNode, "JournalIssue")
+
+            if journalNode != None and journalIssue != None:
+
+                journalPubDate = cls.get_node(journalIssue, "PubDate")
+
+                if journalPubDate != None:
+                    pubDateDict = cls.get_node_dict(journalPubDate)
+
+                    articleDate = (
+                        pubDateDict.get("Year", 0),
+                        cls.month2int(pubDateDict.get("Month", 0)),
+                        pubDateDict.get("Day", 0)
+                    )
+
+        if articleDate == None:
+            articleDate = (0,0,0)
+
+        pubmed.pub_date = tuple([cls.tryToNumber(x) for x in articleDate])
+
         return pubmed
+
+    @classmethod
+    def tryToNumber(cls, elem):
+
+        try:
+            return int(elem)
+
+        except:
+            return elem
 
 class PubmedXMLParser:
 
@@ -402,7 +486,7 @@ if __name__ == '__main__':
     import argparse
 
 
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = argparse.ArgumentParser(description='Convert Medline XML to miRExplore base files')
     parser.add_argument('-x', '--xml-path', type=str, required=True, help="path to folder with XML.GZ files.")
     parser.add_argument('-b', '--base', default="pubmed22n", type=str, required=False)
     parser.add_argument('-t', '--threads', type=int, default=8, required=False)
@@ -444,10 +528,15 @@ if __name__ == '__main__':
             titlefile = basefile.replace(".xml.gz", ".title")
             authorfile = basefile.replace(".xml.gz", ".author")
             citationfile = basefile.replace(".xml.gz", ".citation")
+            datefile = basefile.replace(".xml.gz", ".date")
+            typefile = basefile.replace(".xml.gz", ".pubtype")
+
 
             pmid2title = {}
             pmid2authors = defaultdict(set)
             pmid2citations = defaultdict(set)
+            pmid2date = {}
+            pmid2types = defaultdict(set)
 
             with open(storagePath + sentfile, 'w') as outfile:
 
@@ -476,6 +565,10 @@ if __name__ == '__main__':
                             for author in entry.authors: #first, initials, last
                                 pmid2authors[pmidID].add( (author[1], author[2], author[0]) )
 
+                        pmid2date[entry.pmid] = entry.pub_date
+                        for dtype in entry.pub_types:
+                            pmid2types[entry.pmid].add(dtype)
+
                         if entry.cites != None and len(entry.cites) > 0:
                             for cite in entry.cites:
 
@@ -489,6 +582,9 @@ if __name__ == '__main__':
                     except:
 
                         eprint("Exception", sentfile)
+                        entry = PubmedEntry.fromXMLNode(elem)
+
+
                         try:
 
                             pmid = elem.find('MedlineCitation/PMID').text
@@ -542,6 +638,20 @@ if __name__ == '__main__':
 
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
+            with open(storagePath + datefile, 'w') as outfile:
+
+                print(datefile)
+
+                for x in pmid2date:
+                    print(x, "\t".join([str(x) for x in pmid2date[x]]), sep="\t", file=outfile)
+
+            with open(storagePath + typefile, 'w') as outfile:
+
+                print(typefile)
+
+                for x in pmid2types:
+                    for doctype in pmid2types[x]:
+                        print(x, doctype, sep="\t", file=outfile)
 
     ll = MapReduce(args.threads)
     result = ll.exec( allfiles, senteniceFile, None, 1, None)

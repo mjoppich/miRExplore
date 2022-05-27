@@ -1,12 +1,15 @@
 import copy
 import os, sys
 
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
+
 from synonymes.SynonymFile import Synfile
 from synonymes.mirnaID import miRNA
 from textdb.DocOrganismDB import DocOrganismDB
 
-sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
-
+from pymongo import MongoClient
+from pprint import pprint
 
 import random
 from collections import defaultdict
@@ -177,7 +180,16 @@ class MiGenRelDBMongo(DataBaseDescriptor):
     def insert_into_database(self, data):
         self.tables[0].insert_one(data)
 
+    def get_evidence_docids(self):
 
+        docIDs = []
+        for table in self.tables:
+            allDocIDs = table.distinct("docid")
+            docIDs += allDocIDs
+
+        docIDs = set(docIDs)
+
+        return docIDs
 
     @property
     def ltype(self):
@@ -319,7 +331,7 @@ class MiGenRelDBMongo(DataBaseDescriptor):
     def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', databaseName=None, normGeneSymbols=None, lontology=None, rontology=None, switchLR=False, lReplaceSc=True, rReplaceSc=True, ignoreDocIDs=None, stopAfter=-1, getDocs=False, excludeIDs=None):
 
         if databaseName is None:
-            databaseName = os.path.basename(filepath).split(".")[0]
+            databaseName = "_".join(os.path.basename(filepath).split(".")[0:-1])
             print("Assigned databaseName", databaseName)
 
 
@@ -437,8 +449,6 @@ class MiGenRelDBMongo(DataBaseDescriptor):
 
                         turnEvs = not turnEvs
 
-
-
                     sameParagraph = aline[7] == 'True'
                     sameSentence = aline[8] == 'True'
 
@@ -460,7 +470,6 @@ class MiGenRelDBMongo(DataBaseDescriptor):
                                 rid = normGeneSymbols[rid]
                                 geneSymbolsNormalized += 1
 
-
                     org = None
                     if ltype == 'mirna':
 
@@ -473,13 +482,13 @@ class MiGenRelDBMongo(DataBaseDescriptor):
                             
                             if lid == "None" and aline[lIDIdx-1] == "LET_7":
                                 lid="let-7"
-                                origlid = lid
-                                #print(lid)
+                                origLid = lid
+                                print("NONE LET7 CASE", rid)
 
                             if lid == None or lid == "None":
                                 continue
 
-                            seenMirnas[origRid] = (org, lid)
+                            seenMirnas[origLid] = (org, lid)
                             seenHarmMirnas.add(lid)
                         
                         #lid = olid #WHY???
@@ -495,7 +504,7 @@ class MiGenRelDBMongo(DataBaseDescriptor):
                             if rid == "None" and aline[rIDIdx-1] == "LET_7":
                                 rid="let-7"
                                 origRid = rid
-                                #print(rid)
+                                print("NONE LET7 CASE", rid)
 
                             if rid == None or rid == "None":
                                 continue
@@ -630,13 +639,13 @@ class MiGenRelDBMongo(DataBaseDescriptor):
 
                         #rel.data_id = dataID
                         #ltype2rel/rtype2rel 
-                        ret.ltype2rel[lid].add(rel)
-                        ret.rtype2rel[rid].add(rel)
+                        #ret.ltype2rel[lid].add(rel)
+                        #ret.rtype2rel[rid].add(rel)
 
 
                     #all_ltypes und all_rtypes kann weg??
-                    ret.all_ltypes.add(lid)
-                    ret.all_rtypes.add(rid)
+                    #ret.all_ltypes.add(lid)
+                    #ret.all_rtypes.add(rid)
 
                     addedCount += 1
 
@@ -664,5 +673,5 @@ class MiGenRelDBMongo(DataBaseDescriptor):
 
 if __name__ == '__main__':
 
-    pmidBase = "/home/mjoppich/ownCloud/data/miRExplore/textmine/aggregated_pmid"
-    MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.spacy.pmid", ltype="gene", rtype="mirna")
+    pmidBase = "/mnt/w/miRExplore_pmid_pmc/aggregated_pmid/"
+    MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="gene", rtype="mirna")

@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 
 from synonymes.mirnaID import miRNA
-from textdb.SQLiteBase import SQLiteBase
 
 
 class DataBaseRel(ABC):
@@ -59,11 +58,10 @@ class DataBaseRel(ABC):
 
         return None
 
-class DataBaseDescriptor(ABC, SQLiteBase):
+class DataBaseDescriptor(ABC):
 
     def __init__(self):
 
-        super(DataBaseDescriptor, self).__init__(infile=None)
 
         self.ltype2rel = defaultdict(set)
         self.rtype2rel = defaultdict(set)

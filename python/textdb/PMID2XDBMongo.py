@@ -1,3 +1,8 @@
+import os, sys
+sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
+
+from synonymes.GeneOntology import GeneOntology
+
 from collections import defaultdict
 from pymongo import MongoClient
 from pprint import pprint
@@ -45,10 +50,10 @@ class PMID2XDBMongo:
         for x in obase.tables:
             self.tables.append(x)
 
-        for x in obase.all_term_names:
-            if not x in self.all_term_names:
-                self.all_term_names.append(x)
-        #self.all_term_names += obase.all_term_names
+        if self.all_term_names != None and obase.all_term_names != None:
+            for x in obase.all_term_names:
+                if not x in self.all_term_names:
+                    self.all_term_names.append(x)
 
     def insert_into_database(self, data):
         self.tables[0].insert_one(data)
@@ -57,13 +62,20 @@ class PMID2XDBMongo:
     def hasDOC(self, docid):
 
         # TODO: search string and number here!
-        res=self.table.find_one({"docid": docid})
-        if len(res) > 0:
-            return True
+        for table in self.tables:
+            res=table.find_one({"docid": docid})
+            if res != None and len(res) > 0:
+                return True
+        
+        return False
 
 
     def getDOC(self, docid, default=None):
-        res=self.table.find_all({"docid": docid})
+
+        res = []
+
+        for table in self.tables:
+            res+=table.find({"docid": docid})
 
         if len(res) == 0:
             return default
@@ -73,11 +85,16 @@ class PMID2XDBMongo:
         return self.all_term_names
 
     @classmethod
-    def loadFromFile(cls, filepath, assocObo, databaseName=None, reqDocIDs=None):
+    def loadFromFile(cls, filepath, assocObo, databaseName=None, reqDocIDs=None, dbPrefix=None):
 
         if databaseName is None:
             databaseName = os.path.basename(filepath).split(".")[0]
-            print("Assigned databaseName", databaseName)
+
+        if dbPrefix != None:
+            databaseName = "{}_{}".format(dbPrefix, databaseName)
+
+        print("Assigned databaseName", databaseName)
+
 
         ret = PMID2XDBMongo(assocObo, databaseName)
 
@@ -112,6 +129,16 @@ class PMID2XDBMongo:
 
                     ret.insert_into_database(info)
 
+        else:
+            print("Database already exists with name", databaseName)
+
+        print(ret.hasDOC("34862716"))
+        print(ret.getDOC("34862716"))
 
         return ret
 
+if __name__ == '__main__':
+
+    
+    diseaseObo = GeneOntology("/mnt/w/miRExplore_pmid_pmc/obodir/doid.obo")
+    pmid2disease = PMID2XDBMongo.loadFromFile("/mnt/w/miRExplore_pmid_pmc/aggregated_pmid/disease.pmid", diseaseObo, None)

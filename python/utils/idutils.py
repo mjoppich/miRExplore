@@ -48,16 +48,19 @@ ltype2label = {
 
 aminoAcids = ['Phe', 'Leu', 'Ser', 'Tyr', 'Cys', 'Trp', 'Leu', 'Pro', 'His', 'Gln','Arg', 'Ile', 'Met', 'Thr', 'Asn', 'Lsy', 'Ser', 'Arg', 'Val', 'Ala', 'Asp', 'Glu', 'Gly']
 
+
+
 def loadExludeWords(common=True, generic=True, syngrep=True, disease=True, taxnames=True, cell_co=True, manual=True):
 
     exclWords = defaultdict(set)
 
+    excludeDataDir = os.path.dirname(__file__) + "/../../exclude_words/"
 
     if common:
         """
         loads 10.000 most common english words
         """
-        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.common.syn") as infile:
+        with open(excludeDataDir + "exclude_words.common.syn") as infile:
             for line in infile:
                 line = line.strip()
 
@@ -69,7 +72,7 @@ def loadExludeWords(common=True, generic=True, syngrep=True, disease=True, taxna
         """
         manually curated words to remove to given ontologies!
         """
-        with open(dataDir + "/miRExplore/textmine/excludes/manual_curated.syn") as infile:
+        with open(excludeDataDir + "manual_curated.syn") as infile:
             for line in infile:
                 line = line.strip()
                 exclWords['manual'].add(line)
@@ -78,7 +81,7 @@ def loadExludeWords(common=True, generic=True, syngrep=True, disease=True, taxna
         """
         loads words that have been removed manually/curated
         """
-        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.generic.syn") as infile:
+        with open(excludeDataDir + "exclude_words.generic.syn") as infile:
             for line in infile:
                 line = line.strip()
 
@@ -89,7 +92,7 @@ def loadExludeWords(common=True, generic=True, syngrep=True, disease=True, taxna
         """
         loads words that have been removed manually/curated
         """
-        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.syngrep.syn") as infile:
+        with open(excludeDataDir + "exclude_words.syngrep.syn") as infile:
             for line in infile:
                 line = line.strip()
 
@@ -101,7 +104,7 @@ def loadExludeWords(common=True, generic=True, syngrep=True, disease=True, taxna
         """
         loads diseases from pharmgkb?
         """
-        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.disease.syn") as infile:
+        with open(excludeDataDir + "exclude_words.disease.syn") as infile:
             for line in infile:
                 line = line.strip()
 
@@ -113,7 +116,7 @@ def loadExludeWords(common=True, generic=True, syngrep=True, disease=True, taxna
         """
         loads species names
         """
-        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.names.syn") as infile:
+        with open(excludeDataDir + "exclude_words.names.syn") as infile:
             for line in infile:
                 line = line.strip()
 
@@ -125,7 +128,7 @@ def loadExludeWords(common=True, generic=True, syngrep=True, disease=True, taxna
         """
         loads entities from go cellular component to remove any conflicts with cell types
         """
-        with open(dataDir + "/miRExplore/textmine/excludes/exclude_words.cell_co.syn") as infile:
+        with open(excludeDataDir + "exclude_words.cell_co.syn") as infile:
             for line in infile:
                 line = line.strip()
 

@@ -12,9 +12,9 @@ class NcitTermSymbolDB:
 
 
     @classmethod
-    def loadFromFolder(cls):
+    def loadFromFolder(cls, basepath):
 
-        baseFolder = "/mnt/t/ownCloud/data/miRExplore/obodir/map_ncit_syms/"
+        baseFolder = basepath
 
 
         ncit2swissprotDF = DataFrame.parseFromFile(baseFolder + "NCIt-SwissProt_Mapping.txt")
@@ -152,10 +152,6 @@ class NcitTermSymbolDB:
 
 
         return retDB
-
-        for elem in swissprot2ensembl:
-            if len(swissprot2ensembl[elem]) > 1:
-                print(elem, swissprot2ensembl[elem])
 
 
 

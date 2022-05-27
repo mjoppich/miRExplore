@@ -630,6 +630,7 @@ if __name__ == '__main__':
     parser.add_argument('--relex', type=argparse.FileType('r'), required=False, default=None)
     parser.add_argument('--mine-path', type=str, default="/mnt/f/dev/data/pmid_jun2020/", required=False)
 
+    parser.add_argument("--threads", type=int, default=8, help="number of threads used for processing all files")
 
     parser.add_argument('--nlp', type=str, required=False, default='/mnt/f/spacy/en_core_sci_lg-0.2.4/en_core_sci_lg/en_core_sci_lg-0.2.4/')
     parser.add_argument('--nlpent', type=str, required=False, default="/mnt/f/spacy/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
@@ -689,14 +690,11 @@ if __name__ == '__main__':
     allfileIDs = sorted(allfileIDs, reverse=True)
     print("Going to process {} files!".format(len(allfileIDs)), file=sys.stderr)
 
-    #allfileIDs = ["pubmed20n1231"]
-    threads = 8
-
     if __debug__:
-        threads = 1
-        sys.stderr.write("Running on threads:" + str(threads) + "\n")
+        args.threads = 1
+        sys.stderr.write("Running on threads:" + str(args.threads) + "\n")
 
-    sys.stderr.write("Debug Mode? " + str(__debug__) + " and threads " + str(threads) + "\n")
+    sys.stderr.write("Debug Mode? " + str(__debug__) + " and threads " + str(args.threads) + "\n")
 
 
     def printStuff(old, fileCoocs, env):
@@ -736,8 +734,8 @@ if __name__ == '__main__':
         return printed
 
 
-    if threads > 1:
-        ll = MapReduce(threads)
+    if args.threads > 1:
+        ll = MapReduce(args.threads)
         result = ll.exec(allfileIDs, analyseFile, None, 1, None)
 
     else:

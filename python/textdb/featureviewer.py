@@ -3,7 +3,7 @@ import os
 import json
 
 #from textdb.rfamDB import RFamDB
-from mongodb.pymongodb import MongoDB
+from pymongo import MongoClient
 from textdb.rfamDB import RFamDB
 
 
@@ -20,7 +20,7 @@ class FeatureViewer:
         if basedir == None:
             print("FeatureViewer:", "db based")
 
-            self.mongo = MongoDB('minglerna')
+            self.mongo = MongoClient('minglerna')
 
         else:
             print("FeatureViewer:", "file based")

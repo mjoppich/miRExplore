@@ -28,6 +28,8 @@ if __name__ == '__main__':
     parser.add_argument('--obo', type=argparse.FileType('r'), required=True)
     parser.add_argument('--phit', type=int, default=6, required=False)
 
+    parser.add_argument('--threads', type=int, default=8, required=False)
+
     parser.add_argument('--accept-pmids', type=argparse.FileType('r'), required=False, default=None)
     parser.add_argument('--mine-path', type=str, default="/mnt/e/data/pmid_jun2020/", required=False)
 
@@ -166,7 +168,7 @@ if __name__ == '__main__':
 
 
 
-    threads = 4
+    threads = args.threads
 
     if __debug__:
         threads = 1

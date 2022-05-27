@@ -381,7 +381,10 @@ class GOTerm:
     @classmethod
     def splitSynonymValue(cls, search, delimeter=' ', quotedText={'(': ')', '[': ']', '\"': '\"', '\'': '\''}):
 
-        aval = shlex.split(search)
+        try:
+            aval = shlex.split(search)
+        except:
+            aval = shlex.split(search + "'")
 
 
         if aval[0].startswith("\"") and aval[0].endswith("\""):
