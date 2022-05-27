@@ -103,6 +103,13 @@ class SentenceDBMongo:
                         info = {"docid": docID, "sentid": sentID, "sentence": sentText}
                         ret.insert_into_database(info)
         
+        for table in ret.tables:
+            usefulIndices = ["docid", "sentid"]
+            print("Creating indices")
+            for idx in usefulIndices:
+                print("Creating index", idx)
+                table.create_index(idx)
+
         return ret
 
 

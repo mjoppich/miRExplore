@@ -129,6 +129,14 @@ class PubmedDateDBMongo:
 
 
         print("Loading Dates Finished", file=sys.stderr)
+
+        for table in ret.tables:
+            usefulIndices = ["docid", "year"]
+            print("Creating indices")
+            for idx in usefulIndices:
+                print("Creating index", idx)
+                table.create_index(idx)
+
         return ret
 
 

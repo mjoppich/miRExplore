@@ -75,7 +75,7 @@ class PMID2XDBMongo:
         res = []
 
         for table in self.tables:
-            res+=table.find({"docid": docid})
+            res+=table.find({"docid": docid}, {'_id': False})
 
         if len(res) == 0:
             return default
@@ -131,6 +131,13 @@ class PMID2XDBMongo:
 
         else:
             print("Database already exists with name", databaseName)
+
+        for table in ret.tables:
+            usefulIndices = ["docid", "termid"]
+            print("Creating indices")
+            for idx in usefulIndices:
+                print("Creating index", idx)
+                table.create_index(idx)
 
         print(ret.hasDOC("34862716"))
         print(ret.getDOC("34862716"))

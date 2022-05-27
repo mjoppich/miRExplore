@@ -327,7 +327,9 @@ def getStatus():
     return app.make_response((jsonify({'error': 'must include homid'}), 400, None))
 
 
-def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None, ncitRestrictions=None, loadSentences=True):
+def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None,
+                       diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None, ncitRestrictions=None,
+                       loadSentences=True):
 
     global mirFeedback
     global mirandaDB_mm10
@@ -348,120 +350,16 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
     foundRels = defaultdict(list)
 
-    allDocIDs = set()
+
+
     allRels = []
+    for relDB in relDBs:
+        dbRels = relDB.find_relations(genes, mirnas)
 
-    if any([x.startswith("Tester") for x in genes]):
-
-        testerID = [x for x in genes if x.startswith("Tester")][0]
-
-        print("Retrieving testing Interactions for tester", testerID)
-
-        testerRels = testRels.tester2rels[testerID]
-
-        if "all" in testRels.tester2rels:
-            testerRels += testRels.tester2rels["all"]
-
-        print(testerID, len(testerRels), testerRels)
-
-        targetsByLid = defaultdict(set)
-
-        for (lid, rid, sid) in testerRels:
-            targetsByLid[lid].add( (rid, sid) )
-
-
-        if mirelPMID != None:
-
-            for lid in targetsByLid:
-
-                dbrels = mirelPMID.get_rels('gene', lid)
-
-                if dbrels == None:
-                    continue
-
-                takenRels = []
-                allrids = targetsByLid[lid]
-
-                for rel in dbrels:
-                    if (rel.rid, rel.assocSent) in allrids:
-                        takenRels.append(rel)
-
-                allRels += takenRels
-
-    else:
-        #proceed as usual
-
-        allRelsByType = defaultdict(list)
-
-        for relDB in relDBs:
-
-            if len(genes) == 0:
-
-                if len(mirnas) == 0:
-                    # ADD ALL AVAILABLE GENES/RELATIONS
-                    if relDB.ltype == "gene":
-
-                        for gene in relDB.all_ltypes:
-                            dbrels = relDB.get_rels('gene', gene)
-
-                            if dbrels == None:
-                                continue
-
-                            allRelsByType['gene'] += dbrels
-
-                    elif relDB.rtype == "gene":
-
-                        for gene in relDB.all_rtypes:
-                            dbrels = relDB.get_rels('gene', gene)
-
-                            if dbrels == None:
-                                print("None dbrels (rtype) for gene", gene)
-                                continue
-
-
-                            allRelsByType['gene'] += dbrels
-                else:
-                    # genes == 0 and mirnas != 0 => get all relations for mirna
-                    pass
-
-            else:
-
-                for gene in genes:
-
-                    dbrels = relDB.get_rels('gene', gene)
-
-                    if dbrels == None:
-                        continue
-
-                    allRelsByType['gene'] += dbrels
-
-            for mirna in mirnas:
-
-                dbrels = relDB.get_rels('mirna', mirna)
-
-                if dbrels == None:
-                    continue
-
-                allRelsByType['mirna'] += dbrels
-
-            for lncrna in lncrnas:
-
-                dbrels = relDB.get_rels('lncrna', lncrna)
-
-                if dbrels == None:
-                    continue
-
-                allRelsByType['lncrna'] += dbrels
-
-
-        for etype in allRelsByType:
-
-            allRels += allRelsByType[etype]
-
-    print("Loading", len(allRels), "relations")
-    if len(allRels) < 100000:
-        allRels = sorted(allRels, key=lambda x: str(x.docid) if x.docid != None else str(x.data_id))
-
+        for x in dbRels:
+            if x not in allRels:
+                allRels.append(x)
+    
 
     if organisms != None:
 
@@ -479,7 +377,7 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
 
         print("Must include any organism", organisms)
 
-
+    allDocIDs = set()
     for rel in allRels:
 
         if organisms != None:
@@ -490,12 +388,13 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
             if not any([x in rel.orgs for x in organisms]):
                 continue
 
-        if rel.docid != -1:
-            allDocIDs.add(rel.docid)
+        if rel["docid"] != -1:
+            allDocIDs.add(rel["docid"])
 
-        evJSON = rel.toJSON()
+        l_id_type = (rel["lid"], rel["ltype"])
+        r_id_type = (rel["rid"], rel["rtype"])
 
-        foundRels[(rel.l_id_type, rel.r_id_type)].append(evJSON)
+        foundRels[(l_id_type, r_id_type)].append(rel)
 
 
     addInfo = {}
@@ -519,15 +418,12 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None, di
     if pmid2go:
         addInfo['go'] = makeAddInfo(pmid2go)
 
-
     if pmid2cell:
         addInfo['cells'] = makeAddInfo(pmid2cell)
 
     if pmid2ncit:
         addInfo['ncits'] = makeAddInfo(pmid2ncit)
 
-    #if pmid2fma:
-    #    addInfo['fma'] = makeAddInfo(pmid2fma)
 
 
     def getAllowedTermIDs(restrictions, obo):
@@ -1095,16 +991,16 @@ def start_app_from_args(args):
     testRels = None  # TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
 
     print(datetime.datetime.now(), "Loading mirel PMID")
-    mirelPMIDhsa = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
-    mirelPMIDmmu = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
+    mirelPMIDhsa = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
+    mirelPMIDmmu = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
 
     print(datetime.datetime.now(), "Loading mirel PMC")
     mirelPMChsa = None
     mirelPMCmmu = None   
 
     if args.load_pmc:
-        mirelPMChsa = MiGenRelDBMongo.loadFromFile(pmcBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
-        mirelPMCmmu = MiGenRelDBMongo.loadFromFile(pmcBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", normGeneSymbols=normGeneSymbols, switchLR=True)
+        mirelPMChsa = MiGenRelDBMongo.loadFromFile(pmcBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", dbPrefix="pmc", normGeneSymbols=normGeneSymbols, switchLR=True)
+        mirelPMCmmu = MiGenRelDBMongo.loadFromFile(pmcBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", dbPrefix="pmc", normGeneSymbols=normGeneSymbols, switchLR=True)
 
     lncMirPMID = None#MiGenRelDBMongo.loadFromFile(pmidBase + "/lncrna_mirna.pmid", ltype="lncrna", rtype="mirna")
 

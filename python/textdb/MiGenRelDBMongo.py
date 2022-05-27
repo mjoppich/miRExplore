@@ -202,137 +202,46 @@ class MiGenRelDBMongo(DataBaseDescriptor):
     def types(self):
         return set([self.ltype, self.rtype])
 
-    def getOntologyForType(self, ontType):
 
-        if ontType == self.ltype:
-            return self.lontology
+    def find_relations(self, ltypes, rtypes):
 
-        if ontType == self.rtype:
-            return self.rontology
+        ltypeGiven = ltypes != None and len(ltypes) > 0
+        rtypeGiven = rtypes != None and len(rtypes) > 0
 
-        return None
+        filterQuery = {}
+        if ltypeGiven and rtypeGiven:
+            filterQuery = {"ltype": self.ltype, "lid": {"$in": ltypes}, "rtype": self.rtype, "rid": {"$in": rtypes}}
+        elif ltypeGiven:
+            filterQuery = {"ltype": self.ltype, "lid": {"$in": ltypes}}
+        elif rtypeGiven:
+            filterQuery = {"rtype": self.rtype, "rid": {"$in": rtypes}}
+            
 
-    @classmethod
-    def choices(cls, elems, k=1, excluded = []):
+        allRes = []
+        for table in self.tables:
+            tableRes = table.find(filterQuery, {'_id': False}, sort=[("docid", -1)])
 
-        resvec = []
+            for x in tableRes:
+                x["lpos"] = tuple(x["lpos"])
+                x["rpos"] = tuple(x["rpos"])
+                x["rel_pos"] = tuple(x["rel_pos"])
 
-        while len(resvec) < k:
+                if x not in allRes:
+                    allRes.append(x)
 
-            relem = random.choice(elems)
-
-            if not relem in resvec and not relem in excluded:
-                resvec.append(relem)
-
-        return resvec
-
-
-    def get_rels(self, etype, eid):
-
-        if etype == self.ltype:
-            return self.get_lid_rels(eid)
-        elif etype == self.rtype:
-            return self.get_rid_rels(eid)
-
-        return None
-
-
-
-    def get_lid_rels(self, entID):
-
-        if not self.l_ont_based:
-
-            if self.ltype.upper() == "MIRNA":
-                miFoundRels = set()
-                for strMirna in self.ltype2rel:
-                    oMirna = miRNA(strMirna)
-                    if oMirna.accept(entID):
-                        miFoundRels = miFoundRels.union(self.ltype2rel[strMirna])
-                return miFoundRels
-
-            else:
-                return self.ltype2rel.get(entID, None)
-        else:
-            allRels = self.ltype2rel.get(entID, None)
-
-            if allRels == None:
-                return None
-
-            rootObo = self.lontology.dTerms.get(entID, None)
-
-            if rootObo != None:
-
-                allChildren = rootObo.getAllChildren()
-
-                lenBefore = len(allRels)
-                for child in allChildren:
-                    allRels = allRels.union(self.ltype2rel.get(child.term.id, []))
-
-                print("Added", len(allRels)-lenBefore, "for ontology")
-
-
-            return self.undoOntID(allRels)
-
-    def get_rid_rels(self, entID):
-
-        if not self.r_ont_based:
-
-            if self.rtype.upper() == "MIRNA":
-                miFoundRels = set()
-                for strMirna in self.rtype2rel:
-                    oMirna = miRNA(strMirna)
-                    if oMirna.accept(entID):
-                        miFoundRels = miFoundRels.union(self.rtype2rel[strMirna])
-                return miFoundRels
-            else:
-                return self.ltype2rel.get(entID, None)
-
-        else:
-            allRels = self.rtype2rel.get(entID, None)
-
-            if allRels == None:
-                return None
-
-            rootObo = self.rontology.dTerms.get(entID, None)
-
-            if rootObo != None:
-
-                allChildren = rootObo.getAllChildren()
-
-                lenBefore = len(allRels)
-                for child in allChildren:
-                    allRels = allRels.union(self.rtype2rel.get(child.term.id, []))
-
-                print("Added", len(allRels) - lenBefore, "for ontology")
-
-            return self.undoOntID(allRels)
-
-
-    def undoOntID(self, rels):
-
-        for rel in rels:
-
-            lid = rel.lid
-            rid = rel.rid
-
-            if self.l_ont_based:
-                if lid in self.lontology.dTerms:
-                    rel.lent = (self.lontology.dTerms[lid].name, rel.lent[1])
-
-            if self.r_ont_based:
-                if rid in self.rontology.dTerms:
-                    rel.rent = (self.rontology.dTerms[rid].name, rel.rent[1])
-
-        return rels
-
+        return allRes
 
 
     @classmethod
-    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', databaseName=None, normGeneSymbols=None, lontology=None, rontology=None, switchLR=False, lReplaceSc=True, rReplaceSc=True, ignoreDocIDs=None, stopAfter=-1, getDocs=False, excludeIDs=None):
+    def loadFromFile(cls, filepath, ltype, rtype, dbtype='pmid', databaseName=None, dbPrefix=None, normGeneSymbols=None, lontology=None, rontology=None, switchLR=False, lReplaceSc=True, rReplaceSc=True, ignoreDocIDs=None, stopAfter=-1, getDocs=False, excludeIDs=None):
 
         if databaseName is None:
             databaseName = "_".join(os.path.basename(filepath).split(".")[0:-1])
-            print("Assigned databaseName", databaseName)
+
+        if dbPrefix != None:
+            databaseName = "{}_{}".format(dbPrefix, databaseName)
+
+        print("Assigned databaseName", databaseName)
 
 
         if switchLR:
@@ -637,15 +546,6 @@ class MiGenRelDBMongo(DataBaseDescriptor):
 
                         ret.insert_into_database(rel.toJSON())
 
-                        #rel.data_id = dataID
-                        #ltype2rel/rtype2rel 
-                        #ret.ltype2rel[lid].add(rel)
-                        #ret.rtype2rel[rid].add(rel)
-
-
-                    #all_ltypes und all_rtypes kann weg??
-                    #ret.all_ltypes.add(lid)
-                    #ret.all_rtypes.add(rid)
 
                     addedCount += 1
 
@@ -655,9 +555,6 @@ class MiGenRelDBMongo(DataBaseDescriptor):
                         print("Elem with no data id!")
 
             print("Gene Symbols Normalized", geneSymbolsNormalized)
-
-
-
             print("Loaded file", filepath)
             print("Accepted Doc IDs", len(takenDocs))
             print("Rejected Doc IDs", len(ignoredDocs))
@@ -668,10 +565,47 @@ class MiGenRelDBMongo(DataBaseDescriptor):
         if getDocs:
             return ret, ret.all_documnets()
 
+        """
+          {
+            _id: ObjectId("6290ce44580ba7435e5856a7"),
+            rel_category: 'NEU',
+            rel_interaction: 'MIR_GENE',
+            rel_verb: '',
+            rel_sentence: '34858199.2.11',
+            rel_negated: false,
+            rel_passive: false,
+            lpos: [ 30, 35 ],
+            rpos: [ 84, 91 ],
+            rel_pos: [ 0, 0 ],
+            same_paragraph: true,
+            same_sentence: true,
+            docid: '34858199',
+            ltype: 'gene',
+            rtype: 'mirna',
+            rid: 'miR-204',
+            lid: 'NLRP3',
+            lontid: 'NLRP3',
+            rontid: 'miR-204',
+            data_source: 'pmid',
+            data_id: 'mirna_gene.hsa.pmid_4397_0',
+            trust: { stack: 1, verb: 1, conj: 0, relex: 0 },
+            orig_ids: [ 'NLRP3', 'miR-204' ],
+            orgs: [ 'mmu', 'hsa' ]
+        }
+
+        """
+
+        for table in ret.tables:
+            usefulIndices = ["ltype", "rtype", "rid", "lid", "docid"]
+            print("Creating indices")
+            for idx in usefulIndices:
+                print("Creating index", idx)
+                table.create_index(idx)
+
         return ret
 
 
 if __name__ == '__main__':
 
     pmidBase = "/mnt/w/miRExplore_pmid_pmc/aggregated_pmid/"
-    MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="gene", rtype="mirna")
+    MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene")
