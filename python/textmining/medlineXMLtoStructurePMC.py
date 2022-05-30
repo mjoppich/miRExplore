@@ -351,13 +351,14 @@ class PubmedEntry:
         pmid = cls.get_value_from_node(pmidIDNode, None)
         pmc = cls.get_value_from_node(pmcIDNode, None)
 
-        print(pmid)
-        print(pmc)
+        #print(pmid)
+        #print(pmc)
 
         if pmc == None:
             raise ValueError("could not find PMC ID")
 
-        pmc = "PMC{}".format(pmc)
+        if not pmc.startswith("PMC"):
+            pmc = "PMC{}".format(pmc)
 
         journal_title = cls.get_inner_text_from_path(node, 'front/journal-meta/journal-title-group/journal-title')
         journal_abbrev_title_node = cls.get_node_with_attrib(node, 'front/journal-meta/journal-id', 'journal-id-type', 'iso-abbrev')
@@ -368,9 +369,9 @@ class PubmedEntry:
         journal_doi = cls.get_value_from_node(journal_doi_node, None)
 
 
-        print(journal_title)
-        print(journal_abbrev_title)
-        print(journal_doi)
+        #print(journal_title)
+        #print(journal_abbrev_title)
+        #print(journal_doi)
 
         title = cls.get_inner_text_from_path(node, 'front/article-meta/title-group/article-title')
         date_published_node = cls.get_node_with_attrib(node, 'front/article-meta/pub-date', "pub-type", "nihms-submitted")
@@ -382,7 +383,7 @@ class PubmedEntry:
         date_month = cls.get_value_from_node(date_published_node, "month", "1")
         date_year = cls.get_value_from_node(date_published_node, "year", "1")
 
-        print(title)
+        #print(title)
 
         abstract = cls.get_abstract(node)
         text = cls.get_text(node)
@@ -462,31 +463,37 @@ class PubmedArticleIterator:
         raise StopIteration()
 
 
-"""
-
-python3 ~/python/miRExplore/python/textmining/downloadPubmedAbstracts.py
-python3 medlineXMLtoStructure.py
-python3 removeDuplicateSentences.py
-
-"""
 
 
 
 if __name__ == '__main__':
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Convert Medline XML to miRExplore base files')
+    parser.add_argument('-x', '--xml-path', type=str, required=True, help="path to folder with XML.GZ files.")
+    parser.add_argument('-b', '--base', default="pubmed22n", type=str, required=False)
+    parser.add_argument('-t', '--threads', type=int, default=8, required=False)
+    args = parser.parse_args()
 
     #nltk.data.path.append("/mnt/d/dev/nltk_data/")
 
     tokenizer_loc = 'tokenizers/punkt/english.pickle'
     tokenizer = nltk.data.load(tokenizer_loc)
 
-    storagePath = '/mnt/f/dev/data/pmcxml/raw/'
+    #python3 medlineXMLtoStructurePMC.py --xml-path /mnt/raidtmp/joppich/pubmed_pmc/pmc/ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_comm_extracted/PMC000xxxxxx/ --base "" --threads 6
 
-    allXMLFiles = [y for x in os.walk(storagePath) for y in glob.glob(os.path.join(x[0], '*.xml'))]
+    storagePath = args.xml_path
+    baseFileName = args.base
+
+    allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml')
+
+
+    #allXMLFiles = [y for x in os.walk(storagePath) for y in glob.glob(os.path.join(x[0], '*.xml'))]
     #allXMLFiles = ['/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1249490.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1249491.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1249508.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1266050.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1266051.xml']
     #allXMLFiles = ["/mnt/f/dev/data/pmcxml/raw/PMC0014XXXXX/PMC1455165.xml"]
 
     print("Found", len(allXMLFiles), "files")
-
     print("Going through", len(allXMLFiles), " files.")
 
     def senteniceFile(filenames, env):
@@ -520,6 +527,7 @@ if __name__ == '__main__':
                         entry = PubmedEntry.fromXMLNode(elem)
 
                         if entry == None:
+                            print("Empty entry", filename)
                             continue
 
                         sents = entry.to_sentences(tokenizer)
@@ -572,8 +580,6 @@ if __name__ == '__main__':
 
             with open(storagePath + titlefile, 'w') as outfile:
 
-                print(titlefile)
-
                 for pmid in pmid2title:
                     title = pmid2title[pmid]
                     if title == None or len(title) == 0:
@@ -582,8 +588,6 @@ if __name__ == '__main__':
                     outfile.write(str(pmid) + "\t" + str(title) + "\n")
 
             with open(storagePath + authorfile, 'w') as outfile:
-
-                print(authorfile)
 
                 for pmid in pmid2authors:
                     authors = pmid2authors[pmid]
@@ -601,8 +605,6 @@ if __name__ == '__main__':
 
             with open(storagePath + citationfile, 'w') as outfile:
 
-                print(citationfile)
-
                 for pmid in pmid2citations:
                     citations = pmid2citations[pmid]
 
@@ -614,7 +616,7 @@ if __name__ == '__main__':
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(8)
+    ll = MapReduce(args.threads)
     result = ll.exec( allXMLFiles, senteniceFile, None, 1, None)
 
     print("Done")
