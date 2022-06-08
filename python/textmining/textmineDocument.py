@@ -104,9 +104,7 @@ class ExtProcThreaded(MapReduce):
     def exec(self, oIterable, chunkSize = 1):
 
         self.pool = mp.ThreadPool(self.nprocs)
-        allResults = []
-
-        
+                
         def call_ext_proc(cmd):
 
             cmdUUID = uuid.uuid5(uuid.NAMESPACE_DNS, 'miRExplore')
@@ -117,9 +115,7 @@ class ExtProcThreaded(MapReduce):
             print("Finished", cmdUUID)
 
 
-
-        for x in self.chunkIterable(oIterable, chunkSize):
-            allResults.append( self.pool.apply_async( call_ext_proc, x ) )
+        self.pool.map(call_ext_proc, oIterable)
 
         self.pool.join()
         self.pool.close()
@@ -685,7 +681,7 @@ if __name__ == '__main__':
         print("Single File Processing")
 
         for inputFile in args.input:
-            textmineFile(inputFile, None)
+            textmineFile([inputFile], None)
 
     elif processLevel == "threaded":
 
@@ -702,3 +698,7 @@ if __name__ == '__main__':
 
 
     print("Done")
+
+
+#" ".join(['/usr/bin/python3', '/mnt/raidtmp/joppich/pubmed_pmc/pmc/miRExplore/python//textmining/textmineDocument.py', '--exclude', 'excludes/all_excludes.syn', '--input', '../oa_bulk/extracted_sentences/oa_noncomm_xml_PMC002xxxxxx.sent', '--nocells', '--output', './results.pmc.raw//ncit', '--process-level', 'single', '--prunelevel', 'none', '--synonyms', './/synonyms/ncit.syn', '--threads', '14', '--trustLength', '5'])
+# /usr/bin/python3 /mnt/raidtmp/joppich/pubmed_pmc/pmc/miRExplore/python//textmining/textmineDocument.py --exclude excludes/all_excludes.syn --input ../oa_bulk/extracted_sentences/oa_noncomm_xml_PMC002xxxxxx.sent --nocells --output ./results.pmc.raw//ncit --process-level single --prunelevel none --synonyms .//synonyms/ncit.syn --threads 14 --trustLength 5
