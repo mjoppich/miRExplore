@@ -2,7 +2,7 @@ import os,sys
 
 """
 
-PARALLELISM
+PARALLELISM (FORK)
 
 """
 
@@ -11,8 +11,9 @@ import threading
 import time
 import sys
 import os
-import multiprocessing
 import pickle
+import subprocess
+import uuid
 
 from pathos import multiprocessing as mp
 
@@ -86,6 +87,94 @@ class MapReduce:
         while item:
             yield item
             item = list(itertools.islice(it, size))
+
+
+"""
+
+PARALLELISM (THREAD)
+
+"""
+
+class ExtProcThreaded(MapReduce):
+
+    def __init__(self, procs = 4):
+        super().__init__(procs=procs)
+
+
+    def exec(self, oIterable, chunkSize = 1):
+
+        self.pool = mp.ThreadPool(self.nprocs)
+        allResults = []
+
+        
+        def call_ext_proc(cmd):
+
+            cmdUUID = uuid.uuid5(uuid.NAMESPACE_DNS, 'miRExplore')
+            cmdUUID = str(cmdUUID)[-8:]
+
+            print("Running", cmd, cmdUUID)
+            subprocess.check_call(cmd)
+            print("Finished", cmdUUID)
+
+
+
+        for x in self.chunkIterable(oIterable, chunkSize):
+            allResults.append( self.pool.apply_async( call_ext_proc, x ) )
+
+        self.pool.join()
+        self.pool.close()
+        
+
+        return True
+
+"""
+
+MAINTENANCE STUFF
+
+
+"""
+
+def generate_args_for_subfile(n, newinput, positional=[]):
+    """ check an argparse namespace against a module's get_args method.
+    Ideally, there would be something built in to argparse, but no such luck.
+    This tries to reconstruct the arg list that argparse.parse_args would expect
+
+    Taken from https://stackoverflow.com/questions/36320427/create-arg-string-from-argumentparser-parsed-args-in-python
+    """
+    arg_list = [[k, v] for k, v in sorted(vars(n).items())]
+    argparse_formatted_list = [sys.executable, __file__] #interpreter, current file
+    for l in arg_list:
+        ####  deal with flag arguments (store true/false)
+        if l[1] == True:
+            argparse_formatted_list.append("--{}".format(l[0]))
+        elif l[1] == False or l[1] is None:
+            pass  # dont add this arg
+        # add positional argments
+        elif l[0] in positional:
+            argparse_formatted_list.append(str(l[0]))
+        # add the named arguments
+        else:
+
+            if l[0] in  ["characters", "c"]:
+                continue
+
+            if l[0] == "input":
+                l[1] = newinput
+
+            if l[0] == "process_level":
+                l[1] = "single"
+
+            l[0] = l[0].replace("_", "-")
+        
+            argparse_formatted_list.append("--{}".format(l[0]))
+
+            if type(l[1]) in [list]:
+                l1str = " ".join(l[1])
+            else:
+                l1str = str(l[1])
+
+            argparse_formatted_list.append(l1str)
+    return argparse_formatted_list
 
 """
 
@@ -233,13 +322,13 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--synonyms', nargs='+', type=str, help='syn files', required=True)
     parser.add_argument('-c', '--characters', type=str, required=False, default=' ,.;:-()[]{}=!"§$%&/=?+*\'#-')
     parser.add_argument('-tl', '--trustLength', type=int, required=False, default=4)
-
     parser.add_argument('-nocells', '--nocells',action="store_true", required=False, default=False)
     parser.add_argument('-generules', '--generules',action="store_true", required=False, default=False)
-
     parser.add_argument('-prunelevel', '--prunelevel', type=str, required=False, default="")
-
     parser.add_argument('-np', '--threads', type=int, required=False, default=8)
+
+    parser.add_argument('-pl', '--process-level', choices=["auto", "single", "threaded", "forked"], required=False, default="auto")
+
 
     # test run: /usr/bin/python3 /mnt/f/dev/git/miRExplore/python/textmining/textmineDocument.py --input textmining/textmineTestSents.sent --synonyms textmining/textmineTestSyns.syn --output -
     # test run: /usr/bin/python3 /mnt/f/dev/git/miRExplore/python/textmining/textmineDocument.py --input textmineTestSents.sent --synonyms textmineTestSyns.syn --output -
@@ -249,8 +338,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #python3 textmineDocument.py --input /mnt/f/dev/data/pmid_jun2020/pmid/pubmed20n0049.sent --synonyms /mnt/f/dev/data/pmid_jun2020/synonyms/hgnc.syn --output - --trustLength 4
-
-
     
     if args.output != "-":
         assert(os.path.isdir(args.output))
@@ -556,11 +643,62 @@ if __name__ == '__main__':
 
 
 
+    
+
 
 
     print("Starting analysis with TL", args.trustLength)
 
-    ll = MapReduce(args.threads)
-    result = ll.exec( args.input, textmineFile, None, 1, None)
+    processLevel = args.process_level #["auto", "single", "threaded", "forked"]
+
+    if processLevel == "auto":
+
+        fileSizes = []
+        for infile in args.input:
+
+            fileSizes.append( os.path.getsize(infile)/(1024*1024) ) # bytes -> kilo-bytes -> mega-bytes
+
+            if len(fileSizes) > 10:
+                break
+
+        meanFileSize = sum(fileSizes) / len(fileSizes)
+        reason = ""
+
+        if len(args.input) == 1:
+            processLevel = "single"
+            reason = "Single File"
+
+        else:
+            if meanFileSize > 1000: #(~1GB)
+                processLevel = "threaded"
+                reason = "Mean File Size large"
+            else:
+                processLevel = "forked"
+                reason = "Mean File Size small"
+
+        print("With a mean file size of {}MB in first {} files I choose {} processing for reason: {}".format(meanFileSize, len(fileSizes), processLevel, reason))
+
+
+
+    if processLevel == "single":
+
+        print("Single File Processing")
+
+        for inputFile in args.input:
+            textmineFile(inputFile)
+
+    elif processLevel == "threaded":
+
+        print("Threaded Processing")
+
+        ll = ExtProcThreaded(args.threads)
+        allInputs = [generate_args_for_subfile(args, [x]) for x in args.input]      
+        ll.exec(allInputs, 1)
+
+    elif processLevel == "forked":
+        print("Forked Processing")
+        ll = MapReduce(args.threads)
+        _ = ll.exec( args.input, textmineFile, None, 1, None)
+
 
     print("Done")

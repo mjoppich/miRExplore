@@ -1,4 +1,5 @@
 import copy
+from email.policy import default
 import os, sys
 
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
@@ -145,25 +146,34 @@ class MiGenRelDBMongo(DataBaseDescriptor):
         self.ltyped = ltype
         self.rtyped = rtype
 
-        self.databaseName = databaseName
         self.mainDatabase = mainDatabase
+
+        self.databaseName = databaseName
+        self.entityDatabaseName = "{}_entities".format(self.databaseName)
+
         self.client = MongoClient()
         self.db =self.client[mainDatabase]
         self.tables = []
+        self.entity_tables = []
 
-        table = None
-        
-        if databaseName in self.db.list_collection_names():
-            table = self.db[databaseName]
-
+        table = None       
+        if self.databaseName in self.db.list_collection_names():
+            table = self.db[self.databaseName]
         if not table is None:
             self.tables.append(table)
         
+        table = None       
+        if self.entityDatabaseName in self.db.list_collection_names():
+            table = self.db[self.entityDatabaseName]
+        if not table is None:
+            self.entity_tables.append(table)
+
     def has_database(self):
-        return self.databaseName in self.db.list_collection_names()
+        return self.databaseName in self.db.list_collection_names() and self.entityDatabaseName in self.db.list_collection_names()
 
     def create_database(self):
         self.tables.append( self.db[self.databaseName] )
+        self.entity_tables.append( self.db[self.entityDatabaseName] )
 
     def add_database(self, obase):
 
@@ -172,13 +182,16 @@ class MiGenRelDBMongo(DataBaseDescriptor):
         for x in obase.tables:
             self.tables.append(x)
 
-        for x in obase.all_term_names:
-            if not x in self.all_term_names:
-                self.all_term_names.append(x)
-        #self.all_term_names += obase.all_term_names
+
+        for x in obase.entity_tables:
+            self.entity_tables.append(x)
 
     def insert_into_database(self, data):
         self.tables[0].insert_one(data)
+
+
+    def insert_into_entity_database(self, data):
+        self.entity_tables[0].insert_one(data)
 
     def get_evidence_docids(self):
 
@@ -230,6 +243,17 @@ class MiGenRelDBMongo(DataBaseDescriptor):
                     allRes.append(x)
 
         return allRes
+
+
+    def find_entities(self, etype, prefix):
+
+        allEntities = []
+        for table in self.entity_tables:
+            tableRes = table.find({"etype": etype, "prefix": prefix}, {'_id': False})
+            for x in tableRes:
+                allEntities += x["entities"]
+
+        return list(set(allEntities))
 
 
     @classmethod
@@ -286,6 +310,22 @@ class MiGenRelDBMongo(DataBaseDescriptor):
             takenDocs = set()
 
             addedCount = 0
+
+            type2prefix2elem = defaultdict(lambda: defaultdict(set))
+            def getPrefixes(entity):
+
+                if len(entity) <= 3:
+                    return []
+
+                allPrefixes = []
+                for i in range(3, len(entity)):
+                    prefix = entity[0:i]
+                    allPrefixes.append(prefix)
+                
+                if not entity in allPrefixes:
+                    allPrefixes.append(entity)
+
+                return allPrefixes
 
             with open(filepath, 'r') as fin:
 
@@ -544,10 +584,18 @@ class MiGenRelDBMongo(DataBaseDescriptor):
                         if len(docOrgs) > 0:
                             rel.orgs = tuple(docOrgs)
 
-                        ret.insert_into_database(rel.toJSON())
+                        relJson = rel.toJSON()
+                        ret.insert_into_database(relJson)
 
+                        for prefix in getPrefixes(relJson["lid"]):
+                            type2prefix2elem[ relJson["ltype"] ][prefix].add(relJson["lid"])
+
+                        for prefix in getPrefixes(relJson["rid"]):
+                            type2prefix2elem[ relJson["rtype"] ][prefix].add(relJson["rid"])
 
                     addedCount += 1
+
+            
 
             for x in ret.ltype2rel:
                 for elem in ret.ltype2rel[x]:
@@ -561,6 +609,13 @@ class MiGenRelDBMongo(DataBaseDescriptor):
             print("Seen genes", len(seenGenes))
             print("Seen miRNAs", len(seenMirnas))
             print("Seen Harm. miRNAs", len(seenHarmMirnas))
+
+
+        for entityType in type2prefix2elem:
+            for prefix in type2prefix2elem[entityType]:
+                dbjson = {"etype": entityType, "prefix": prefix, "entities": list(type2prefix2elem[entityType][prefix])}
+
+                ret.insert_into_entity_database(dbjson)
 
         if getDocs:
             return ret, ret.all_documnets()

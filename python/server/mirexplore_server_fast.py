@@ -349,9 +349,6 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None,
     lncrnas = lncrnas if lncrnas!=None else []
 
     foundRels = defaultdict(list)
-
-
-
     allRels = []
     for relDB in relDBs:
         dbRels = relDB.find_relations(genes, mirnas)
@@ -691,13 +688,11 @@ def findID():
         ltype = relDB.ltype
         rtype = relDB.rtype
 
-        for entName in relDB.all_ltypes:
-            if len(jsonResultByType[ltype]) <= 100 and reMatch.match(entName):
-                jsonResultByType[ltype].add(entName)
+        for entName in relDB.find_entities(ltype, searchWord):
+            jsonResultByType[ltype].add(entName)
 
-        for entName in relDB.all_rtypes:
-            if len(jsonResultByType[rtype]) <= 100 and reMatch.match(entName):
-                jsonResultByType[rtype].add(entName)
+        for entName in relDB.find_entities(rtype, searchWord):
+            jsonResultByType[rtype].add(entName)
 
     jsonResult = []
     for rtype in jsonResultByType:
@@ -705,14 +700,6 @@ def findID():
         jsonResult += list(
             [{'name': interact, 'group': rtype} for interact in jsonResultByType[rtype]]
         )
-
-
-    if reMatch.match("Tester"):
-
-        for testerID in testRels.tester2rels:
-            if not testerID.startswith("Tester"):
-                continue
-            jsonResult.append({'name': testerID, 'group': 'gene'})
 
     return app.make_response((jsonify( jsonResult ), 200, None))
 
