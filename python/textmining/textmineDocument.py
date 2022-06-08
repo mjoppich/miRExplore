@@ -685,7 +685,7 @@ if __name__ == '__main__':
         print("Single File Processing")
 
         for inputFile in args.input:
-            textmineFile(inputFile)
+            textmineFile(inputFile, None)
 
     elif processLevel == "threaded":
 
