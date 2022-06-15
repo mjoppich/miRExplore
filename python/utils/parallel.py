@@ -42,7 +42,10 @@ class MapReduce:
 
                 if allResults[i].ready():
 
-                    result = allResults[i].get()
+                    try:
+                        result = allResults[i].get()
+                    except:
+                        result = None
 
                     if pReduceFunc != None:
 

@@ -277,14 +277,23 @@ class PubmedEntry:
 
         abstractTexts = cls.get_nodes(node, '//abstract')
 
+        if len(abstractTexts) == 0:
+            abstractTexts = cls.get_nodes(node, './/abstract')
+
         for atext in abstractTexts:
+
+            if type(atext) in [etree._Comment, etree._ProcessingInstruction]:
+                continue
 
             label = atext.attrib.get('id', 'p1').upper()
             text = "".join([x for x in atext.itertext()])#atext.text
-
             if text != None:
                 text = cls.removeLinebreaks(text)
-                structuredAbstract[label] = text
+
+                if label in structuredAbstract:
+                    structuredAbstract[label] = structuredAbstract[label] + " " + text
+                else:
+                    structuredAbstract[label] = text
 
 
         return structuredAbstract
@@ -295,13 +304,14 @@ class PubmedEntry:
         # TODO care for structued abstracts https://www.nlm.nih.gov/bsd/licensee/elements_descriptions.html#publicationtypelist
         structuredText = {}
 
-        abstractTexts = cls.get_nodes(node, '/body')
+        abstractTexts = cls.get_nodes(node, './body')
 
         for secText in abstractTexts:
 
-            secTitle = cls.get_inner_text_from_path(secText, "title")
+            if type(secText) in [etree._Comment, etree._ProcessingInstruction]:
+                continue
 
-            
+            secTitle = cls.get_inner_text_from_path(secText, "title")
 
             if secTitle == None:
                 secTitle = secText.attrib.get('id', 'general').upper()
@@ -322,6 +332,9 @@ class PubmedEntry:
             return None
 
         foundNodes = node.findall('back/ref-list//element-citation/pub-id')
+
+        if len(foundNodes) == 0:
+            foundNodes = cls.get_nodes_with_attrib(node, 'back/ref-list//ref/*/pub-id', "pub-id-type", "pmid")
 
         allReturnValues = []
 
@@ -351,11 +364,20 @@ class PubmedEntry:
         pmid = cls.get_value_from_node(pmidIDNode, None)
         pmc = cls.get_value_from_node(pmcIDNode, None)
 
+
+        #europe pmc
+        if pmc is None:
+            pmcIDNode = cls.get_node_with_attrib(node, 'front/article-meta/article-id', 'pub-id-type', 'pmcid')
+            pmc = cls.get_value_from_node(pmcIDNode, None)
+
         #print(pmid)
         #print(pmc)
 
+
         if pmc == None:
-            raise ValueError("could not find PMC ID")
+            #raise ValueError("could not find PMC ID")
+            print("Could Not Find PMC ID", file=sys.stderr)
+            return None
 
         if not pmc.startswith("PMC"):
             pmc = "PMC{}".format(pmc)
@@ -363,10 +385,14 @@ class PubmedEntry:
         journal_title = cls.get_inner_text_from_path(node, 'front/journal-meta/journal-title-group/journal-title')
         journal_abbrev_title_node = cls.get_node_with_attrib(node, 'front/journal-meta/journal-id', 'journal-id-type', 'iso-abbrev')
         journal_abbrev_title = cls.get_value_from_node(journal_abbrev_title_node, None)
-
-
         journal_doi_node = cls.get_node_with_attrib(node, 'front/article-meta/article-id', 'pub-id-type', 'doi')
         journal_doi = cls.get_value_from_node(journal_doi_node, None)
+
+        #europe pmc
+        if journal_title == None:
+            journal_title = cls.get_inner_text_from_path(node, 'front/journal-meta/journal-title')
+            journal_abbrev_title = journal_title
+            journal_doi = cls.get_value_from_node(cls.get_node_with_attrib(node, 'front/article-meta/article-id', 'pub-id-type', 'doi'), None)
 
 
         #print(journal_title)
@@ -378,6 +404,10 @@ class PubmedEntry:
 
         if date_published_node == None:
             date_published_node = cls.get_node_with_attrib(node, 'front/article-meta/pub-date', "pub-type", "pmc-release")
+
+        #europe pmc
+        if date_published_node == None:
+            date_published_node = cls.get_node_with_attrib(node, 'front/article-meta/pub-date', "pub-type", "epub")
 
         date_day = cls.get_value_from_node(date_published_node, "day", "1")
         date_month = cls.get_value_from_node(date_published_node, "month", "1")
@@ -473,7 +503,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert Medline XML to miRExplore base files')
     parser.add_argument('-x', '--xml-path', type=str, required=True, help="path to folder with XML.GZ files.")
     parser.add_argument('-b', '--base', default="pubmed22n", type=str, required=False)
+    parser.add_argument('-o', '--output', default="", type=str, required=False)
     parser.add_argument('-t', '--threads', type=int, default=8, required=False)
+    parser.add_argument('-z', '--zipped', action="store_true", default=False, required=False)
+
+    
     args = parser.parse_args()
 
     #nltk.data.path.append("/mnt/d/dev/nltk_data/")
@@ -483,15 +517,30 @@ if __name__ == '__main__':
 
     #python3 medlineXMLtoStructurePMC.py --xml-path /mnt/raidtmp/joppich/pubmed_pmc/pmc/ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_comm_extracted/PMC000xxxxxx/ --base "" --threads 6
 
+    # python3 python/textmining/medlineXMLtoStructurePMC.py --xml-path /mnt/input/public/EuroupePMC/oa/ --base "" --output /mnt/raidtmp/joppich/pubmed_pmc/pmc/europepmc/ --threads 30 --zipped
+
     storagePath = args.xml_path
     baseFileName = args.base
 
-    allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml')
+    if not args.zipped:
+        allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml')
+    else:
+        allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
 
+    allXMLFiles = sorted(allXMLFiles)
+
+    # /mnt/input/public/EuroupePMC/oa/PMC7900001_PMC7910000.xml
+    # /mnt/input/public/EuroupePMC/oa/PMC7900001_PMC7910000_small.xml
 
     #allXMLFiles = [y for x in os.walk(storagePath) for y in glob.glob(os.path.join(x[0], '*.xml'))]
     #allXMLFiles = ['/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1249490.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1249491.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1249508.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1266050.xml', '/mnt/f/dev/data/pmcxml/raw/PMC0012XXXXX/PMC1266051.xml']
     #allXMLFiles = ["/mnt/f/dev/data/pmcxml/raw/PMC0014XXXXX/PMC1455165.xml"]
+
+#PMC8420001_PMC8429977
+#PMC7810001_PMC7820000
+#PMC7780001_PMC7790000
+    #allXMLFiles = [x for x in allXMLFiles if "PMC7780001_PMC7790000" in x]
+
 
     print("Found", len(allXMLFiles), "files")
     print("Going through", len(allXMLFiles), " files.")
@@ -500,33 +549,59 @@ if __name__ == '__main__':
 
 
         for filename in filenames:
-            print(filename)
+            
+            ofilename = filename
+            if ofilename.endswith(".gz") and args.zipped:
+                filename = filename[:-3]
+
+
+
+            #print(filename)
             storagePath = os.path.dirname(filename) + "/"
 
             basefile = os.path.basename(filename)
-            sentfile = basefile.replace(".xml", ".sent")
-            titlefile = basefile.replace(".xml", ".title")
-            authorfile = basefile.replace(".xml", ".author")
-            citationfile = basefile.replace(".xml", ".citation")
-            datefile = basefile.replace(".xml", ".date")
-            typefile = basefile.replace(".xml", ".pubtype")
-            pmidfile = basefile.replace(".xml", ".pmid")
+            sentfile = os.path.join(storagePath, basefile.replace(".xml", ".sent"))
+            titlefile = os.path.join(storagePath, basefile.replace(".xml", ".title"))
+            authorfile = os.path.join(storagePath, basefile.replace(".xml", ".author"))
+            citationfile = os.path.join(storagePath, basefile.replace(".xml", ".citation"))
+            datefile = os.path.join(storagePath, basefile.replace(".xml", ".date"))
+            typefile = os.path.join(storagePath, basefile.replace(".xml", ".pubtype"))
+            pmidfile = os.path.join(storagePath, basefile.replace(".xml", ".pmid"))
+
+            if len(args.output) > 0:
+
+                sentfile = os.path.join(args.output, os.path.basename(sentfile))
+                titlefile = os.path.join(args.output, os.path.basename(titlefile))
+                authorfile = os.path.join(args.output, os.path.basename(authorfile))
+                citationfile = os.path.join(args.output, os.path.basename(citationfile))
+                datefile = os.path.join(args.output, os.path.basename(datefile))
+                typefile = os.path.join(args.output, os.path.basename(typefile))
+                pmidfile = os.path.join(args.output, os.path.basename(pmidfile))
+
+            print(ofilename, filename, basefile)
 
             pmid2title = {}
             pmid2authors = defaultdict(set)
             pmid2citations = defaultdict(set)
 
-            with open(storagePath + sentfile, 'w') as outfile, open(storagePath + datefile, 'w') as outdate, open(storagePath + typefile, "w") as outtype, open(storagePath + pmidfile, "w") as outpmid:
+            with open(sentfile, 'w') as outfile, open(datefile, 'w') as outdate, open(typefile, "w") as outtype, open(pmidfile, "w") as outpmid:
 
                 pubmedParser = PubmedXMLParser()
-                pubmedParser.parseXML(filename)
+                pubmedParser.parseXML(ofilename)
 
-                for elem in [pubmedParser.tree]:
+                elemIt = [pubmedParser.tree]
+
+                if args.zipped:
+                    elemIt = PubmedArticleIterator(pubmedParser)
+
+                for eidx, elem in enumerate(elemIt):
+
+                    #print(ofilename, eidx)
 
                     try:
                         entry = PubmedEntry.fromXMLNode(elem)
 
-                        if entry == None:
+                        if entry is None:
                             print("Empty entry", filename)
                             continue
 
@@ -567,7 +642,10 @@ if __name__ == '__main__':
                     except:
 
                         eprint("Exception", sentfile)
-                        exit(-1)
+                        
+                        #continue
+                        pmid = PubmedEntry.fromXMLNode(elem)
+                        #exit(-1)
                         try:
 
                             pmid = PubmedEntry.fromXMLNode(elem)
@@ -578,7 +656,7 @@ if __name__ == '__main__':
 
                         continue
 
-            with open(storagePath + titlefile, 'w') as outfile:
+            with open(titlefile, 'w') as outfile:
 
                 for pmid in pmid2title:
                     title = pmid2title[pmid]
@@ -587,7 +665,7 @@ if __name__ == '__main__':
 
                     outfile.write(str(pmid) + "\t" + str(title) + "\n")
 
-            with open(storagePath + authorfile, 'w') as outfile:
+            with open(authorfile, 'w') as outfile:
 
                 for pmid in pmid2authors:
                     authors = pmid2authors[pmid]
@@ -603,7 +681,7 @@ if __name__ == '__main__':
 
                         outfile.write(str(pmid) + "\t" + "\t".join([first, initials, last]) + "\n")
 
-            with open(storagePath + citationfile, 'w') as outfile:
+            with open(citationfile, 'w') as outfile:
 
                 for pmid in pmid2citations:
                     citations = pmid2citations[pmid]
@@ -615,6 +693,7 @@ if __name__ == '__main__':
 
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
+            raise ValueError()
 
     ll = MapReduce(args.threads)
     result = ll.exec( allXMLFiles, senteniceFile, None, 1, None)

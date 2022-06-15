@@ -101,24 +101,38 @@ class ExtProcThreaded(MapReduce):
         super().__init__(procs=procs)
 
 
-    def exec(self, oIterable, chunkSize = 1):
+    def exec(self, oIterable):
 
         self.pool = mp.ThreadPool(self.nprocs)
+
+        os.makedirs("logs", exist_ok=True)
                 
         def call_ext_proc(cmd):
-
-            cmdUUID = uuid.uuid5(uuid.NAMESPACE_DNS, 'miRExplore')
+            cmdUUID = uuid.uuid4()
             cmdUUID = str(cmdUUID)[-8:]
 
             print("Running", cmd, cmdUUID)
-            subprocess.check_call(cmd)
+            sys.stdout.flush()
+
+            with open("logs/" + cmdUUID + ".out", "w") as outfile, open("logs/" + cmdUUID + ".err", "w") as errfile:
+                outfile.write("{}\t{}\n".format(cmdUUID, cmd))
+                outfile.flush
+
+                errfile.write("{}\t{}\n".format(cmdUUID, cmd))
+                errfile.flush
+                subprocess.check_call(cmd, stdout=outfile, stderr=errfile)
+                #os.system("sleep 5")
+                
             print("Finished", cmdUUID)
+            sys.stdout.flush()
+
+            return cmdUUID
 
 
         self.pool.map(call_ext_proc, oIterable)
-
-        self.pool.join()
         self.pool.close()
+        self.pool.join()
+        
         
 
         return True
@@ -160,16 +174,24 @@ def generate_args_for_subfile(n, newinput, positional=[]):
             if l[0] == "process_level":
                 l[1] = "single"
 
+            if l[0] == "exclude":
+                if len(l[1]) == 0:
+                    continue
+
             l[0] = l[0].replace("_", "-")
         
             argparse_formatted_list.append("--{}".format(l[0]))
 
             if type(l[1]) in [list]:
-                l1str = " ".join(l[1])
+                for a in l[1]:
+                    argparse_formatted_list.append(a)
+
             else:
                 l1str = str(l[1])
+                argparse_formatted_list.append(l1str)
 
-            argparse_formatted_list.append(l1str)
+    argparse_formatted_list.append("--no-synfile-map")
+    
     return argparse_formatted_list
 
 """
@@ -253,8 +275,9 @@ class Synfile:
                         idx += 1
 
                     self.location = sFileLocation
-            except:
-                
+            except Exception as e:
+
+                print(e)                
                 self.mSyns = {}
                 self.line2syn = {}
                 self.synid2line = {}
@@ -324,6 +347,7 @@ if __name__ == '__main__':
     parser.add_argument('-np', '--threads', type=int, required=False, default=8)
 
     parser.add_argument('-pl', '--process-level', choices=["auto", "single", "threaded", "forked"], required=False, default="auto")
+    parser.add_argument('-sm', '--no-synfile-map',action="store_true", required=False, default=False)
 
 
     # test run: /usr/bin/python3 /mnt/f/dev/git/miRExplore/python/textmining/textmineDocument.py --input textmining/textmineTestSents.sent --synonyms textmining/textmineTestSyns.syn --output -
@@ -335,11 +359,13 @@ if __name__ == '__main__':
 
     #python3 textmineDocument.py --input /mnt/f/dev/data/pmid_jun2020/pmid/pubmed20n0049.sent --synonyms /mnt/f/dev/data/pmid_jun2020/synonyms/hgnc.syn --output - --trustLength 4
     
-    if args.output != "-":
-        assert(os.path.isdir(args.output))
-        synfileMapFile = open(os.path.join(args.output, "synfile.map"), 'w')
-    else:
-        synfileMapFile = sys.stderr
+
+    if not args.no_synfile_map:
+        if args.output != "-":
+            assert(os.path.isdir(args.output))
+            synfileMapFile = open(os.path.join(args.output, "synfile.map"), 'w')
+        else:
+            synfileMapFile = sys.stderr
         
 
     whiteSpaceReplaceChars = args.characters[5:] # leave out blank?   
@@ -356,10 +382,12 @@ if __name__ == '__main__':
         synfileMap[idx] = synFile
         mapSynfile[synFile] = idx
 
-        print(inFile, idx, sep=": ", file=synfileMapFile)
+        if not args.no_synfile_map:
+            print(inFile, idx, sep=": ", file=synfileMapFile)
 
-    if args.output != '-':
-        synfileMapFile.close()
+    if not args.no_synfile_map:
+        if args.output != '-':
+            synfileMapFile.close()
 
 
     def makeUpper(word):
@@ -689,7 +717,7 @@ if __name__ == '__main__':
 
         ll = ExtProcThreaded(args.threads)
         allInputs = [generate_args_for_subfile(args, [x]) for x in args.input]      
-        ll.exec(allInputs, 1)
+        ll.exec(allInputs)
 
     elif processLevel == "forked":
         print("Forked Processing")
