@@ -313,7 +313,12 @@ class Synfile:
         return self.mSyns.get(self.line2syn.get(iSynID, None), None)
 
 
+class StdOut:
+    def __enter__(self):
+        return sys.stdout
 
+    def __exit__(self, typ, val, trace):
+        pass
 
 
 """
@@ -342,6 +347,10 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--characters', type=str, required=False, default=' ,.;:-()[]{}=!"§$%&/=?+*\'#-')
     parser.add_argument('-tl', '--trustLength', type=int, required=False, default=4)
     parser.add_argument('-nocells', '--nocells',action="store_true", required=False, default=False)
+
+    parser.add_argument('-w', '--test-is-word',action="store_false", required=False, default=True)
+
+
     parser.add_argument('-generules', '--generules',action="store_true", required=False, default=False)
     parser.add_argument('-prunelevel', '--prunelevel', type=str, required=False, default="")
     parser.add_argument('-np', '--threads', type=int, required=False, default=8)
@@ -567,13 +576,13 @@ if __name__ == '__main__':
                 for (start_index, end_index) in foundSyns[file_idx][syn_idx]:    
                     sres = foundSyns[file_idx][syn_idx][(start_index, end_index)]    
                     sres = sorted(sres, key=lambda x: x[0], reverse=True)[0]
-                    (score, text_word, matchWord, synWord, original_value, sentItIdx) = sres
+                    (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix) = sres
 
                     # PMC2663906.3.264	0:33862	LRP	61	3	LRP	true	(	−
                     outline = "{sentid}\t{listid}:{synid}\t{matched}\t{start}\t{length}\t{syn}\t{exact}\t{prefix}\t{suffix}\t{sentit}".format(
                         sentid=sentID, listid=file_idx, synid=syn_idx,
                         matched=text_word, start=start_index, length=end_index-start_index+1,
-                        syn=synWord, exact=str(text_word==synWord).lower(), prefix="", suffix="", sentit=sentItIdx)
+                        syn=synWord, exact=str(text_word==synWord).lower(), prefix=prefix, suffix=suffix, sentit=sentItIdx)
 
                     print(outline, file=fout)
 
@@ -586,7 +595,10 @@ if __name__ == '__main__':
             outfile = os.path.join(args.output, os.path.splitext(os.path.basename(filename))[0] + ".index")
             print(filename, outfile)
 
-            with io.open(filename, 'r') as infile, (io.open(outfile, 'w') if args.output != "-" else sys.stdout) as fout:
+            stdout_copy= StdOut()
+
+
+            with io.open(filename, 'r') as infile, (io.open(outfile, 'w') if args.output != "-" else stdout_copy) as fout:
 
                 for line in infile:
 
@@ -634,18 +646,27 @@ if __name__ == '__main__':
                                     if not text_word == synWord:
                                         continue
 
+                                accept = True
+
+                                if args.test_is_word:
+
+                                    if test_idx_suffix < len(sent):
+                                        testChar = sent[test_idx_suffix]
+                                        accept =  testChar in args.characters
+                                    else:
+                                        accept = True
+
+                                    if test_idx_prefix >= 0:
+                                        testChar = sent[test_idx_prefix]
+                                        accept = accept and testChar in args.characters
+                                    else:
+                                        accept = accept and True
+
+                                prefix = ""
+                                suffix = ""
+
                                 if test_idx_suffix < len(sent):
-                                    testChar = sent[test_idx_suffix]
-                                    accept =  testChar in args.characters
-                                else:
-                                    accept = True
-
-                                if test_idx_prefix >= 0:
-                                    testChar = sent[test_idx_prefix]
-                                    accept = accept and testChar in args.characters
-                                else:
-                                    accept = accept and True
-
+                                    suffix = sent[test_idx_suffix: sent.index(" ", test_idx_suffix)]
 
                                 addres = (text_word, matchWord, synWord, original_value, sentItIdx)
                                 #print(accept, file_idx, syn_idx, (start_index, end_index), addres)
@@ -658,7 +679,7 @@ if __name__ == '__main__':
                                     if matchWord == synWord:
                                         score += 1
 
-                                    addres = (score, text_word, matchWord, synWord, original_value, sentItIdx)
+                                    addres = (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix)
                                     foundSyns[file_idx][syn_idx][(orig_start_index, orig_end_index)].add( addres )
 
 

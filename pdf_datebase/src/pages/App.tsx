@@ -17,8 +17,8 @@ import MainPage from './MainPage';
 import NotFoundPage from './NotFoundPage';
 
 
-var injectTapEventPlugin = require("react-tap-event-plugin");
-injectTapEventPlugin();
+//var injectTapEventPlugin = require("react-tap-event-plugin");
+//injectTapEventPlugin();
 configureAnchors({offset: -60});
 
 //var routerHistory = createBrowserHistory();
