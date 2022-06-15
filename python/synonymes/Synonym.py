@@ -42,6 +42,9 @@ class Synonym:
         else:
             self.syns = []
 
+    def unfindableID(self):
+        self.id = "__{}__".format(self.id)
+
     def get(self, synIdx):
 
         if synIdx >= 0 and synIdx < len(self.syns):
@@ -58,6 +61,9 @@ class Synonym:
 
 
     def removeCommonSynonymes(self, commonSyns):
+
+        if self.id in commonSyns:
+            self.unfindableID()
 
         syn2rem = set()
         for x in self:
@@ -167,6 +173,9 @@ class Synonym:
         for excludeName in dictOfSyns:
 
             listToExclude = dictOfSyns[excludeName]
+
+            if self.id in listToExclude:
+                self.unfindableID()
 
             syns2remove = set()
             for syn in self.syns:

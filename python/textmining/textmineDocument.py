@@ -348,6 +348,7 @@ if __name__ == '__main__':
     parser.add_argument('-tl', '--trustLength', type=int, required=False, default=4)
     parser.add_argument('-nocells', '--nocells',action="store_true", required=False, default=False)
 
+    parser.add_argument('-se', '--submatch-exclude',nargs='+', type=argparse.FileType("r"), default=[])
     parser.add_argument('-w', '--test-is-word',action="store_false", required=False, default=True)
 
 
@@ -426,6 +427,7 @@ if __name__ == '__main__':
         return newSyn
 
     A = ahocorasick.Automaton()
+    excludeWordAutomaton = ahocorasick.Automaton()
 
     def addSynwordToAutomaton(A, synWord, data):
 
@@ -438,8 +440,16 @@ if __name__ == '__main__':
             A.add_word( synWord , alreadyAdded )
 
     excludeWords = set()
-    for exfile in args.exclude:
+    upperExcludeWords = set()
 
+    for exfile in args.submatch_exclude:
+
+        for line in exfile:
+            line = line.strip()
+            excludeWordAutomaton.add_word(line.upper(), line)
+
+
+    for exfile in args.exclude:
         with open(exfile, 'r') as fin:
 
             for line in fin:
@@ -484,6 +494,7 @@ if __name__ == '__main__':
 
 
     A.make_automaton()
+    excludeWordAutomaton.make_automaton()
 
     allowedWordChars = set(string.ascii_letters).union({str(x) for x in range(0,10)}).union({x for x in args.characters})
 
@@ -568,15 +579,23 @@ if __name__ == '__main__':
 
 
 
-    def print_results(sentID, foundSyns, fout):
+    def print_results(sentID, foundSyns, foundExcludes, fout):
         for file_idx in foundSyns:
 
             for syn_idx in foundSyns[file_idx]:
 
                 for (start_index, end_index) in foundSyns[file_idx][syn_idx]:    
                     sres = foundSyns[file_idx][syn_idx][(start_index, end_index)]    
-                    sres = sorted(sres, key=lambda x: x[0], reverse=True)[0]
+                    sres = sorted(sres, key=lambda x: x[5], reverse=False)[0]
                     (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix) = sres
+
+                    shouldBeExcluded = False
+
+                    if not foundExcludes is None:
+                        shouldBeExcluded = len(foundExcludes[file_idx][syn_idx][start_index]) > 0
+
+                    if len(excludeWordAutomaton) > 0 and shouldBeExcluded:
+                        continue
 
                     # PMC2663906.3.264	0:33862	LRP	61	3	LRP	true	(	−
                     outline = "{sentid}\t{listid}:{synid}\t{matched}\t{start}\t{length}\t{syn}\t{exact}\t{prefix}\t{suffix}\t{sentit}".format(
@@ -619,8 +638,17 @@ if __name__ == '__main__':
 
                     foundSyns = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
 
+                    foundExcludes = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+
                     for sentItIdx, sentWIdx in enumerate(allTestSentences):
                         sent, sent2idx = sentWIdx
+
+                        if len(excludeWordAutomaton) > 0:
+                            for end_index, matchWord in excludeWordAutomaton.iter(sent):
+                                start_index = end_index - len(matchWord) + 1
+                                orig_start_index = sent2idx[start_index]
+                                orig_end_index = sent2idx[end_index]
+                                foundExcludes[file_idx][syn_idx][orig_start_index].add( (matchWord, ) )
 
                         for end_index, hitKWs in A.iter(sent):
                             
@@ -665,12 +693,14 @@ if __name__ == '__main__':
                                 prefix = ""
                                 suffix = ""
 
-                                if test_idx_suffix < len(sent):
-                                    suffix = sent[test_idx_suffix: sent.index(" ", test_idx_suffix)]
+
 
                                 addres = (text_word, matchWord, synWord, original_value, sentItIdx)
                                 #print(accept, file_idx, syn_idx, (start_index, end_index), addres)
                                 if accept:
+
+                                    if test_idx_suffix < len(sent):
+                                        suffix = sent[test_idx_suffix: sent.find(" ", test_idx_suffix)]
 
                                     score = 0
 
@@ -684,7 +714,7 @@ if __name__ == '__main__':
 
 
 
-                    print_results(sentID, foundSyns, fout)
+                    print_results(sentID, foundSyns, foundExcludes, fout)
 
 
 
