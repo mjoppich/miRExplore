@@ -8,6 +8,8 @@ from pymongo import MongoClient
 from pprint import pprint
 import os
 
+from itertools import chain
+
 class PMID2XDBMongo:
 
 
@@ -31,10 +33,10 @@ class PMID2XDBMongo:
         self.all_term_names = None
 
         if assocObo != None:
-            self.all_term_names = []
+            self.all_term_names = defaultdict(set)
             for termid in assocObo.dTerms:
                 oterm = assocObo.dTerms[termid]
-                self.all_term_names.append((oterm.name, oterm.id))
+                self.all_term_names[oterm.name].add( (oterm.name, oterm.id) )
 
 
     def has_database(self):
@@ -52,8 +54,7 @@ class PMID2XDBMongo:
 
         if self.all_term_names != None and obase.all_term_names != None:
             for x in obase.all_term_names:
-                if not x in self.all_term_names:
-                    self.all_term_names.append(x)
+                self.all_term_names[x].union(obase.all_term_names[x])
 
     def insert_into_database(self, data):
         self.tables[0].insert_one(data)
@@ -81,8 +82,19 @@ class PMID2XDBMongo:
             return default
         return res
 
-    def getTerms(self):
-        return self.all_term_names
+    def getTerms(self, searchList=None):
+
+        if searchList == None:
+            return list(chain.from_iterable(self.all_term_names.values()))
+
+        returnList = []
+        for x in searchList:
+            if x in self.all_term_names:
+                for y in self.all_term_names[x]:
+                    returnList.append(y)
+
+        return returnList
+
 
     @classmethod
     def loadFromFile(cls, filepath, assocObo, databaseName=None, reqDocIDs=None, dbPrefix=None):

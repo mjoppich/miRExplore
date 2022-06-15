@@ -229,6 +229,7 @@ def check_context():
     global goObo
     global cellObo
     global ncitObo
+    global fmaObo
 
 
     interactReq = request.get_json(force=True, silent=True)
@@ -241,6 +242,7 @@ def check_context():
     goes = interactReq.get('go', None)
     cells = interactReq.get('cells', None)
     ncits = interactReq.get('ncits', None)
+    modelanats = interactReq.get('modelanats', None)
 
     def getAllowedTermIDs(termIDs, obo):
 
@@ -270,6 +272,9 @@ def check_context():
 
     if ncits != None:
         allowedIDs['ncits'] = getAllowedTermIDs(ncits, ncitObo)
+
+    if modelanats != None:
+        allowedIDs['modelanats'] = getAllowedTermIDs(modelanats, fmaObo)
 
 
     if organisms != None:
@@ -314,10 +319,17 @@ def findInteractions():
     goes = interactReq.get('go', None)
     cells = interactReq.get('cells', None)
     ncits = interactReq.get('ncits', None)
+    modelanats = interactReq.get('modelanats', None)
 
     loadSentences = interactReq.get('sentences', "true").upper() == "TRUE"
 
-    retObj = returnInteractions(gene, mirna, lncrna, organisms=organisms, diseaseRestrictions=diseases, goRestrictions=goes, cellRestrictions=cells, ncitRestrictions=ncits, loadSentences=loadSentences)
+    retObj = returnInteractions(gene, mirna, lncrna, organisms=organisms,
+                                                     diseaseRestrictions=diseases,
+                                                     goRestrictions=goes,
+                                                     cellRestrictions=cells,
+                                                     ncitRestrictions=ncits,
+                                                     modelanatomyRestrictions=modelanats,
+                                                     loadSentences=loadSentences)
 
     return app.make_response((jsonify(retObj), 200, None))
 
@@ -328,7 +340,7 @@ def getStatus():
 
 
 def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None,
-                       diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None, ncitRestrictions=None,
+                       diseaseRestrictions=None, goRestrictions=None, cellRestrictions=None, ncitRestrictions=None,modelanatomyRestrictions=None,
                        loadSentences=True):
 
     global mirFeedback
@@ -338,6 +350,7 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None,
     global goObo
     global cellObo
     global ncitObo
+    global fmaObo
     global pmid2go
     global pmid2disease
     global pmid2fma
@@ -411,7 +424,6 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None,
     if pmid2disease:
         addInfo['disease'] = makeAddInfo(pmid2disease)
 
-
     if pmid2go:
         addInfo['go'] = makeAddInfo(pmid2go)
 
@@ -421,6 +433,8 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None,
     if pmid2ncit:
         addInfo['ncits'] = makeAddInfo(pmid2ncit)
 
+    if pmid2ncit:
+        addInfo['modelanats'] = makeAddInfo(pmid2fma)
 
 
     def getAllowedTermIDs(restrictions, obo):
@@ -457,6 +471,9 @@ def returnInteractions(genes=None, mirnas=None, lncrnas=None, organisms=None,
 
     if ncitRestrictions != None:
         allowedIDs['ncits'] = getAllowedTermIDs(ncitRestrictions, ncitObo)
+
+    if modelanatomyRestrictions != None:
+        allowedIDs['modelanats'] = getAllowedTermIDs(modelanatomyRestrictions, fmaObo)
 
 
 
@@ -666,7 +683,7 @@ def getGenes():
 
 
 @app.route('/autocomplete', methods=['GET', 'POST'])
-def findID():
+def gene_mirna_autocomplete():
 
     global relDBs
     global testRels
@@ -704,11 +721,72 @@ def findID():
     return app.make_response((jsonify( jsonResult ), 200, None))
 
 
-@app.route('/disease_ac', methods=['GET', 'POST'])
-def disease_autocomplete():
+@app.route('/autocomplete_detail', methods=['GET', 'POST'])
+def gene_mirna_autocomplete_detail():
 
-    global pmid2disease
+    global relDBs
+    global testRels
 
+    jsonResult = set()
+
+    searchWords = request.get_json(force=True, silent=True)
+    searchWords = searchWords['search']
+
+    if searchWords == None or len(searchWords) == 0:
+        return app.make_response((jsonify( [] ), 200, None))
+
+
+    jsonResultByType = defaultdict(set)
+
+    for sword in searchWords:
+        for relDB in relDBs:
+
+            ltype = relDB.ltype
+            rtype = relDB.rtype
+
+            if relDB.has_entity(ltype, sword):
+                jsonResultByType[ltype].add(sword)
+            
+            elif relDB.has_entity(rtype, sword):
+                jsonResultByType[rtype].add(sword)
+
+    jsonResult = []
+    for rtype in jsonResultByType:
+
+        jsonResult += list(
+            [{'name': interact, 'group': rtype} for interact in jsonResultByType[rtype]]
+        )
+
+    return app.make_response((jsonify( jsonResult ), 200, None))
+
+
+def makeContextDetails(searchWords, database, group):
+
+    jsonResult = list()
+
+    for (termName, termID) in database.getTerms(searchWords):
+
+        jsonResult.append(
+            {
+                'name': termName,
+                'termid': termID,
+                'group': group
+            }
+        )
+
+    return jsonResult
+
+
+
+
+
+@app.route('/autocomplete_context/<path:contextstr>', methods=['GET', 'POST'])
+def autocomplete_context(contextstr):
+
+    global context2db
+
+    pmid2db = context2db[contextstr]
+    
     searchWords = request.get_json(force=True, silent=True)
     searchWord = searchWords['search']
 
@@ -719,40 +797,7 @@ def disease_autocomplete():
 
     jsonResult = list()
 
-    for (termName, termID) in pmid2disease.getTerms():
-
-        if reMatch.match(termName):
-            jsonResult.append(
-                {
-                    'name': termName,
-                    'termid': termID,
-                    'group': 'disease'
-                }
-            )
-
-        if len(jsonResult) > 100:
-            break
-
-    return app.make_response((jsonify(jsonResult), 200, None))
-
-
-@app.route('/ncit_ac', methods=['GET', 'POST'])
-def ncit_autocomplete():
-
-    global pmid2ncit
-
-
-    searchWords = request.get_json(force=True, silent=True)
-    searchWord = searchWords['search']
-
-    if searchWord == None or len(searchWord) < 2:
-        return app.make_response((jsonify([]), 200, None))
-
-    reMatch = regex.compile(searchWord + '{e<=3}')
-
-    jsonResult = list()
-
-    for (termName, termID) in pmid2ncit.getTerms():
+    for (termName, termID) in pmid2db.getTerms():
 
         if reMatch.match(termName):
             jsonResult.append(
@@ -768,68 +813,25 @@ def ncit_autocomplete():
 
     return app.make_response((jsonify(jsonResult), 200, None))
 
-@app.route('/go_ac', methods=['GET', 'POST'])
-def go_autocomplete():
+@app.route('/autocomplete_context_detail/<path:contextstr>', methods=['GET', 'POST'])
+def autocomplete_context_detail(contextstr):
 
-    global pmid2go
+    global context2db
 
-
+    pmid2db = context2db[contextstr]
+    
     searchWords = request.get_json(force=True, silent=True)
-    searchWord = searchWords['search']
+    searchWords = searchWords['search']
 
-    if searchWord == None or len(searchWord) < 2:
+    if searchWords == None or len(searchWords) == 0:
         return app.make_response((jsonify([]), 200, None))
 
-    reMatch = regex.compile(searchWord + '{e<=3}')
-
-    jsonResult = list()
-
-    for (termName, termID) in pmid2go.getTerms():
-
-        if reMatch.match(termName):
-            jsonResult.append(
-                {
-                    'name': termName,
-                    'termid': termID,
-                    'group': 'go'
-                }
-            )
-
-        if len(jsonResult) > 100:
-            break
+    jsonResult = makeContextDetails(searchWords, pmid2db, contextstr)
 
     return app.make_response((jsonify(jsonResult), 200, None))
 
-@app.route('/cells_ac', methods=['GET', 'POST'])
-def cells_autocomplete():
 
-    global pmid2cell
 
-    searchWords = request.get_json(force=True, silent=True)
-    searchWord = searchWords['search']
-
-    if searchWord == None or len(searchWord) < 2:
-        return app.make_response((jsonify([]), 200, None))
-
-    reMatch = regex.compile(searchWord + '{e<=3}')
-
-    jsonResult = list()
-
-    for (termName, termID) in pmid2cell.getTerms():
-
-        if reMatch.match(termName):
-            jsonResult.append(
-                {
-                    'name': termName,
-                    'termid': termID,
-                    'group': 'cells'
-                }
-            )
-
-        if len(jsonResult) > 100:
-            break
-
-    return app.make_response((jsonify(jsonResult), 200, None))
 
 @app.route("/relation_feedback", methods=["GET", "POST"])
 def rel_feedback():
@@ -883,12 +885,10 @@ mirelPMID = None
 sentDB=None
 featureViewer = None
 symbol2ensemblDB = None
-
 mouseGeneNeighbourDB = None
 humanGeneNeighbourDB = None
-
 geneNeighbourHoods = {}
-
+context2db = None
 
 def start_app_from_args(args):
 
@@ -910,6 +910,9 @@ def start_app_from_args(args):
     global symbol2ensemblDB
     global pmid2ncit
     global ncitObo
+    global fmaObo
+
+    global context2db
 
     global humanGeneNeighbourDB
     global mouseGeneNeighbourDB
@@ -1075,6 +1078,13 @@ def start_app_from_args(args):
         pmid2ncit.add_database(pmc2ncit)
         print(datetime.datetime.now(), "Finished Merging Context DBs")
 
+    context2db = {
+        "disease": pmid2disease,
+        "go": pmid2go,
+        "cells": pmid2cell,
+        "modelanats": pmid2fma,
+        "ncits": pmid2ncit
+    }
 
 def getCLParser():
     parser = argparse.ArgumentParser(description='Start miRExplore Data Server', add_help=False)

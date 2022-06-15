@@ -216,6 +216,23 @@ class MiGenRelDBMongo(DataBaseDescriptor):
         return set([self.ltype, self.rtype])
 
 
+    def has_entity(self, etype, sword):
+
+        filterQuery1 = {"ltype": etype, "lid": sword}
+        filterQuery2 = {"rtype": etype, "rid": sword}
+
+        filterQueries = [filterQuery1, filterQuery2]
+
+        for table in self.tables:
+
+            for filterQuery in filterQueries:
+                tableRes = table.find_one(filterQuery, {'_id': False})
+                if not tableRes is None:
+                    return True
+
+        return False
+
+
     def find_relations(self, ltypes, rtypes):
 
         ltypeGiven = ltypes != None and len(ltypes) > 0
@@ -611,11 +628,11 @@ class MiGenRelDBMongo(DataBaseDescriptor):
             print("Seen Harm. miRNAs", len(seenHarmMirnas))
 
 
-        for entityType in type2prefix2elem:
-            for prefix in type2prefix2elem[entityType]:
-                dbjson = {"etype": entityType, "prefix": prefix, "entities": list(type2prefix2elem[entityType][prefix])}
+            for entityType in type2prefix2elem:
+                for prefix in type2prefix2elem[entityType]:
+                    dbjson = {"etype": entityType, "prefix": prefix, "entities": list(type2prefix2elem[entityType][prefix])}
 
-                ret.insert_into_entity_database(dbjson)
+                    ret.insert_into_entity_database(dbjson)
 
         if getDocs:
             return ret, ret.all_documnets()
