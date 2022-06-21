@@ -545,7 +545,7 @@ def analyseFile(splitFileIDs, env):
         # only load sentences if there's a hit ...
         sentDB = None
 
-        sys.stderr.write("Found something in: " + str(splitFileID) + "\n")
+        print("Found something in: " + str(splitFileID), file=sys.stderr, flush=True)
 
         for docID in ent1Hits:
 
@@ -568,10 +568,32 @@ def analyseFile(splitFileIDs, env):
                 #    [print(x.synonyme) for x in hgncSynHits]
                 #    [print(x.synonyme) for x in mirnaSynHits]
 
+                ent1HitsPerSentence = Counter()
+                ent2HitsPerSentence = Counter()
+
+                for x in ent1SynHits:
+                    ent1HitsPerSentence[x.documentID] += 1
+                for x in ent2SynHits:
+                    ent2HitsPerSentence[x.documentID] += 1
+
+                removeSentences = set()
+                for x in ent1HitsPerSentence:
+                    if ent1HitsPerSentence[x] > args.max_finds_per_sentence:
+                        removeSentences.add(x)
+                for x in ent2HitsPerSentence:
+                    if ent2HitsPerSentence[x] > args.max_finds_per_sentence:
+                        removeSentences.add(x)
+
+                if len(removeSentences) > 0:
+                    for x in removeSentences:
+                        print("Removing sentence", x, "with entity counts:", ent1HitsPerSentence[x], ent2HitsPerSentence[x])
+
+                        ent1SynHits = [x for x in ent1SynHits if not x.documentID in removeSentences]
+                        ent2SynHits = [x for x in ent2SynHits if not x.documentID in removeSentences]
+
                 foundCoocs = findCooccurrences(str(docID), ent1SynHits, ent2SynHits, sentDB, relHits)
 
                 for relEntEnt in foundCoocs:
-
                     if relEntEnt.accepted():
                         print(str(relEntEnt), flush=True)
                     
@@ -593,16 +615,18 @@ def analyseFile(splitFileIDs, env):
 
                 fileCoocs += foundCoocs
 
-    sys.stderr.write("Found {cnt} elems in files {ids}\n".format(cnt=str(len(fileCoocs)), ids=str(splitFileIDs)))
+    
+    print("Found {cnt} elems in files {ids}\n".format(cnt=str(len(fileCoocs)), ids=str(splitFileIDs)), file=sys.stderr, flush=True)
+
 
     #printed = printStuff(None, fileCoocs, None)
 
     thisProcID = str(os.getpid())
-    sys.stderr.write("{procID}: Found {cnt} (printed: {printed}) elems in files {ids}\n".format(
+    print("{procID}: Found {cnt} (printed: {printed}) elems in files {ids}".format(
         cnt=str(len(fileCoocs)),
         ids=str(splitFileIDs),
         printed=len(fileCoocs),
-        procID=thisProcID))
+        procID=thisProcID), file=sys.stderr, flush=True)
 
     return None
 
@@ -614,6 +638,8 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sentdir', type=str, help='where are the sentences?', required=True)
     parser.add_argument('-r', '--resultdir', type=str, help='where are all the index-files?', required=True)
     parser.add_argument('-d', '--datadir', type=str, help='where is te miRExplore bsae?', required=True)
+
+    parser.add_argument('-sf', '--single-file', type=argparse.FileType("r"), help='single file processing mode', required=False, default=None)
 
     parser.add_argument('-f1', '--folder1', type=str, help='entity 1: hgnc, mirna', default="hgnc", required=False)
     parser.add_argument('-f2', '--folder2', type=str, help='entity 2: mgi, mirna', default="mirna", required=False)
@@ -634,6 +660,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--nlp', type=str, required=False, default='/mnt/f/spacy/en_core_sci_lg-0.2.4/en_core_sci_lg/en_core_sci_lg-0.2.4/')
     parser.add_argument('--nlpent', type=str, required=False, default="/mnt/f/spacy/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
+
+    parser.add_argument("--max-finds-per-sentence", type=int, default=30, help="maximal number of entities found per sentence")
+
+
 
     args = parser.parse_args()
 
@@ -685,16 +715,20 @@ if __name__ == '__main__':
 
     idTuple2Pubmed = defaultdict(set)
 
-    allfiles = glob.glob(resultBase + "/"+args.folder1+"/*.index")
+    if args.single_file != None:
+        allfiles = [args.single_file.name]
+    else:
+        allfiles = glob.glob(resultBase + "/"+args.folder1+"/*.index")
+
     allfileIDs = [os.path.basename(x).replace(".index", "") for x in allfiles]
     allfileIDs = sorted(allfileIDs, reverse=True)
     print("Going to process {} files!".format(len(allfileIDs)), file=sys.stderr)
 
     if __debug__:
         args.threads = 1
-        sys.stderr.write("Running on threads:" + str(args.threads) + "\n")
+        print("Running on threads:" + str(args.threads), file=sys.stderr, flush=True)
 
-    sys.stderr.write("Debug Mode? " + str(__debug__) + " and threads " + str(args.threads) + "\n")
+    print("Debug Mode? " + str(__debug__) + " and threads " + str(args.threads), file=sys.stderr, flush=True)
 
 
     def printStuff(old, fileCoocs, env):

@@ -2413,7 +2413,9 @@ class MirGeneRelCheck:
         return True, None
 
     def _get_sdp_path(self, doc, subj, obj):
+        #print(doc)
         lca_matrix = doc.get_lca_matrix()
+        #print("done")
         lca = lca_matrix[subj, obj]
 
         #    for x in [(t.idx, t.text, t.dep_, t.pos_, t.head.text) for t in doc]:
