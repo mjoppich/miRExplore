@@ -35,7 +35,7 @@ function foldOntologyData(indata:any, datakey:any, linkPrefix:any)
     //console.log(relInfo);
     var relKeys = Object.keys(data);
 
-    var maxCount = 30;
+    var maxCount = 20;
     var iterateCount = Math.min(relKeys.length, maxCount);
 
 
