@@ -7,4 +7,4 @@ PMIDSENTS=/mnt/w/PubMed/
 
 sudo service mongodb start
 
-python3 $CURDIR/mirexplore_server_fast.py --textmine $BASE --obodir $BASE/obodir/ --sentdir $PMIDSENTS --feedback $BASE/obodir/feedback --port 65500
+python3 $CURDIR/mirexplore_server_fast.py --textmine $BASE --obodir $BASE/obodir/ --sentdir $PMIDSENTS --feedback $BASE/obodir/feedback --port 65500 --sentdir-pmc /mnt/w/PubMedCentral/ --load-pmc

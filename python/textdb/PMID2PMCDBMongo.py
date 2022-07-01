@@ -24,9 +24,6 @@ class PMID2PMCDBMongo:
 
         if not table is None:
             self.tables.append(table)
-        
-        self.pmid2pmc = defaultdict(set)
-        self.pmc2pmid = defaultdict(set)
 
     def has_database(self):
         return self.databaseName in self.db.list_collection_names()
@@ -36,7 +33,7 @@ class PMID2PMCDBMongo:
 
     def add_database(self, obase):
 
-        assert(isinstance(obase, PMID2XDBMongo))
+        assert(isinstance(obase, PMID2PMCDBMongo))
 
         for x in obase.tables:
             self.tables.append(x)
@@ -44,7 +41,6 @@ class PMID2PMCDBMongo:
         for x in obase.all_term_names:
             if not x in self.all_term_names:
                 self.all_term_names.append(x)
-        #self.all_term_names += obase.all_term_names
 
     def insert_into_database(self, data):
         self.tables[0].insert_one(data)
@@ -55,7 +51,7 @@ class PMID2PMCDBMongo:
         # TODO: search string and number here!
         for table in self.tables:
             for key in ["pmid", "pmc"]:
-                res=table.find_one({key: docid})
+                res=table.find_one({key: str(docid)})
                 if len(res) > 0:
                     return True
         
@@ -67,42 +63,54 @@ class PMID2PMCDBMongo:
         res = []
 
         for table in self.tables:
-            res+=table.find({"docid": docid})
+            res+=table.find({"docid": str(docid)})
 
         if len(res) == 0:
             return default
+
         return res
 
+    def getID(self, docid, idtype="pmid", default=None):
 
-    def hasID(self, sid):
-
-        if sid in self.pmid2pmc:
-            return True
-
-        if str(sid) in self.pmid2pmc:
-            return True
-
-        return False
-
-    def getID(self, sid, default=None):
-
-        if sid in self.pmid2pmc:
-            return self.pmid2pmc[sid]
-
-        if str(sid) in self.pmid2pmc:
-            return self.pmid2pmc[str(sid)]
+        returnIDs = set()
+        # TODO: search string and number here!
+        for table in self.tables:
+            for key in ["pmid", "pmc"]:
+                res=table.find({key: str(docid)})
+                
+                for x in res:
+                    returnIDs.add(x[idtype])
+                                
+        if len(returnIDs) > 0:
+            return returnIDs
 
         return default
 
 
     def getAllPMIDs(self):
-        return [x for x in self.pmid2pmc]
+        
+        allDocIDs = set()
+
+        for table in self.tables:
+            print("find in table")
+            res = table.find({},{ "_id": 0})
+            print("adding to set")
+            allDocIDs = allDocIDs.union([x["pmid"] for x in res])
+
+        return allDocIDs
 
     def getAllPMCs(self):
-        return [x for x in self.pmc2pmid]
+        allDocIDs = set()
+
+        for table in self.tables:
+            res = table.find({},{ "_id": 0})
+            allDocIDs = allDocIDs.union([x["pmid"] for x in res])
+            
+        return allDocIDs
+
 
     @classmethod
-    def loadFromFile(cls, filepath, PMC2PMID=True):
+    def loadFromFile(cls, filepath, PMC2PMID=True, databaseName=None):
 
         if databaseName is None:
             databaseName = os.path.basename(filepath).split(".")[0]
@@ -115,26 +123,38 @@ class PMID2PMCDBMongo:
             ret.create_database()
 
 
-        with open(filepath, 'r') as fin:
+            with open(filepath, 'r') as fin:
 
-            for line in fin:
+                for line in fin:
 
-                aline = line.strip().split('\t')
+                    aline = line.strip().split('\t')
 
-                assert(len(aline) == 2)
+                    assert(len(aline) == 2)
 
-                if PMC2PMID:
-                    pmid = aline[1]
-                    pmc = aline[0]
-                else:
-                    pmid = aline[0]
-                    pmc = aline[1]
+                    if PMC2PMID:
+                        pmid = aline[1]
+                        pmc = aline[0]
+                    else:
+                        pmid = aline[0]
+                        pmc = aline[1]
 
-                assert(pmc.startswith("PMC"))
+                    assert(pmc.startswith("PMC"))
 
-                info = {"PMID": str(pmid), "PMC": str(pmc)}
+                    info = {"pmid": str(pmid), "pmc": str(pmc)}
 
-                ret.insert_into_database(info)
+                    ret.insert_into_database(info)
 
+            for table in ret.tables:
+                usefulIndices = ["pmid", "pmc"]
+                print("Creating indices")
+                for idx in usefulIndices:
+                    print("Creating index", idx)
+                    table.create_index(idx)
 
         return ret
+
+
+if __name__ == "__main__":
+
+    mDB = PMID2PMCDBMongo.loadFromFile('/mnt/w/miRExplore_pmid_pmc/aggregated_pmc/pmc2pmid', PMC2PMID=True)
+    print(len(mDB.getAllPMIDs()))

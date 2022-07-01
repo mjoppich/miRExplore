@@ -33,7 +33,7 @@ from analysis.miRecordDB import miRecordDB
 from textdb.DIANATarbaseDB import DIANATarbaseDB
 
 from textdb.MirandaRelDB import MirandaRelDB
-from textdb.PMID2PMCDB import PMID2PMCDB
+from textdb.PMID2PMCDBMongo import PMID2PMCDBMongo
 from textdb.PMID2XDBMongo import PMID2XDBMongo
 from textdb.SentenceDBMongo import SentenceDBMongo
 from textdb.feedback_db import feedbackDB
@@ -966,7 +966,7 @@ def start_app_from_args(args):
     excludePMIDs = None
     
     if args.load_pmc:
-        pmid2pmcDB = PMID2PMCDB.loadFromFile(pmcBase + '/pmc2pmid', PMC2PMID=True)
+        pmid2pmcDB = PMID2PMCDBMongo.loadFromFile(pmcBase + '/pmc2pmid', PMC2PMID=True)
         excludePMIDs = pmid2pmcDB.getAllPMIDs()
         print("Got", len(excludePMIDs), "exclude PMIDs")
 
@@ -981,8 +981,11 @@ def start_app_from_args(args):
     testRels = None  # TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
 
     print(datetime.datetime.now(), "Loading mirel PMID")
-    mirelPMIDhsa = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
-    mirelPMIDmmu = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
+    mirelPMIDhsa = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True)
+    mirelPMIDmmu = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True)
+
+    mirelPMIDhsa.setExcludes(excludeIDs=excludePMIDs)
+    mirelPMIDmmu.setExcludes(excludeIDs=excludePMIDs)
 
     print(datetime.datetime.now(), "Loading mirel PMC")
     mirelPMChsa = None
