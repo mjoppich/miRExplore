@@ -1,4 +1,0 @@
-
-> yawp@0.0.1-alpha start /mnt/c/dev/git/miRExplore/frontend
-> npm run build && env-cmd env.uni.prod node src/server-es5.js
-

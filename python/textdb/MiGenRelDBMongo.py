@@ -10,6 +10,7 @@ from synonymes.mirnaID import miRNA
 from textdb.DocOrganismDB import DocOrganismDB
 
 from pymongo import MongoClient
+from bson.son import SON
 from pprint import pprint
 
 import random
@@ -232,9 +233,10 @@ class MiGenRelDBMongo(DataBaseDescriptor):
             for filterQuery in filterQueries:
 
                 if self.excludeIDs != None and len(self.excludeIDs) > 0:
-                    filterQuery["docid"] = {"$nin": self.excludeIDs}
+                    tableRes = table.aggregate([{"$lookup": {"from": "pmc2pmid", "localField": "docid", "foreignField": "pmid", "as": "matching_pmcs"}}, {"$match": {"matching_pmcs": {"$size": 0}}}, {"$match": filterQuery}])
+                else:
+                    tableRes = table.find_one(filterQuery, {'_id': False})
 
-                tableRes = table.find_one(filterQuery, {'_id': False})
                 if not tableRes is None:
                     return True
 
@@ -262,9 +264,15 @@ class MiGenRelDBMongo(DataBaseDescriptor):
         for table in self.tables:
 
             if self.excludeIDs != None and len(self.excludeIDs) > 0:
-                filterQuery["docid"] = {"$nin": self.excludeIDs}
-            
-            tableRes = table.find(filterQuery, {'_id': False}, sort=[("docid", -1)])
+                tableRes = table.aggregate([
+                    {"$lookup": {"from": "pmc2pmid", "localField": "docid", "foreignField": "pmid", "as": "matching_pmcs"}},
+                    {"$match": {"matching_pmcs": {"$size": 0}}},
+                    {"$match": filterQuery},
+                    {"$unset": ["_id"] },
+                    {"$sort" : SON([("docid", -1)])}
+                    ])
+            else:
+                tableRes = table.find(filterQuery, {'_id': False}, sort=[("docid", -1)])
 
             for x in tableRes:
                 x["lpos"] = tuple(x["lpos"])
@@ -283,9 +291,6 @@ class MiGenRelDBMongo(DataBaseDescriptor):
         for table in self.entity_tables:
             
             filterQuery = {"etype": etype, "prefix": prefix}
-
-            if self.excludeIDs != None and len(self.excludeIDs) > 0:
-                filterQuery["docid"] = {"$nin": self.excludeIDs}
 
             tableRes = table.find(filterQuery, {'_id': False})
             for x in tableRes:

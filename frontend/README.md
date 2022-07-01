@@ -1,3 +1,0 @@
-# miRExplore
-
-## Explore your miRNAs

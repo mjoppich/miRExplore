@@ -586,7 +586,7 @@ def analyseFile(splitFileIDs, env):
 
                 if len(removeSentences) > 0:
                     for x in removeSentences:
-                        print("Removing sentence", x, "with entity counts:", ent1HitsPerSentence[x], ent2HitsPerSentence[x])
+                        print("Removing sentence", x, "with entity counts:", ent1HitsPerSentence[x], ent2HitsPerSentence[x], file=sys.stderr)
 
                         ent1SynHits = [x for x in ent1SynHits if not x.documentID in removeSentences]
                         ent2SynHits = [x for x in ent2SynHits if not x.documentID in removeSentences]
