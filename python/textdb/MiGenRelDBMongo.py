@@ -1,6 +1,4 @@
-import copy
-from email.policy import default
-import os, sys
+import os, sys, copy
 
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 

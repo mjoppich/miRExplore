@@ -2,9 +2,14 @@
 
 CURDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-BASE=/mnt/w/miRExplore_pmid_pmc/
-PMIDSENTS=/mnt/w/PubMed/
+BASE=${1:-/mnt/w/miRExplore_pmid_pmc/}
+PMIDSENTS=${2:-/mnt/w/PubMed/}
+PMCSENTS=${3:-/mnt/w/PubMedCentral/}
+
+echo $BASE
+echo $PMIDSENTS
+echo $PMCSENTS
 
 sudo service mongodb start
 
-python3 $CURDIR/mirexplore_server_fast.py --textmine $BASE --obodir $BASE/obodir/ --sentdir $PMIDSENTS --feedback $BASE/obodir/feedback --port 65500 --sentdir-pmc /mnt/w/PubMedCentral/ --load-pmc
+python3 $CURDIR/mirexplore_server_fast.py --textmine $BASE --obodir $BASE/obodir/ --sentdir $PMIDSENTS --feedback $BASE/obodir/feedback --port 65500 --sentdir-pmc $PMCSENTS --load-pmc
