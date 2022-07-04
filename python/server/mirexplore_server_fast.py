@@ -689,8 +689,6 @@ def gene_mirna_autocomplete():
     if searchWord == None or len(searchWord) < 2:
         return app.make_response((jsonify( [] ), 200, None))
 
-    reMatch = regex.compile(searchWord+'{e<=3}')
-
     jsonResultByType = defaultdict(set)
 
     for relDB in relDBs:

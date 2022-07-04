@@ -231,12 +231,19 @@ class MiGenRelDBMongo(DataBaseDescriptor):
             for filterQuery in filterQueries:
 
                 if self.excludeIDs != None and len(self.excludeIDs) > 0:
+                    print([{"$lookup": {"from": "pmc2pmid", "localField": "docid", "foreignField": "pmid", "as": "matching_pmcs"}}, {"$match": {"matching_pmcs": {"$size": 0}}}, {"$match": filterQuery}])
                     tableRes = table.aggregate([{"$lookup": {"from": "pmc2pmid", "localField": "docid", "foreignField": "pmid", "as": "matching_pmcs"}}, {"$match": {"matching_pmcs": {"$size": 0}}}, {"$match": filterQuery}])
+                    print(tableRes)
+                    tableRes = [x for x in tableRes]
+                    print(tableRes)
+                    if len(tableRes) > 0:
+                        return True
+
                 else:
                     tableRes = table.find_one(filterQuery, {'_id': False})
 
-                if not tableRes is None:
-                    return True
+                    if not tableRes is None:
+                        return True
 
         return False
 

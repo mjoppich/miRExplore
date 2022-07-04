@@ -1,6 +1,6 @@
 import * as React from 'react'
 import AppBar from '../components/appbar';
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route } from 'react-router-dom'
 import theme from '../theme';
 import { ThemeProvider } from '@mui/material/styles';
 
@@ -13,7 +13,7 @@ import NotFound from '../pages/not-found';
 export default function App() {
   return (
     <ThemeProvider theme={theme}>
-      <BrowserRouter>
+      <HashRouter>
         <AppBar />
         <Routes>
           <Route path="/" element={<Home />} />
@@ -21,7 +21,7 @@ export default function App() {
           <Route path="/help" element={<HelpPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </ThemeProvider>
   )
 }
