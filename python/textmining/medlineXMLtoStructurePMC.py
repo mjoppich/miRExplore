@@ -9,8 +9,10 @@ from lxml import etree
 from utils.idutils import eprint
 import logging
 import nltk.data
-
+from copy import deepcopy
 from utils.parallel import MapReduce
+import spacy
+import scispacy
 
 logger = logging.getLogger('convertJatsToText')
 
@@ -19,6 +21,7 @@ class PubmedJournal:
     def __init__(self, journal, isoabbrev):
         self.journal = journal
         self.isoabbrev = isoabbrev
+
 
 
 class PubmedEntry:
@@ -49,10 +52,10 @@ class PubmedEntry:
         returns = []
 
         if type(content) == str:
-            returns = tokenizer.tokenize(content)
+            returns = tokenizer(content)#tokenizer.tokenize(content)
         else:
             for x in content:
-                sents = tokenizer.tokenize(x)
+                sents = tokenizer(x)#tokenizer.tokenize(x)
                 returns += sents
 
         #returns = [x + "." for x in returns]
@@ -100,9 +103,10 @@ class PubmedEntry:
             x = x.strip()
             #x = x.strip(',.;')
 
-            if len(x) > 0:
+            if len(x) > args.min_sent_length:
 
-                content = str(articleName) + "." + str(module) + "." + str(iSent) + "\t" + str(x)
+                content = "{}.{}.{}\t{}".format(articleName, module, iSent, x)
+                #content = str(articleName) + "." + str(module) + "." + str(iSent) + "\t" + str(x)
                 outContent.append(content)
                 iSent += 1
 
@@ -318,12 +322,50 @@ class PubmedEntry:
 
             text = "".join([x for x in secText.itertext()])#atext.text
 
+            allXRefs = [x for x in secText.findall('.//xref')]
+
+            for bad in allXRefs:
+                par = bad.getparent()
+
+                if not bad.tail is None:
+
+                    if not bad.getprevious() is None:
+                        cls.add_text_to_node(bad.tail, bad.getprevious())
+                    else:
+                        cls.add_text_to_node(bad.tail, par)
+
+                par.remove(bad)
+
+            allTexts = []
+            for x in [secText] + [x for x in secText]:
+                if x.text != None and len(x.text) > 0:
+                    allTexts.append(x.text)
+                if x.tail != None and len(x.tail) > 0:
+                    tailStr = x.tail
+
+                    if len(allTexts) > 0 and allTexts[-1] != None:
+                        if allTexts[-1][-1] in ("(", "[") and tailStr[0] in (")", "]"):
+                            allTexts[-1] = allTexts[-1][:-1]
+                            tailStr = tailStr[1:]
+                    if len(tailStr) > 0:        
+                        allTexts.append(tailStr)
+
+            textRem = "".join(allTexts)#atext.text
+
             if text != None:
                 text = cls.removeLinebreaks(text)
                 structuredText[secTitle] = text
 
 
         return structuredText
+
+    @classmethod
+    def add_text_to_node(cls, text, node):
+
+        if node.tail is None:
+            node.tail = text
+        else:
+            node.tail += text
 
     @classmethod
     def get_literature(cls, node):
@@ -413,32 +455,33 @@ class PubmedEntry:
         date_month = cls.get_value_from_node(date_published_node, "month", "1")
         date_year = cls.get_value_from_node(date_published_node, "year", "1")
 
-        #print(title)
-
-        abstract = cls.get_abstract(node)
-        text = cls.get_text(node)
-
         authors = cls._find_authors( node )
 
-        publicationTypes = node.find('.').attrib.get("article-type", "unknown")
-        citedLiterature = cls.get_literature(node)
 
+        #print(title)
         pubmed = PubmedEntry(pmc)
         pubmed.pmc = pmid
         pubmed.created = (date_year, date_month, date_day)
         pubmed.journal = (journal_title, journal_abbrev_title)
 
         pubmed.title = cls.removeLinebreaks(title)
-        pubmed.abstract = abstract
-        pubmed.sections = text
-
-        pubmed.authors = authors
         pubmed.doi = journal_doi
-
-        pubmed.pub_types = [publicationTypes]
-        pubmed.cites = citedLiterature
+        pubmed.authors = authors
 
         return pubmed
+
+    def add_text(self, node):
+
+        abstract = PubmedEntry.get_abstract(node)
+        text = PubmedEntry.get_text(node)
+
+        publicationTypes = node.find('.').attrib.get("article-type", "unknown")
+        citedLiterature = PubmedEntry.get_literature(node)
+
+        self.abstract = abstract
+        self.sections = text
+        self.pub_types = [publicationTypes]
+        self.cites = citedLiterature
 
 class PubmedXMLParser:
 
@@ -507,13 +550,20 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--threads', type=int, default=8, required=False)
     parser.add_argument('-z', '--zipped', action="store_true", default=False, required=False)
 
+    parser.add_argument('-s', '--min_sent_length', default=5, type=int, required=False)
     
+    #python3 python/textmining/medlineXMLtoStructurePMC.py --xml-path /mnt/input/public/EuroupePMC/oa/ --base "" --output /mnt/raidtmp/joppich/pubmed_pmc/pmc/europepmc/ --threads 30 --zipped
     args = parser.parse_args()
 
     #nltk.data.path.append("/mnt/d/dev/nltk_data/")
 
-    tokenizer_loc = 'tokenizers/punkt/english.pickle'
-    tokenizer = nltk.data.load(tokenizer_loc)
+    #tokenizer_loc = 'tokenizers/punkt/english.pickle'
+    #tokenizer = nltk.data.load(tokenizer_loc)
+
+    nlp = spacy.load("/mnt/raidtmp/joppich/pubmed_pmc/pmc/miRExplore_PMID_PMC/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4/")
+    #nlp.add_pipe(nlp.create_pipe('sentencizer'))
+
+    tokenizer = lambda sentTxt: [str(sent).strip() for sent in nlp(sentTxt).sents]
 
     #python3 medlineXMLtoStructurePMC.py --xml-path /mnt/raidtmp/joppich/pubmed_pmc/pmc/ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_comm_extracted/PMC000xxxxxx/ --base "" --threads 6
 
@@ -523,9 +573,18 @@ if __name__ == '__main__':
     baseFileName = args.base
 
     if not args.zipped:
-        allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml')
+        if storagePath.upper().endswith(".XML"):
+            suffix = ""
+        else:
+            suffix = '*.xml'
+        allXMLFiles = glob.glob(storagePath+baseFileName+suffix)
     else:
-        allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
+        if storagePath.upper().endswith(".XML.GZ"):
+            suffix = ""
+        else:
+            suffix = '*.xml.gz'
+
+        allXMLFiles = glob.glob(storagePath+baseFileName+suffix)
 
     allXMLFiles = sorted(allXMLFiles)
 
@@ -539,7 +598,7 @@ if __name__ == '__main__':
 #PMC8420001_PMC8429977
 #PMC7810001_PMC7820000
 #PMC7780001_PMC7790000
-    #allXMLFiles = [x for x in allXMLFiles if "PMC7780001_PMC7790000" in x]
+    #allXMLFiles = [x for x in allXMLFiles if "PMC8910001_PMC8920000" in x]
 
 
     print("Found", len(allXMLFiles), "files")
@@ -578,7 +637,7 @@ if __name__ == '__main__':
                 typefile = os.path.join(args.output, os.path.basename(typefile))
                 pmidfile = os.path.join(args.output, os.path.basename(pmidfile))
 
-            print(ofilename, filename, basefile)
+            print(ofilename, filename, basefile, sentfile)
 
             pmid2title = {}
             pmid2authors = defaultdict(set)
@@ -594,17 +653,23 @@ if __name__ == '__main__':
                 if args.zipped:
                     elemIt = PubmedArticleIterator(pubmedParser)
 
-                for eidx, elem in enumerate(elemIt):
+                for eidx, ielem in enumerate(elemIt):
 
                     #print(ofilename, eidx)
 
                     try:
+                        elem = deepcopy(ielem)
                         entry = PubmedEntry.fromXMLNode(elem)
 
                         if entry is None:
                             print("Empty entry", filename)
                             continue
 
+                        #if entry.getID() != "PMC7123062":
+                        #    continue
+                        #entry = PubmedEntry.fromXMLNode(elem)
+
+                        entry.add_text(elem)
                         sents = entry.to_sentences(tokenizer)
 
                         for x in sents:
@@ -644,7 +709,8 @@ if __name__ == '__main__':
                         eprint("Exception", sentfile)
                         
                         #continue
-                        pmid = PubmedEntry.fromXMLNode(elem)
+                        entry = PubmedEntry.fromXMLNode(elem)
+                        entry.add_text(elem)
                         #exit(-1)
                         try:
 
@@ -693,7 +759,6 @@ if __name__ == '__main__':
 
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
-            raise ValueError()
 
     ll = MapReduce(args.threads)
     result = ll.exec( allXMLFiles, senteniceFile, None, 1, None)
