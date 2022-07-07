@@ -1,0 +1,9 @@
+{
+  "verbose": false,
+  "runOnChangeOnly": false,
+  "ignore": ["**/*.test.ts", "**/*.spec.ts", "node_modules", "@types", ".types", "tests", "**/*.js.map"],
+  "watch": ["src/server"],
+  "exec": "tsc -p tsconfig.server.json && node server/",
+  "ext": "ts",
+  "delay": 0.5
+}

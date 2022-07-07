@@ -1,6 +1,4 @@
-import copy
-from email.policy import default
-import os, sys
+import os, sys, copy
 
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
@@ -10,6 +8,7 @@ from synonymes.mirnaID import miRNA
 from textdb.DocOrganismDB import DocOrganismDB
 
 from pymongo import MongoClient
+from bson.son import SON
 from pprint import pprint
 
 import random
@@ -168,6 +167,8 @@ class MiGenRelDBMongo(DataBaseDescriptor):
         if not table is None:
             self.entity_tables.append(table)
 
+        self.excludeIDs = set()
+
     def has_database(self):
         return self.databaseName in self.db.list_collection_names() and self.entityDatabaseName in self.db.list_collection_names()
 
@@ -185,6 +186,8 @@ class MiGenRelDBMongo(DataBaseDescriptor):
 
         for x in obase.entity_tables:
             self.entity_tables.append(x)
+
+        self.excludeIDs = set(self.excludeIDs.union(obase.excludeIDs))
 
     def insert_into_database(self, data):
         self.tables[0].insert_one(data)
@@ -226,12 +229,27 @@ class MiGenRelDBMongo(DataBaseDescriptor):
         for table in self.tables:
 
             for filterQuery in filterQueries:
-                tableRes = table.find_one(filterQuery, {'_id': False})
-                if not tableRes is None:
-                    return True
+
+                if self.excludeIDs != None and len(self.excludeIDs) > 0:
+                    print([{"$lookup": {"from": "pmc2pmid", "localField": "docid", "foreignField": "pmid", "as": "matching_pmcs"}}, {"$match": {"matching_pmcs": {"$size": 0}}}, {"$match": filterQuery}])
+                    tableRes = table.aggregate([{"$lookup": {"from": "pmc2pmid", "localField": "docid", "foreignField": "pmid", "as": "matching_pmcs"}}, {"$match": {"matching_pmcs": {"$size": 0}}}, {"$match": filterQuery}])
+                    print(tableRes)
+                    tableRes = [x for x in tableRes]
+                    print(tableRes)
+                    if len(tableRes) > 0:
+                        return True
+
+                else:
+                    tableRes = table.find_one(filterQuery, {'_id': False})
+
+                    if not tableRes is None:
+                        return True
 
         return False
 
+
+    def setExcludes(self, excludeIDs):
+        self.excludeIDs = set(self.excludeIDs.union(excludeIDs))
 
     def find_relations(self, ltypes, rtypes):
 
@@ -249,7 +267,17 @@ class MiGenRelDBMongo(DataBaseDescriptor):
 
         allRes = []
         for table in self.tables:
-            tableRes = table.find(filterQuery, {'_id': False}, sort=[("docid", -1)])
+
+            if self.excludeIDs != None and len(self.excludeIDs) > 0:
+                tableRes = table.aggregate([
+                    {"$lookup": {"from": "pmc2pmid", "localField": "docid", "foreignField": "pmid", "as": "matching_pmcs"}},
+                    {"$match": {"matching_pmcs": {"$size": 0}}},
+                    {"$match": filterQuery},
+                    {"$unset": ["_id"] },
+                    {"$sort" : SON([("docid", -1)])}
+                    ])
+            else:
+                tableRes = table.find(filterQuery, {'_id': False}, sort=[("docid", -1)])
 
             for x in tableRes:
                 x["lpos"] = tuple(x["lpos"])
@@ -266,7 +294,10 @@ class MiGenRelDBMongo(DataBaseDescriptor):
 
         allEntities = []
         for table in self.entity_tables:
-            tableRes = table.find({"etype": etype, "prefix": prefix}, {'_id': False})
+            
+            filterQuery = {"etype": etype, "prefix": prefix}
+
+            tableRes = table.find(filterQuery, {'_id': False})
             for x in tableRes:
                 allEntities += x["entities"]
 
@@ -351,6 +382,11 @@ class MiGenRelDBMongo(DataBaseDescriptor):
                 #MIR_497	miR-497	MIRNA	INSR	insulin receptor	GENE	26300412	True	True	[('21', '2V1', 'DOWN', '', '26300412.2.8', False, (39, 46), (166, 182), (0, 0), 'spacy', 1, 1, 0, 0, True, False, False, 'MIR_GENE', 'DOWN')]
 
                 for lineIdx, line in enumerate(fin):
+
+                    if line.startswith(("Removing sentence ",)):
+                        continue
+
+                    #print(lineIdx, line.strip())
 
                     if stopAfter != -1:
                         if addedCount >= stopAfter:
@@ -679,5 +715,9 @@ class MiGenRelDBMongo(DataBaseDescriptor):
 
 if __name__ == '__main__':
 
-    pmidBase = "/mnt/w/miRExplore_pmid_pmc/aggregated_pmid/"
-    MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene")
+    from utils.tmutils import normalize_gene_names
+
+    normGeneSymbols = normalize_gene_names(path="/mnt/f/dev/git/miRExplore/python/hgnc_no_withdrawn.syn")
+
+    pmidBase = "/mnt/w/miRExplore_pmid_pmc/aggregated_pmc/"
+    MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", dbPrefix="pmc", normGeneSymbols=normGeneSymbols, switchLR=True)

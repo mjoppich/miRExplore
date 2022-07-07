@@ -47,12 +47,18 @@ class SentenceDBMongo:
 
         res = []
         for table in self.tables:
-            res+=[table.find_one({"sentid": docid})]
+            tres = table.find_one({"sentid": docid})
+            if not tres is None:
+                res.append(tres)
 
         if len(res) == 0:
             return None
         
         res = res[0]
+
+        if res == None:
+            print("Error finding sentence", docid)
+            return None
         
         return (res["sentid"], res["sentence"])
 
@@ -103,12 +109,12 @@ class SentenceDBMongo:
                         info = {"docid": docID, "sentid": sentID, "sentence": sentText}
                         ret.insert_into_database(info)
         
-        for table in ret.tables:
-            usefulIndices = ["docid", "sentid"]
-            print("Creating indices")
-            for idx in usefulIndices:
-                print("Creating index", idx)
-                table.create_index(idx)
+            for table in ret.tables:
+                usefulIndices = ["docid", "sentid"]
+                print("Creating indices")
+                for idx in usefulIndices:
+                    print("Creating index", idx)
+                    table.create_index(idx)
 
         return ret
 
@@ -125,6 +131,8 @@ if __name__ == '__main__':
             relevantDocs.add(line)
 
     sentDB = SentenceDBMongo.loadFromFile(sentenceLocation, dbPrefix="pmid", databaseName="sentences", requiredDocuments=relevantDocs)
+    sentDBPMC = SentenceDBMongo.loadFromFile(sentenceLocation, dbPrefix="pmc", databaseName="sentences", requiredDocuments=relevantDocs)
+    sentDB.add_database(sentDBPMC)
 
     senttxt = sentDB.get_sentence("34879371.1.1")
     print(senttxt)
@@ -132,4 +140,5 @@ if __name__ == '__main__':
     senttxt = sentDB.get_sentence("34879371.2.9")
     print(senttxt)
 
-
+    senttxt = sentDB.get_sentence("PMC8222190.3.240")
+    print(senttxt)

@@ -33,7 +33,7 @@ from analysis.miRecordDB import miRecordDB
 from textdb.DIANATarbaseDB import DIANATarbaseDB
 
 from textdb.MirandaRelDB import MirandaRelDB
-from textdb.PMID2PMCDB import PMID2PMCDB
+from textdb.PMID2PMCDBMongo import PMID2PMCDBMongo
 from textdb.PMID2XDBMongo import PMID2XDBMongo
 from textdb.SentenceDBMongo import SentenceDBMongo
 from textdb.feedback_db import feedbackDB
@@ -43,7 +43,7 @@ from textdb.TestRelLoader import TestRelLoader
 
 from io import StringIO
 
-from flask import Flask, jsonify, request, redirect, url_for, send_from_directory
+from flask import Flask, jsonify, request, redirect, url_for, send_from_directory, Response
 import json
 import pprint
 from collections import defaultdict, Counter
@@ -51,10 +51,9 @@ from collections import defaultdict, Counter
 from flask_cors import CORS
 
 fileurl = str(os.path.dirname(os.path.realpath(__file__))) + "/../"
-dataurl = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'frontend/src/static/'
+weburl = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'frontend_2_0/dist/'
 
-pdfStaticDir = str(os.path.dirname(os.path.realpath(__file__))) + "/../../" + 'pdf_frontend/src/static/'
-app = Flask(__name__, static_folder=dataurl, static_url_path='/static')
+app = Flask(__name__)
 
 # add CORS compatibility
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -75,9 +74,7 @@ allOrgInfos = [{
         "group": "organism",
         "termid": "Mus musculus",
         "syns": ['mouse', 'mmu']
-    }
-
-]
+    }]
 
 
 # For a given file, return whether it's an allowed type or not
@@ -86,29 +83,25 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
 
 
-@app.route('/')
-def root():
-    retFile = 'index.html'
-    return app.send_static_file(retFile)
 
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def get_web(path):  # pragma: no cover
+    if path =="":
+        path = "index.html"
+    return send_from_directory(weburl, path)
 
-@app.route('/pdf/<path:filename>')
-def base_static(filename):
-    return send_from_directory(pdfStaticDir, filename)
 
 @app.route('/test', methods=['GET', 'POST'])
 def test():
-
     return "<html><body>miRExplore Server v0.01</body></html>", 200, None
 
 
 @app.route('/help', methods=['GET', 'POST'])
 def help():
     res = "<html><body><ul>"
-
     for x in [rule.rule for rule in app.url_map.iter_rules() if rule.endpoint !='static']:
         res += "<li>"+str(x)+"</li>"
-
     res +="</body></html>"
 
     return res, 200, None
@@ -696,8 +689,6 @@ def gene_mirna_autocomplete():
     if searchWord == None or len(searchWord) < 2:
         return app.make_response((jsonify( [] ), 200, None))
 
-    reMatch = regex.compile(searchWord+'{e<=3}')
-
     jsonResultByType = defaultdict(set)
 
     for relDB in relDBs:
@@ -966,7 +957,7 @@ def start_app_from_args(args):
     excludePMIDs = None
     
     if args.load_pmc:
-        pmid2pmcDB = PMID2PMCDB.loadFromFile(pmcBase + '/pmc2pmid', PMC2PMID=True)
+        pmid2pmcDB = PMID2PMCDBMongo.loadFromFile(pmcBase + '/pmc2pmid', PMC2PMID=True)
         excludePMIDs = pmid2pmcDB.getAllPMIDs()
         print("Got", len(excludePMIDs), "exclude PMIDs")
 
@@ -981,8 +972,11 @@ def start_app_from_args(args):
     testRels = None  # TestRelLoader.loadFromFile(pmidBase + "/test_rels_4")
 
     print(datetime.datetime.now(), "Loading mirel PMID")
-    mirelPMIDhsa = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
-    mirelPMIDmmu = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True, excludeIDs=excludePMIDs)
+    mirelPMIDhsa = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.hsa.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True)
+    mirelPMIDmmu = MiGenRelDBMongo.loadFromFile(pmidBase + "/mirna_gene.mmu.pmid", ltype="mirna", rtype="gene", dbPrefix="pmid", normGeneSymbols=normGeneSymbols, switchLR=True)
+
+    mirelPMIDhsa.setExcludes(excludeIDs=excludePMIDs)
+    mirelPMIDmmu.setExcludes(excludeIDs=excludePMIDs)
 
     print(datetime.datetime.now(), "Loading mirel PMC")
     mirelPMChsa = None
