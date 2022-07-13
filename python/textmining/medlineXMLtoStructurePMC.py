@@ -615,10 +615,11 @@ if __name__ == '__main__':
 
 
 
-            #print(filename)
+            print(filename)
             storagePath = os.path.dirname(filename) + "/"
-
             basefile = os.path.basename(filename)
+            print(storagePath, basefile)
+
             sentfile = os.path.join(storagePath, basefile.replace(".xml", ".sent"))
             titlefile = os.path.join(storagePath, basefile.replace(".xml", ".title"))
             authorfile = os.path.join(storagePath, basefile.replace(".xml", ".author"))
@@ -626,6 +627,8 @@ if __name__ == '__main__':
             datefile = os.path.join(storagePath, basefile.replace(".xml", ".date"))
             typefile = os.path.join(storagePath, basefile.replace(".xml", ".pubtype"))
             pmidfile = os.path.join(storagePath, basefile.replace(".xml", ".pmid"))
+
+            print(sentfile, titlefile, authorfile, citationfile, datefile, typefile, pmidfile, sep="\n")
 
             if len(args.output) > 0:
 
@@ -760,7 +763,12 @@ if __name__ == '__main__':
                         outfile.write(str(pmid) + "\t" + str(quote) + "\n")
 
 
-    ll = MapReduce(args.threads)
-    result = ll.exec( allXMLFiles, senteniceFile, None, 1, None)
+    if args.threads == 1:
+        for x in allXMLFiles:
+            senteniceFile([x], None)
+
+    else:
+        ll = MapReduce(args.threads)
+        result = ll.exec( allXMLFiles, senteniceFile, None, 1, None)
 
     print("Done")
