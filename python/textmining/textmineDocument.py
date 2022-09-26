@@ -16,7 +16,7 @@ import subprocess
 import uuid
 
 from pathos import multiprocessing as mp
-
+import glob
 import itertools
 import uuid
 
@@ -340,13 +340,18 @@ if __name__ == '__main__':
 #   -np 1 -s .//synonyms/hgnc.syn -i ./pmc/pmc_11.sent -o ./results.pmc.raw//hgnc -nocells -tl 3 -prunelevel none -e excludes/all_excludes.syn
 
     parser = argparse.ArgumentParser(description='Textmine documents')
-    parser.add_argument('-i', '--input', nargs='+', type=str, help='inputfile', required=True)
+    parser.add_argument('-i', '--input', nargs='+', type=str, help='inputfile', required=False)
+    parser.add_argument('-f', '--folder', nargs='+', type=str, help='inputfolder', default=None, required=False)
+
     parser.add_argument('-e', '--exclude', nargs='+', type=str, help='exclude files', required=False, default=[])
     parser.add_argument('-o', '--output', type=str, help='inputfile', required=True)
     parser.add_argument('-s', '--synonyms', nargs='+', type=str, help='syn files', required=True)
     parser.add_argument('-c', '--characters', type=str, required=False, default=' ,.;:-()[]{}=!"§$%&/=?+*\'#-')
     parser.add_argument('-tl', '--trustLength', type=int, required=False, default=4)
     parser.add_argument('-nocells', '--nocells',action="store_true", required=False, default=False)
+
+    parser.add_argument('-nosuffix', '--nosuffix',action="store_true", required=False, default=False)
+    parser.add_argument('-olm', '--only-longest-match',action="store_true", required=False, default=False)
 
     parser.add_argument('-se', '--submatch-exclude',nargs='+', type=argparse.FileType("r"), default=[])
     parser.add_argument('-w', '--test-is-word',action="store_false", required=False, default=True)
@@ -369,6 +374,13 @@ if __name__ == '__main__':
 
     #python3 textmineDocument.py --input /mnt/f/dev/data/pmid_jun2020/pmid/pubmed20n0049.sent --synonyms /mnt/f/dev/data/pmid_jun2020/synonyms/hgnc.syn --output - --trustLength 4
     
+    if args.input is None and args.folder is None:
+        raise ValueError("Either input or folder must be set!")
+
+    if args.folder:
+        args.input = []
+        for y in args.folder:
+            args.input +=  [x for x in glob.glob(y + "/*.sent")]
 
     if not args.no_synfile_map:
         if args.output != "-":
@@ -582,28 +594,67 @@ if __name__ == '__main__':
     def print_results(sentID, foundSyns, foundExcludes, fout):
         for file_idx in foundSyns:
 
-            for syn_idx in foundSyns[file_idx]:
+            if args.only_longest_match:
 
-                for (start_index, end_index) in foundSyns[file_idx][syn_idx]:    
-                    sres = foundSyns[file_idx][syn_idx][(start_index, end_index)]    
-                    sres = sorted(sres, key=lambda x: x[5], reverse=False)[0]
-                    (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix) = sres
+                foundElemsByPos = defaultdict(lambda: defaultdict(set))
 
-                    shouldBeExcluded = False
+                for syn_idx in foundSyns[file_idx]:
+                    for (start_index, end_index) in foundSyns[file_idx][syn_idx]:
 
-                    if not foundExcludes is None:
-                        shouldBeExcluded = len(foundExcludes[file_idx][syn_idx][start_index]) > 0
+                        sres = foundSyns[file_idx][syn_idx][(start_index, end_index)]    
+                        sres = sorted(sres, key=lambda x: x[5], reverse=False)[0]
 
-                    if len(excludeWordAutomaton) > 0 and shouldBeExcluded:
-                        continue
+                        shouldBeExcluded = False
 
-                    # PMC2663906.3.264	0:33862	LRP	61	3	LRP	true	(	−
-                    outline = "{sentid}\t{listid}:{synid}\t{matched}\t{start}\t{length}\t{syn}\t{exact}\t{prefix}\t{suffix}\t{sentit}".format(
-                        sentid=sentID, listid=file_idx, synid=syn_idx,
-                        matched=text_word, start=start_index, length=end_index-start_index+1,
-                        syn=synWord, exact=str(text_word==synWord).lower(), prefix=prefix, suffix=suffix, sentit=sentItIdx)
+                        if not foundExcludes is None:
+                            shouldBeExcluded = len(foundExcludes[file_idx][syn_idx][start_index]) > 0
 
-                    print(outline, file=fout)
+                        if len(excludeWordAutomaton) > 0 and shouldBeExcluded:
+                            continue
+                        
+                        (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix) = sres
+
+                        foundElemsByPos[start_index][start_index + len(text_word)].add(sres)
+
+                for start_index in foundElemsByPos:
+
+                    max_end_index = max(foundElemsByPos[start_index].keys())
+                    
+                    for sres in foundElemsByPos[start_index][max_end_index]:
+                        (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix) = sres
+
+                        outline = "{sentid}\t{listid}:{synid}\t{matched}\t{start}\t{length}\t{syn}\t{exact}\t{prefix}\t{suffix}\t{sentit}".format(
+                            sentid=sentID, listid=file_idx, synid=syn_idx,
+                            matched=text_word, start=start_index, length=len(text_word), #end_index-start_index+1
+                            syn=synWord, exact=str(text_word==synWord).lower(), prefix=prefix, suffix=suffix, sentit=sentItIdx)
+
+                        print(outline, file=fout)
+
+            else:
+
+
+                for syn_idx in foundSyns[file_idx]:
+
+                    for (start_index, end_index) in foundSyns[file_idx][syn_idx]:    
+                        sres = foundSyns[file_idx][syn_idx][(start_index, end_index)]    
+                        sres = sorted(sres, key=lambda x: x[5], reverse=False)[0]
+                        (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix) = sres
+
+                        shouldBeExcluded = False
+
+                        if not foundExcludes is None:
+                            shouldBeExcluded = len(foundExcludes[file_idx][syn_idx][start_index]) > 0
+
+                        if len(excludeWordAutomaton) > 0 and shouldBeExcluded:
+                            continue
+
+                        # PMC2663906.3.264	0:33862	LRP	61	3	LRP	true	(	−
+                        outline = "{sentid}\t{listid}:{synid}\t{matched}\t{start}\t{length}\t{syn}\t{exact}\t{prefix}\t{suffix}\t{sentit}".format(
+                            sentid=sentID, listid=file_idx, synid=syn_idx,
+                            matched=text_word, start=start_index, length=len(text_word), #end_index-start_index+1
+                            syn=synWord, exact=str(text_word==synWord).lower(), prefix=prefix, suffix=suffix, sentit=sentItIdx)
+
+                        print(outline, file=fout)
 
 
 
@@ -702,6 +753,9 @@ if __name__ == '__main__':
                                     if test_idx_suffix < len(sent):
                                         suffix = sent[test_idx_suffix: sent.find(" ", test_idx_suffix)]
 
+                                    if args.nosuffix and len(suffix) > 0:
+                                        continue
+
                                     score = 0
 
                                     if sent == sentText:
@@ -710,6 +764,7 @@ if __name__ == '__main__':
                                         score += 1
 
                                     addres = (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix)
+
                                     foundSyns[file_idx][syn_idx][(orig_start_index, orig_end_index)].add( addres )
 
 

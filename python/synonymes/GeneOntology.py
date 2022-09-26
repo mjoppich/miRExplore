@@ -180,6 +180,8 @@ class GOTerm:
         self.comment=None
         self.children = None
 
+        self.property_values = {}
+
     @classmethod
     def from_synonym(cls, syn):
 
@@ -191,7 +193,6 @@ class GOTerm:
         for x in syn.syns[1:]:
 
             termSyn = GOSynonyme(x, GOSynonymeScope.EXACT)
-
             term.synonym.add(termSyn)
 
         return term
@@ -629,6 +630,9 @@ class GOTerm:
 
                     term.synonym.add(syn)
 
+                else:
+                    term.property_values[aValue[0]] = aValue[1]
+
             else:
 
                 if not key in ['property_value', 'replaced_by', 'created_by', 'creation_date', 'disjoint_from', 'comment', 'consider', 'relationship', 'intersection_of']:
@@ -930,7 +934,7 @@ class GeneOntology:
 
         return self.addterms([other])
 
-    def addterms(self, others):
+    def addterms(self, others, link_children=True):
 
         assert(isinstance(others, (list, set)))
 
@@ -940,7 +944,8 @@ class GeneOntology:
         for x in others:
             self.dTerms[x.id] = x
 
-        self.linkChildren()
+        if link_children:
+            self.linkChildren()
 
 
     def linkChildren(self):

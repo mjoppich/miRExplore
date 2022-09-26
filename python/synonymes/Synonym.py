@@ -29,7 +29,7 @@ class Synonym:
 
         return retSyn
 
-    def __init__(self, id,idIsSyn=True):
+    def __init__(self, id, idIsSyn=True):
 
         id = id.strip()
         id = id.replace(':', '_')
@@ -59,6 +59,12 @@ class Synonym:
 
         return False
 
+
+    def merge(self, other):
+
+        assert(type(other) in [Synonym])
+
+        self.addSyns(other.syns)
 
     def removeCommonSynonymes(self, commonSyns):
 
