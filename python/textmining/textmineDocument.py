@@ -613,15 +613,18 @@ if __name__ == '__main__':
                             continue
                         
                         (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix) = sres
+                        lres = list(sres)
+                        lres.append(file_idx)
+                        lres.append(syn_idx)
 
-                        foundElemsByPos[start_index][start_index + len(text_word)].add(sres)
+                        foundElemsByPos[start_index][start_index + len(text_word)].add( tuple(lres) )
 
                 for start_index in foundElemsByPos:
 
                     max_end_index = max(foundElemsByPos[start_index].keys())
                     
                     for sres in foundElemsByPos[start_index][max_end_index]:
-                        (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix) = sres
+                        (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix, file_idx, syn_idx) = sres
 
                         outline = "{sentid}\t{listid}:{synid}\t{matched}\t{start}\t{length}\t{syn}\t{exact}\t{prefix}\t{suffix}\t{sentit}".format(
                             sentid=sentID, listid=file_idx, synid=syn_idx,
