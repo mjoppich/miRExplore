@@ -23,7 +23,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='aggregate tm results', add_help=False)
     parser.add_argument('-s', '--sentdir', type=str, help='where are the sentences?', required=True)
     parser.add_argument('-r', '--resultdir', type=str, help='where are all the index-files?', required=True)
-    parser.add_argument('-d', '--datadir', type=str, help='where is te miRExplore bsae?', required=True)
+    parser.add_argument('-d', '--datadir', type=str, help='where is the miRExplore bsae?', required=True)
 
     parser.add_argument('--obo', type=argparse.FileType('r'), required=True)
     parser.add_argument('--phit', type=int, default=6, required=False)

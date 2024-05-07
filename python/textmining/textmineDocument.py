@@ -156,11 +156,13 @@ def generate_args_for_subfile(n, newinput, positional=[]):
     for l in arg_list:
         ####  deal with flag arguments (store true/false)
         if l[1] == True:
+            l[0] = l[0].replace("_", "-")
             argparse_formatted_list.append("--{}".format(l[0]))
         elif l[1] == False or l[1] is None:
             pass  # dont add this arg
         # add positional argments
         elif l[0] in positional:
+            l[0] = l[0].replace("_", "-")
             argparse_formatted_list.append(str(l[0]))
         # add the named arguments
         else:
@@ -177,6 +179,10 @@ def generate_args_for_subfile(n, newinput, positional=[]):
             if l[0] == "exclude":
                 if len(l[1]) == 0:
                     continue
+                
+            if l[0] == "submatch_exclude":
+                if len(l[1]) == 0:
+                    continue
 
             l[0] = l[0].replace("_", "-")
         
@@ -184,11 +190,19 @@ def generate_args_for_subfile(n, newinput, positional=[]):
 
             if type(l[1]) in [list]:
                 for a in l[1]:
-                    argparse_formatted_list.append(a)
+                    if isinstance(a, io.TextIOWrapper):
+                        argparse_formatted_list.append(a.name)
+                    else:
+                        l1str = str(a)
+                        argparse_formatted_list.append(l1str)
 
             else:
-                l1str = str(l[1])
-                argparse_formatted_list.append(l1str)
+                l1 = l[1]
+                if isinstance(l1, io.TextIOWrapper):
+                    argparse_formatted_list.append(l1.name)
+                else:
+                    l1str = str(l1)
+                    argparse_formatted_list.append(l1str)
 
     argparse_formatted_list.append("--no-synfile-map")
     
@@ -354,7 +368,7 @@ if __name__ == '__main__':
     parser.add_argument('-olm', '--only-longest-match',action="store_true", required=False, default=False)
 
     parser.add_argument('-se', '--submatch-exclude',nargs='+', type=argparse.FileType("r"), default=[])
-    parser.add_argument('-w', '--test-is-word',action="store_false", required=False, default=True)
+    parser.add_argument('-w', '--test-is-word',action="store_true", required=False, default=True)
 
 
     parser.add_argument('-generules', '--generules',action="store_true", required=False, default=False)
@@ -607,7 +621,7 @@ if __name__ == '__main__':
                         shouldBeExcluded = False
 
                         if not foundExcludes is None:
-                            shouldBeExcluded = len(foundExcludes[file_idx][syn_idx][start_index]) > 0
+                            shouldBeExcluded = len(foundExcludes[start_index]) > 0
 
                         if len(excludeWordAutomaton) > 0 and shouldBeExcluded:
                             continue
@@ -646,7 +660,7 @@ if __name__ == '__main__':
                         shouldBeExcluded = False
 
                         if not foundExcludes is None:
-                            shouldBeExcluded = len(foundExcludes[file_idx][syn_idx][start_index]) > 0
+                            shouldBeExcluded = len(foundExcludes[start_index]) > 0
 
                         if len(excludeWordAutomaton) > 0 and shouldBeExcluded:
                             continue
@@ -691,8 +705,7 @@ if __name__ == '__main__':
 
 
                     foundSyns = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
-
-                    foundExcludes = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+                    foundExcludes = defaultdict(set)
 
                     for sentItIdx, sentWIdx in enumerate(allTestSentences):
                         sent, sent2idx = sentWIdx
@@ -702,7 +715,7 @@ if __name__ == '__main__':
                                 start_index = end_index - len(matchWord) + 1
                                 orig_start_index = sent2idx[start_index]
                                 orig_end_index = sent2idx[end_index]
-                                foundExcludes[file_idx][syn_idx][orig_start_index].add( (matchWord, ) )
+                                foundExcludes[orig_start_index].add( (matchWord, ) )
 
                         for end_index, hitKWs in A.iter(sent):
                             
@@ -731,6 +744,12 @@ if __name__ == '__main__':
                                 accept = True
 
                                 if args.test_is_word:
+                                    
+                                    #print("TEST")
+                                    #print("CHARS", args.characters)
+                                    #print("PREFIX", test_idx_prefix, sent[test_idx_prefix])                                    
+                                    #print("SUFFIX", test_idx_suffix, sent[test_idx_suffix])
+                                    
 
                                     if test_idx_suffix < len(sent):
                                         testChar = sent[test_idx_suffix]
@@ -753,6 +772,20 @@ if __name__ == '__main__':
                                 #print(accept, file_idx, syn_idx, (start_index, end_index), addres)
                                 if accept:
 
+                                    # test_idx_prefix is the index BEFORE! the word starts!
+                                    if sent[test_idx_prefix] != " ":
+                                        
+                                        #print(sent)
+                                        #print(test_idx_prefix)
+                                        #print(sent[test_idx_prefix])
+                                        
+                                        backCount = 0
+                                        for c in reversed(sent[:test_idx_prefix]):
+                                            backCount += 1
+                                            if c == " ":
+                                                break                                           
+                                        prefix = sent[test_idx_prefix-backCount: test_idx_prefix+1]
+
                                     if test_idx_suffix < len(sent):
                                         suffix = sent[test_idx_suffix: sent.find(" ", test_idx_suffix)]
 
@@ -765,7 +798,7 @@ if __name__ == '__main__':
                                         score += 1
                                     if matchWord == synWord:
                                         score += 1
-
+                                        
                                     addres = (score, text_word, matchWord, synWord, original_value, sentItIdx, prefix, suffix)
 
                                     foundSyns[file_idx][syn_idx][(orig_start_index, orig_end_index)].add( addres )

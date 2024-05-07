@@ -10,18 +10,18 @@ from utils.parallel import MapReduce
 downloadBase = True
 downloadUpdates = False
 downloadUpdatesParallel = False
-updateStart = 1115
-updateEnd = 1115
-medlineBase="pubmed22n"
+updateStart = 1220
+updateEnd = 1220
+medlineBase="pubmed24n"
 baseEnd = updateStart-1
 
-downloadLocation = "/mnt/w/PubMed/"
+downloadLocation = "/mnt/extproj/projekte/textmining/pubmed_feb24/"
 
 directory = os.path.dirname(downloadLocation)
 if not os.path.exists(directory):
     os.makedirs(directory)
 
-onlyNew = True
+onlyNew = False
 
 def downloadDataBase(data, env):
 

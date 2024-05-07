@@ -552,18 +552,15 @@ if __name__ == '__main__':
 
     parser.add_argument('-s', '--min_sent_length', default=5, type=int, required=False)
     
-    #python3 python/textmining/medlineXMLtoStructurePMC.py --xml-path /mnt/input/public/EuroupePMC/oa/ --base "" --output /mnt/raidtmp/joppich/pubmed_pmc/pmc/europepmc/ --threads 30 --zipped
+    parser.add_argument('-m', '--model', type=str, default=None, required=False)
     args = parser.parse_args()
-
-    #nltk.data.path.append("/mnt/d/dev/nltk_data/")
-
-    #tokenizer_loc = 'tokenizers/punkt/english.pickle'
-    #tokenizer = nltk.data.load(tokenizer_loc)
-
-    nlp = spacy.load("/mnt/raidtmp/joppich/pubmed_pmc/pmc/miRExplore_PMID_PMC/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4/")
-    #nlp.add_pipe(nlp.create_pipe('sentencizer'))
-
+    
+    print("Loading model", args.model)
+  
+    nlp = spacy.load(args.model)
+    #nlp = spacy.load("spacy_models/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
     tokenizer = lambda sentTxt: [str(sent).strip() for sent in nlp(sentTxt).sents]
+
 
     #python3 medlineXMLtoStructurePMC.py --xml-path /mnt/raidtmp/joppich/pubmed_pmc/pmc/ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/oa_comm_extracted/PMC000xxxxxx/ --base "" --threads 6
 

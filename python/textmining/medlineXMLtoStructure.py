@@ -3,12 +3,14 @@ import os, sys
 sys.path.insert(0, str(os.path.dirname(os.path.realpath(__file__))) + "/../")
 
 
+import argparse
+import spacy
+
 from collections import defaultdict
 from lxml import etree
 
 from utils.idutils import eprint
 import logging
-import nltk.data
 
 from utils.parallel import MapReduce
 
@@ -53,10 +55,10 @@ class PubmedEntry:
         returns = []
 
         if type(content) == str:
-            returns = tokenizer.tokenize(content)
+            returns = tokenizer(content)
         else:
             for x in content:
-                sents = tokenizer.tokenize(x)
+                sents = tokenizer(x)
                 returns += sents
 
         #returns = [x + "." for x in returns]
@@ -64,7 +66,7 @@ class PubmedEntry:
         return returns
 
     def to_sentences(self, tokenizer):
-
+        
         finalSents = []
 
         abstracts = [self.abstract[x] for x in self.abstract]
@@ -332,7 +334,7 @@ class PubmedEntry:
 
 
         pmid = cls.get_value_from_node(node, 'MedlineCitation/PMID')
-
+        
         date_created = cls.get_inner_text_from_path(node, 'MedlineCitation/DateCreated')
 
         articleNode = cls.get_node(node, 'MedlineCitation/Article')
@@ -354,7 +356,7 @@ class PubmedEntry:
                 title = title[1:len(title)-2] + title[len(title)-1]
 
         abstract = cls.get_abstract(articleNode)
-
+        
         doi = cls._find_doi( node )
         authors = cls._find_authors( articleNode )
 
@@ -404,7 +406,7 @@ class PubmedEntry:
             articleDate = (0,0,0)
 
         pubmed.pub_date = tuple([cls.tryToNumber(x) for x in articleDate])
-
+        
         return pubmed
 
     @classmethod
@@ -481,24 +483,30 @@ python3 removeDuplicateSentences.py
 
 if __name__ == '__main__':
 
-    #nltk.data.path.append("/mnt/d/dev/nltk_data/")
-
-    import argparse
 
 
     parser = argparse.ArgumentParser(description='Convert Medline XML to miRExplore base files')
     parser.add_argument('-x', '--xml-path', type=str, required=True, help="path to folder with XML.GZ files.")
-    parser.add_argument('-b', '--base', default="pubmed22n", type=str, required=False)
+    parser.add_argument('-b', '--base', default="pubmed24n", type=str, required=False)
     parser.add_argument('-t', '--threads', type=int, default=8, required=False)
+    parser.add_argument('-m', '--model', type=str, default=None, required=False)
     args = parser.parse_args()
+    
+    print("Loading model", args.model)
 
-    tokenizer_loc = 'tokenizers/punkt/english.pickle'
-    tokenizer = nltk.data.load(tokenizer_loc)
+
+    
+    nlp = spacy.load(args.model)
+    #nlp = spacy.load("spacy_models/en_ner_bionlp13cg_md-0.2.4/en_ner_bionlp13cg_md/en_ner_bionlp13cg_md-0.2.4")
+    tokenizer = lambda sentTxt: [str(sent).strip() for sent in nlp(sentTxt).sents]
 
     storagePath = args.xml_path
     baseFileName = args.base
 
     allXMLFiles = glob.glob(storagePath+baseFileName+'*.xml.gz')
+    
+    #allXMLFiles = [x for x in allXMLFiles if "pubmed24n0010" in x]
+    #print(allXMLFiles)
 
     startFrom = 0
     endOn = 2000

@@ -183,3 +183,11 @@ INT,us:use|uses|used|using
 INT,utilis:utilising|utilises|utilised|utilisation|utilise
 INT,utiliz:utilized|utilization|utilizing|utilize|utilizes
 BOOST,yield:yield|yields|yielded
+NEU,colony-stimulating:colony-stimulating
+INT,chemotactic:chemotactic|chemoattractant|chemotaxis|chemoattractants
+INT,receptor:receptor
+INT,crosscell:extracellular|intracellular|exposed|exposing
+INT,infiltrate:infiltrates|infiltrate|infiltration|infiltrated|infiltrating
+NEG,proliferation:proliferation|proliferated
+NEU,differentiation:differentiation
+INT,social_network:cell-cell interactions|cell-cell interactions|social network|social networks

@@ -77,17 +77,17 @@ if __name__ == '__main__':
 
     if not os.path.exists(uniprotConvFile):
         
-        sys.path.append(os.path.dirname(__file__) + "/../../../nameConvert")
-
-        from nameconvert.stores.uniprotStore import UniprotStore
-        from nameconvert.stores.entities import GeneIdentity
-
-
-        odb = UniprotStore()
-        convData = odb.fetch(GeneIdentity.UNIPROT, list(foundUniprotIDs),
-                             [GeneIdentity.ALIAS, GeneIdentity.PROTEIN_NAMES])
-
-        printToFile([str(convData)], uniprotConvFile)
+        import biomart
+        import pandas as pd
+        import io
+        server = biomart.BiomartServer( "ensembl.org/biomart" )
+        
+        mds = server.datasets["mmusculus_gene_ensembl"]
+        
+        response = mds.search({"attributes":["mgi_description", "mgi_symbol", "uniprotswissprot"]}, header=1)
+        rawData = pd.read_csv(io.StringIO("\n".join([x.decode() for x in response.raw.readlines()])), sep="\t")
+        rawData.columns = ["GeneIdentity.ALIAS", "GeneIdentity.PROTEIN_NAMES", "GeneIdentity.UNIPROT" ]
+        rawData.to_csv(uniprotConvFile, sep="\t", header=True, index=False)
 
     convData = DataFrame.parseFromFile( uniprotConvFile )
 
@@ -98,8 +98,11 @@ if __name__ == '__main__':
     for result in convData.data:
 
         uniprotID = result[uniprotIdx]
+        
+        if uniprotID is None:
+            continue
 
-        mgiIDs = uniprotID2MGI[uniprotID]
+        mgiIDs = uniprotID2MGI.get(uniprotID, None)
 
         if mgiIDs == None or len(mgiIDs) == 0:
             continue
@@ -113,10 +116,8 @@ if __name__ == '__main__':
 
             if result[geneNamesIdx] != None:
 
-                geneNames = result[geneNamesIdx].split(" ")
-
-                for geneName in geneNames:
-                    data['sym'].add(geneName)
+                geneNames = result[geneNamesIdx]#.split(" ")
+                data['sym'].add(geneNames)
 
             if result[protNamesIdx] != None:
 
